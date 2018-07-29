@@ -31,6 +31,6 @@ bin/
 *.log
 *.log.*
 .DS_Store
-QLedger
+ledger
 .rvmrc
 dump.rdb
