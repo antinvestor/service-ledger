@@ -9,8 +9,8 @@ import (
 	"os"
 	"testing"
 
-	ledgerContext "github.com/RealImage/QLedger/context"
-	"github.com/RealImage/QLedger/middlewares"
+	ledgerContext "bitbucket.org/caricah/ledger/context"
+	"bitbucket.org/caricah/ledger/middlewares"
 
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
@@ -44,14 +44,14 @@ func (ts *TransactionsSuite) TestValidAndRepeatedTransaction() {
 	// Valid transaction
 	payload := `{
 	  "id": "t001",
-	  "lines": [
+	  "entries": [
 	    {
 	      "account": "alice",
-	      "delta": 100
+	      "amount": 100
 	    },
 	    {
 	      "account": "bob",
-	      "delta": -100
+	      "amount": -100
 	    }
 	  ],
 	  "data": {
@@ -80,14 +80,14 @@ func (ts *TransactionsSuite) TestValidAndRepeatedTransaction() {
 	// Conflict transaction
 	payload = `{
 	  "id": "t001",
-	  "lines": [
+	  "entries": [
 	    {
 	      "account": "alice",
-	      "delta": 200
+	      "amount": 200
 	    },
 	    {
 	      "account": "bob",
-	      "delta": -200
+	      "amount": -200
 	    }
 	  ]
 	}`
@@ -105,7 +105,7 @@ func (ts *TransactionsSuite) TestNoOpTransaction() {
 	rr := httptest.NewRecorder()
 	payload := `{
 	  "id": "t002",
-	  "lines": []
+	  "entries": []
 	}`
 
 	handler := middlewares.ContextMiddleware(MakeTransaction, ts.context)
@@ -123,14 +123,14 @@ func (ts *TransactionsSuite) TestInvalidTransaction() {
 	rr := httptest.NewRecorder()
 	payload := `{
 	  "id": "t003",
-	  "lines": [
+	  "entries": [
 	    {
 	      "account": "alice",
-	      "delta": 100
+	      "amount": 100
 	    },
 	    {
 	      "account": "bob",
-	      "delta": -101
+	      "amount": -101
 	    }
 	  ]
 	}`
@@ -167,14 +167,14 @@ func (ts *TransactionsSuite) TestFailTransaction() {
 	rr := httptest.NewRecorder()
 	payload := `{
 	  "id": "t004",
-	  "lines": [
+	  "entries": [
 	    {
 	      "account": "alice",
-	      "delta": 100
+	      "amount": 100
 	    },
 	    {
 	      "account": "bob",
-	      "delta": -100
+	      "amount": -100
 	    }
 	  ]
 	}`
@@ -199,14 +199,14 @@ func (ts *TransactionsSuite) TestCreateTransactionWithBoundaryValues() {
 	// In-boundary value transaction
 	payload := `{
 	  "id": "t005",
-	  "lines": [
+	  "entries": [
 	    {
 	      "account": "carly",
-	      "delta": 9223372036854775807
+	      "amount": 9223372036854775807
 	    },
 	    {
 	      "account": "dev",
-	      "delta": -9223372036854775807
+	      "amount": -9223372036854775807
 	    }
 	  ],
 	  "data": {
@@ -226,14 +226,14 @@ func (ts *TransactionsSuite) TestCreateTransactionWithBoundaryValues() {
 	// Out-of-boundary value transaction
 	payload = `{
 	  "id": "t006",
-	  "lines": [
+	  "entries": [
 	    {
 	      "account": "eve",
-	      "delta": 9223372036854775808
+	      "amount": 9223372036854775808
 	    },
 	    {
 	      "account": "foo",
-	      "delta": -9223372036854775808
+	      "amount": -9223372036854775808
 	    }
 	  ],
 	  "data": {
@@ -255,9 +255,9 @@ func (ts *TransactionsSuite) TearDownSuite() {
 	log.Println("Cleaning up the test database")
 
 	t := ts.T()
-	_, err := ts.context.DB.Exec(`DELETE FROM lines`)
+	_, err := ts.context.DB.Exec(`DELETE FROM entries`)
 	if err != nil {
-		t.Fatal("Error deleting lines:", err)
+		t.Fatal("Error deleting entries:", err)
 	}
 	_, err = ts.context.DB.Exec(`DELETE FROM transactions`)
 	if err != nil {

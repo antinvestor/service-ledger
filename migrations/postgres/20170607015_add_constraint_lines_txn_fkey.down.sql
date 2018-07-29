@@ -1,2 +1,2 @@
-ALTER TABLE ONLY lines
-    DROP CONSTRAINT IF EXISTS lines_txn_fkey;
+ALTER TABLE ONLY entries
+    DROP CONSTRAINT IF EXISTS entries_txn_fkey;

@@ -10,9 +10,9 @@ import (
 	"os"
 	"testing"
 
-	ledgerContext "github.com/RealImage/QLedger/context"
-	"github.com/RealImage/QLedger/middlewares"
-	"github.com/RealImage/QLedger/models"
+	ledgerContext "bitbucket.org/caricah/ledger/context"
+	"bitbucket.org/caricah/ledger/middlewares"
+	"bitbucket.org/caricah/ledger/models"
 
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"

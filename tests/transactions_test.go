@@ -17,10 +17,10 @@ import (
 	"testing"
 	"time"
 
-	ledgerContext "github.com/RealImage/QLedger/context"
-	"github.com/RealImage/QLedger/controllers"
-	"github.com/RealImage/QLedger/middlewares"
-	"github.com/RealImage/QLedger/models"
+	ledgerContext "bitbucket.org/caricah/ledger/context"
+	"bitbucket.org/caricah/ledger/controllers"
+	"bitbucket.org/caricah/ledger/middlewares"
+	"bitbucket.org/caricah/ledger/models"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/suite"
 )
@@ -111,7 +111,7 @@ func ImportTransactionCSV(filename string) ([]map[string]interface{}, []map[stri
 		log.Fatalln("Error opening CSV:", err)
 	}
 	rdr := csv.NewReader(bufio.NewReader(file))
-	rdr.FieldsPerRecord = 3 //transaction_id,account_id,delta
+	rdr.FieldsPerRecord = 3 //transaction_id,account_id,amount
 	rows, err := rdr.ReadAll()
 	if err != nil {
 		log.Fatalln("Error reading CSV:", err)
@@ -120,41 +120,41 @@ func ImportTransactionCSV(filename string) ([]map[string]interface{}, []map[stri
 	transactions := make(map[string]interface{})
 	accounts := make(map[string]interface{})
 	for _, row := range rows[1:] { // skip row 0
-		transactionID, accountID, deltaVal := row[0], row[1], row[2]
-		delta, err := strconv.Atoi(deltaVal)
+		transactionID, accountID, amountVal := row[0], row[1], row[2]
+		amount, err := strconv.Atoi(amountVal)
 		if err != nil {
-			log.Fatalf("Invalid delta: %v (%v)", deltaVal, err)
+			log.Fatalf("Invalid amount: %v (%v)", amountVal, err)
 		}
 		// track the transactions
 		if _, ok := transactions[transactionID]; !ok {
 			transactions[transactionID] = map[string]interface{}{
 				"_id": transactionID,
-				"lines": []map[string]interface{}{
+				"entries": []map[string]interface{}{
 					{
 						"account": accountID,
-						"delta":   delta,
+						"amount":  amount,
 					},
 				},
 			}
 		} else {
 			txn, _ := transactions[transactionID].(map[string]interface{})
-			lines, _ := txn["lines"].([]map[string]interface{})
-			lines = append(lines, map[string]interface{}{
+			entries, _ := txn["entries"].([]map[string]interface{})
+			entries = append(entries, map[string]interface{}{
 				"account": accountID,
-				"delta":   delta,
+				"amount":  amount,
 			})
-			txn["lines"] = lines
+			txn["entries"] = entries
 		}
 		// track the accounts
 		if _, ok := accounts[accountID]; !ok {
 			accounts[accountID] = map[string]interface{}{
-				"id":        accountID,
-				"delta_sum": delta,
+				"id":         accountID,
+				"amount_sum": amount,
 			}
 		} else {
 			acc, _ := accounts[accountID].(map[string]interface{})
-			deltaSum, _ := acc["delta_sum"].(int)
-			acc["delta_sum"] = deltaSum + delta
+			amountSum, _ := acc["amount_sum"].(int)
+			acc["amount_sum"] = amountSum + amount
 		}
 	}
 
@@ -217,7 +217,7 @@ func PostTransaction(endpoint string, transaction map[string]interface{}) int {
 func CloneTransaction(transaction map[string]interface{}, tag string) map[string]interface{} {
 	t := make(map[string]interface{})
 	t["id"] = fmt.Sprintf("%v_%v", tag, transaction["_id"])
-	t["lines"] = transaction["lines"]
+	t["entries"] = transaction["entries"]
 	return t
 }
 
@@ -225,8 +225,8 @@ func PrepareExpectedBalance(endpoint string, accounts []map[string]interface{}, 
 	log.Println("Preparing expected balances...")
 	for _, acc := range accounts {
 		currentBalance := GetAccountBalance(endpoint, acc["id"])
-		deltaSum, _ := acc["delta_sum"].(int)
-		acc["expected_balance"] = currentBalance + (deltaSum * load)
+		amountSum, _ := acc["amount_sum"].(int)
+		acc["expected_balance"] = currentBalance + (amountSum * load)
 		log.Printf("Expected balance of account:%v = %v", acc["id"], acc["expected_balance"])
 	}
 }
@@ -274,9 +274,9 @@ func (cs *CSVSuite) TearDownTest() {
 
 	log.Println("Cleaning up the test database")
 	t := cs.T()
-	_, err := cs.context.DB.Exec(`DELETE FROM lines`)
+	_, err := cs.context.DB.Exec(`DELETE FROM entries`)
 	if err != nil {
-		t.Fatal("Error deleting lines:", err)
+		t.Fatal("Error deleting entries:", err)
 	}
 	_, err = cs.context.DB.Exec(`DELETE FROM transactions`)
 	if err != nil {

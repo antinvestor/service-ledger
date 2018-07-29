@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	ledgerError "github.com/RealImage/QLedger/errors"
+	ledgerError "bitbucket.org/caricah/ledger/errors"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
 )
@@ -21,20 +21,20 @@ type Transaction struct {
 	ID        string                 `json:"id"`
 	Data      map[string]interface{} `json:"data"`
 	Timestamp string                 `json:"timestamp"`
-	Lines     []*TransactionLine     `json:"lines"`
+	entries   []*TransactionLine     `json:"entries"`
 }
 
 // TransactionLine represents a transaction line in a ledger
 type TransactionLine struct {
 	AccountID string `json:"account"`
-	Delta     int    `json:"delta"`
+	amount    int    `json:"amount"`
 }
 
-// IsValid validates the delta list of a transaction
+// IsValid validates the amount list of a transaction
 func (t *Transaction) IsValid() bool {
 	sum := 0
-	for _, line := range t.Lines {
-		sum += line.Delta
+	for _, line := range t.entries {
+		sum += line.amount
 	}
 	return sum == 0
 }
@@ -62,29 +62,29 @@ func (t *TransactionDB) IsExists(id string) (bool, ledgerError.ApplicationError)
 
 // IsConflict says whether a transaction conflicts with an existing transaction
 func (t *TransactionDB) IsConflict(transaction *Transaction) (bool, ledgerError.ApplicationError) {
-	// Read existing lines
-	rows, err := t.db.Query("SELECT account_id, delta FROM lines WHERE transaction_id=$1", transaction.ID)
+	// Read existing entries
+	rows, err := t.db.Query("SELECT account_id, amount FROM entries WHERE transaction_id=$1", transaction.ID)
 	if err != nil {
-		log.Println("Error executing transaction lines query:", err)
+		log.Println("Error executing transaction entries query:", err)
 		return false, DBError(err)
 	}
 	defer rows.Close()
-	var existingLines []*TransactionLine
+	var existingentries []*TransactionLine
 	for rows.Next() {
 		line := &TransactionLine{}
-		if err := rows.Scan(&line.AccountID, &line.Delta); err != nil {
-			log.Println("Error scanning transaction lines:", err)
+		if err := rows.Scan(&line.AccountID, &line.amount); err != nil {
+			log.Println("Error scanning transaction entries:", err)
 			return false, DBError(err)
 		}
-		existingLines = append(existingLines, line)
+		existingentries = append(existingentries, line)
 	}
 	if err := rows.Err(); err != nil {
-		log.Println("Error iterating transaction lines rows:", err)
+		log.Println("Error iterating transaction entries rows:", err)
 		return false, DBError(err)
 	}
 
-	// Compare new and existing transaction lines
-	return !containsSameElements(transaction.Lines, existingLines), nil
+	// Compare new and existing transaction entries
+	return !containsSameElements(transaction.entries, existingentries), nil
 }
 
 // Transact creates the input transaction in the DB
@@ -110,7 +110,7 @@ func (t *TransactionDB) Transact(txn *Transaction) bool {
 
 	// Accounts do not need to be predefined
 	// they are called into existence when they are first used.
-	for _, line := range txn.Lines {
+	for _, line := range txn.entries {
 		_, err = tx.Exec("INSERT INTO accounts (id) VALUES ($1) ON CONFLICT (id) DO NOTHING", line.AccountID)
 		if err != nil {
 			return handleTransactionError(tx, errors.Wrap(err, "insert account failed"))
@@ -145,11 +145,11 @@ func (t *TransactionDB) Transact(txn *Transaction) bool {
 		return handleTransactionError(tx, errors.Wrap(err, "insert transaction failed"))
 	}
 
-	// Add transaction lines
-	for _, line := range txn.Lines {
-		_, err = tx.Exec("INSERT INTO lines (transaction_id, account_id, delta) VALUES ($1, $2, $3)", txn.ID, line.AccountID, line.Delta)
+	// Add transaction entries
+	for _, line := range txn.entries {
+		_, err = tx.Exec("INSERT INTO entries (transaction_id, account_id, amount) VALUES ($1, $2, $3)", txn.ID, line.AccountID, line.amount)
 		if err != nil {
-			return handleTransactionError(tx, errors.Wrap(err, "insert lines failed"))
+			return handleTransactionError(tx, errors.Wrap(err, "insert entries failed"))
 		}
 	}
 

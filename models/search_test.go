@@ -58,14 +58,14 @@ func (ss *SearchSuite) SetupSuite() {
 	// Create test transactions
 	txn1 := &Transaction{
 		ID: "txn1",
-		Lines: []*TransactionLine{
+		entries: []*TransactionLine{
 			&TransactionLine{
 				AccountID: "acc1",
-				Delta:     1000,
+				amount:    1000,
 			},
 			&TransactionLine{
 				AccountID: "acc2",
-				Delta:     -1000,
+				amount:    -1000,
 			},
 		},
 		Data: map[string]interface{}{
@@ -78,14 +78,14 @@ func (ss *SearchSuite) SetupSuite() {
 	assert.Equal(t, true, ok, "Error creating test transaction")
 	txn2 := &Transaction{
 		ID: "txn2",
-		Lines: []*TransactionLine{
+		entries: []*TransactionLine{
 			&TransactionLine{
 				AccountID: "acc1",
-				Delta:     100,
+				amount:    100,
 			},
 			&TransactionLine{
 				AccountID: "acc2",
-				Delta:     -100,
+				amount:    -100,
 			},
 		},
 		Data: map[string]interface{}{
@@ -98,14 +98,14 @@ func (ss *SearchSuite) SetupSuite() {
 	assert.Equal(t, true, ok, "Error creating test transaction")
 	txn3 := &Transaction{
 		ID: "txn3",
-		Lines: []*TransactionLine{
+		entries: []*TransactionLine{
 			&TransactionLine{
 				AccountID: "acc1",
-				Delta:     400,
+				amount:    400,
 			},
 			&TransactionLine{
 				AccountID: "acc2",
-				Delta:     -400,
+				amount:    -400,
 			},
 		},
 		Data: map[string]interface{}{
@@ -186,9 +186,9 @@ func (ss *SearchSuite) TearDownSuite() {
 	log.Println("Cleaning up the test database")
 
 	t := ss.T()
-	_, err := ss.db.Exec(`DELETE FROM lines`)
+	_, err := ss.db.Exec(`DELETE FROM entries`)
 	if err != nil {
-		t.Fatal("Error deleting lines:", err)
+		t.Fatal("Error deleting entries:", err)
 	}
 	_, err = ss.db.Exec(`DELETE FROM transactions`)
 	if err != nil {

@@ -10,9 +10,9 @@ import (
 	"os"
 	"testing"
 
-	ledgerContext "github.com/RealImage/QLedger/context"
-	"github.com/RealImage/QLedger/middlewares"
-	"github.com/RealImage/QLedger/models"
+	ledgerContext "bitbucket.org/caricah/ledger/context"
+	"bitbucket.org/caricah/ledger/middlewares"
+	"bitbucket.org/caricah/ledger/models"
 
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
@@ -43,14 +43,14 @@ func (as *TransactionSearchSuite) SetupTest() {
 	txnDB := models.NewTransactionDB(db)
 	txn1 := &models.Transaction{
 		ID: "txn1",
-		Lines: []*models.TransactionLine{
+		entries: []*models.TransactionLine{
 			&models.TransactionLine{
 				AccountID: "acc1",
-				Delta:     1000,
+				amount:    1000,
 			},
 			&models.TransactionLine{
 				AccountID: "acc2",
-				Delta:     -1000,
+				amount:    -1000,
 			},
 		},
 		Data: map[string]interface{}{
@@ -63,14 +63,14 @@ func (as *TransactionSearchSuite) SetupTest() {
 	assert.Equal(t, true, ok, "Error creating test transaction")
 	txn2 := &models.Transaction{
 		ID: "txn2",
-		Lines: []*models.TransactionLine{
+		entries: []*models.TransactionLine{
 			&models.TransactionLine{
 				AccountID: "acc1",
-				Delta:     100,
+				amount:    100,
 			},
 			&models.TransactionLine{
 				AccountID: "acc2",
-				Delta:     -100,
+				amount:    -100,
 			},
 		},
 		Data: map[string]interface{}{
@@ -83,14 +83,14 @@ func (as *TransactionSearchSuite) SetupTest() {
 	assert.Equal(t, true, ok, "Error creating test transaction")
 	txn3 := &models.Transaction{
 		ID: "txn3",
-		Lines: []*models.TransactionLine{
+		entries: []*models.TransactionLine{
 			&models.TransactionLine{
 				AccountID: "acc1",
-				Delta:     400,
+				amount:    400,
 			},
 			&models.TransactionLine{
 				AccountID: "acc2",
-				Delta:     -400,
+				amount:    -400,
 			},
 		},
 		Data: map[string]interface{}{

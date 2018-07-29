@@ -34,21 +34,21 @@ func (ts *TransactionsModelSuite) TestIsValid() {
 
 	transaction := &Transaction{
 		ID: "t001",
-		Lines: []*TransactionLine{
+		entries: []*TransactionLine{
 			&TransactionLine{
 				AccountID: "a1",
-				Delta:     100,
+				amount:    100,
 			},
 			&TransactionLine{
 				AccountID: "a2",
-				Delta:     -100,
+				amount:    -100,
 			},
 		},
 	}
 	valid := transaction.IsValid()
 	assert.Equal(t, valid, true, "Transaction should be valid")
 
-	transaction.Lines[0].Delta = 200
+	transaction.entries[0].amount = 200
 	valid = transaction.IsValid()
 	assert.Equal(t, valid, false, "Transaction should not be valid")
 }
@@ -63,14 +63,14 @@ func (ts *TransactionsModelSuite) TestIsExists() {
 
 	transaction := &Transaction{
 		ID: "t001",
-		Lines: []*TransactionLine{
+		entries: []*TransactionLine{
 			&TransactionLine{
 				AccountID: "a1",
-				Delta:     100,
+				amount:    100,
 			},
 			&TransactionLine{
 				AccountID: "a2",
-				Delta:     -100,
+				amount:    -100,
 			},
 		},
 	}
@@ -88,14 +88,14 @@ func (ts *TransactionsModelSuite) TestIsConflict() {
 	transactionDB := NewTransactionDB(ts.db)
 	transaction := &Transaction{
 		ID: "t002",
-		Lines: []*TransactionLine{
+		entries: []*TransactionLine{
 			&TransactionLine{
 				AccountID: "a1",
-				Delta:     100,
+				amount:    100,
 			},
 			&TransactionLine{
 				AccountID: "a2",
-				Delta:     -100,
+				amount:    -100,
 			},
 		},
 	}
@@ -108,31 +108,31 @@ func (ts *TransactionsModelSuite) TestIsConflict() {
 
 	transaction = &Transaction{
 		ID: "t002",
-		Lines: []*TransactionLine{
+		entries: []*TransactionLine{
 			&TransactionLine{
 				AccountID: "a1",
-				Delta:     50,
+				amount:    50,
 			},
 			&TransactionLine{
 				AccountID: "a2",
-				Delta:     -50,
+				amount:    -50,
 			},
 		},
 	}
 	conflicts, err = transactionDB.IsConflict(transaction)
 	assert.Equal(t, err, nil, "Error while checking for conflicting transaction")
-	assert.Equal(t, conflicts, true, "Transaction should conflict since deltas are different from first received")
+	assert.Equal(t, conflicts, true, "Transaction should conflict since amounts are different from first received")
 
 	transaction = &Transaction{
 		ID: "t002",
-		Lines: []*TransactionLine{
+		entries: []*TransactionLine{
 			&TransactionLine{
 				AccountID: "b1",
-				Delta:     100,
+				amount:    100,
 			},
 			&TransactionLine{
 				AccountID: "b2",
-				Delta:     -100,
+				amount:    -100,
 			},
 		},
 	}
@@ -148,14 +148,14 @@ func (ts *TransactionsModelSuite) TestTransact() {
 
 	transaction := &Transaction{
 		ID: "t003",
-		Lines: []*TransactionLine{
+		entries: []*TransactionLine{
 			&TransactionLine{
 				AccountID: "a1",
-				Delta:     100,
+				amount:    100,
 			},
 			&TransactionLine{
 				AccountID: "a2",
-				Delta:     -100,
+				amount:    -100,
 			},
 		},
 		Data: map[string]interface{}{
@@ -177,14 +177,14 @@ func (ts *TransactionsModelSuite) TestDuplicateTransactions() {
 	transactionDB := NewTransactionDB(ts.db)
 	transaction := &Transaction{
 		ID: "t005",
-		Lines: []*TransactionLine{
+		entries: []*TransactionLine{
 			&TransactionLine{
 				AccountID: "a1",
-				Delta:     100,
+				amount:    100,
 			},
 			&TransactionLine{
 				AccountID: "a2",
-				Delta:     -100,
+				amount:    -100,
 			},
 		},
 	}
@@ -214,14 +214,14 @@ func (ts *TransactionsModelSuite) TestTransactWithBoundaryValues() {
 	boundaryValue := 9223372036854775807 // Max +ve for 2^64
 	transaction := &Transaction{
 		ID: "t004",
-		Lines: []*TransactionLine{
+		entries: []*TransactionLine{
 			&TransactionLine{
 				AccountID: "a3",
-				Delta:     boundaryValue,
+				amount:    boundaryValue,
 			},
 			&TransactionLine{
 				AccountID: "a4",
-				Delta:     -boundaryValue,
+				amount:    -boundaryValue,
 			},
 		},
 		Data: map[string]interface{}{
@@ -245,9 +245,9 @@ func (ts *TransactionsModelSuite) TearDownSuite() {
 	log.Println("Cleaning up the test database")
 
 	t := ts.T()
-	_, err := ts.db.Exec(`DELETE FROM lines`)
+	_, err := ts.db.Exec(`DELETE FROM entries`)
 	if err != nil {
-		t.Fatal("Error deleting lines:", err)
+		t.Fatal("Error deleting entries:", err)
 	}
 	_, err = ts.db.Exec(`DELETE FROM transactions`)
 	if err != nil {

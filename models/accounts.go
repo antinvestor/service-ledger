@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"log"
 
-	ledgerError "github.com/RealImage/QLedger/errors"
+	ledgerError "bitbucket.org/caricah/ledger/errors"
 )
 
 // Account represents the ledger account with information such as ID, balance and JSON data

@@ -5,9 +5,9 @@ Systems that manage money do so by managing its movement - by tracking where it 
 
 The there are two primitives in the system: **accounts** and **transactions**. Money moves between accounts by means of a transaction.
 
-A **transaction** may have multiple *lines* - each line represents the change (*delta*) of money in one *account*. A valid transaction has a total delta of zero - no money is created or destroyed, and all money moved out of any account(s) has moved in to other account(s). QLedger validates all transactions made via the API with a zero delta check.
+A **transaction** may have multiple *entries* - each line represents the change (*amount*) of money in one *account*. A valid transaction has a total amount of zero - no money is created or destroyed, and all money moved out of any account(s) has moved in to other account(s). QLedger validates all transactions made via the API with a zero amount check.
 
-> Phrased another way, the law of conversation of money is formalized by the rules of double entry bookkeeping - money debited from any account must be credited to another account (and vice versa), implying that all transactions must have at least two entries (double entry) with a zero sum delta. QLedger makes it easy to follow these rules.
+> Phrased another way, the law of conversation of money is formalized by the rules of double entry bookkeeping - money debited from any account must be credited to another account (and vice versa), implying that all transactions must have at least two entries (double entry) with a zero sum amount. QLedger makes it easy to follow these rules.
 
 Accounts do not need to be predefined - they are called into existence when they are first used.
 
@@ -21,20 +21,20 @@ Transaction can be created as follows:
 ```
 {
   "id": "abcd1234",
-  "lines": [
+  "entries": [
     {
       "account": "alice",
-      "delta": -100
+      "amount": -100
     },
     {
       "account": "bob",
-      "delta": 100
+      "amount": 100
     }
   ],
   ...
 }
 ```
-> Transactions with a total delta not equal to zero will result in a `400 BAD REQUEST` error.
+> Transactions with a total amount not equal to zero will result in a `400 BAD REQUEST` error.
 
 Transaction `timestamp` by default will be the time at which it is created. If necessary(such as migration of existing
 transactions), can be overridden using the `timestamp` property in the payload as follows:
@@ -77,14 +77,14 @@ The transactions can be created with `data` as follows:
 ```
 {
   "id": "abcd1234",
-  "lines": [
+  "entries": [
     {
       "account": "alice",
-      "delta": -100
+      "amount": -100
     },
     {
       "account": "bob",
-      "delta": 100
+      "amount": 100
     }
   ],
   "data": {

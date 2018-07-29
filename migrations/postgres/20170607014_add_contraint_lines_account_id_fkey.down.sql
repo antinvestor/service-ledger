@@ -1,2 +1,2 @@
-ALTER TABLE ONLY lines
-    DROP CONSTRAINT IF EXISTS lines_account_id_fkey;
+ALTER TABLE ONLY entries
+    DROP CONSTRAINT IF EXISTS entries_account_id_fkey;

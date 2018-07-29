@@ -1,1 +1,1 @@
-DROP SEQUENCE IF EXISTS lines_id_seq;
+DROP SEQUENCE IF EXISTS entries_id_seq;

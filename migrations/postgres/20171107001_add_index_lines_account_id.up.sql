@@ -1,1 +1,1 @@
-CREATE INDEX lines_account_id_idx ON lines USING btree (account_id);
+CREATE INDEX entries_account_id_idx ON entries USING btree (account_id);

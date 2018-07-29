@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	ledgerError "github.com/RealImage/QLedger/errors"
+	ledgerError "bitbucket.org/caricah/ledger/errors"
 )
 
 var (
@@ -29,13 +29,13 @@ type TransactionResult struct {
 	ID        string                   `json:"id"`
 	Timestamp string                   `json:"timestamp"`
 	Data      json.RawMessage          `json:"data"`
-	Lines     []*TransactionLineResult `json:"lines"`
+	entries   []*TransactionLineResult `json:"entries"`
 }
 
-// TransactionLineResult represents the response format of transaction lines
+// TransactionLineResult represents the response format of transaction entries
 type TransactionLineResult struct {
 	AccountID string `json:"account"`
-	Delta     int    `json:"delta"`
+	amount    int    `json:"amount"`
 }
 
 // AccountResult represents the response format of accounts
@@ -84,23 +84,23 @@ func (engine *SearchEngine) Query(q string) (interface{}, ledgerError.Applicatio
 		transactions := make([]*TransactionResult, 0)
 		for rows.Next() {
 			txn := &TransactionResult{}
-			var rawAccounts, rawDelta string
-			if err := rows.Scan(&txn.ID, &txn.Timestamp, &txn.Data, &rawAccounts, &rawDelta); err != nil {
+			var rawAccounts, rawamount string
+			if err := rows.Scan(&txn.ID, &txn.Timestamp, &txn.Data, &rawAccounts, &rawamount); err != nil {
 				return nil, DBError(err)
 			}
 
 			var accounts []string
-			var delta []int
+			var amount []int
 			json.Unmarshal([]byte(rawAccounts), &accounts)
-			json.Unmarshal([]byte(rawDelta), &delta)
-			var lines []*TransactionLineResult
+			json.Unmarshal([]byte(rawamount), &amount)
+			var entries []*TransactionLineResult
 			for i, acc := range accounts {
 				l := &TransactionLineResult{}
 				l.AccountID = acc
-				l.Delta = delta[i]
-				lines = append(lines, l)
+				l.amount = amount[i]
+				entries = append(entries, l)
 			}
-			txn.Lines = lines
+			txn.entries = entries
 			transactions = append(transactions, txn)
 		}
 		return transactions, nil
@@ -193,15 +193,15 @@ func (rawQuery *SearchRawQuery) ToSQLQuery(namespace string) *SearchSQLQuery {
 	case "transactions":
 		q = `SELECT id, timestamp, data,
 					array_to_json(ARRAY(
-						SELECT lines.account_id FROM lines
+						SELECT entries.account_id FROM entries
 							WHERE transaction_id=transactions.id
-							ORDER BY lines.account_id
+							ORDER BY entries.account_id
 					)) AS account_array,
 					array_to_json(ARRAY(
-						SELECT lines.delta FROM lines
+						SELECT entries.amount FROM entries
 							WHERE transaction_id=transactions.id
-							ORDER BY lines.account_id
-					)) AS delta_array
+							ORDER BY entries.account_id
+					)) AS amount_array
 			FROM transactions`
 	default:
 		return nil

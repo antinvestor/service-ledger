@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"os"
 
-	ledgerContext "github.com/RealImage/QLedger/context"
-	"github.com/RealImage/QLedger/controllers"
-	"github.com/RealImage/QLedger/middlewares"
+	ledgerContext "bitbucket.org/caricah/ledger/context"
+	"bitbucket.org/caricah/ledger/controllers"
+	"bitbucket.org/caricah/ledger/middlewares"
 	"github.com/julienschmidt/httprouter"
 	"github.com/mattes/migrate"
 	"github.com/mattes/migrate/database"

@@ -1,6 +1,6 @@
 CREATE VIEW invalid_transactions AS
- SELECT lines.transaction_id,
-    sum(lines.delta) AS sum
-   FROM lines
-  GROUP BY lines.transaction_id
- HAVING (sum(lines.delta) > 0);
+ SELECT entries.transaction_id,
+    sum(entries.amount) AS sum
+   FROM entries
+  GROUP BY entries.transaction_id
+ HAVING (sum(entries.amount) > 0);

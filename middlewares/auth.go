@@ -12,8 +12,10 @@ func TokenAuthMiddleware(handler http.HandlerFunc) http.HandlerFunc {
 		// Check whether token authentication enabled
 		envToken := strings.TrimSpace(os.Getenv("LEDGER_AUTH_TOKEN"))
 		if envToken != "" {
+			var requestToken string
 			// Get the token in the header
-			requestToken := strings.TrimSpace(r.Header.Get("Authorization"))
+			requestToken = strings.TrimSpace(r.Header.Get("Authorization"))
+			requestToken = strings.TrimPrefix(requestToken, "Bearer ")
 			// Validate token
 			if requestToken != envToken {
 				w.WriteHeader(http.StatusUnauthorized)

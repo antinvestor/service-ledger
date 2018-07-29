@@ -1,2 +1,2 @@
-ALTER TABLE ONLY lines
-    ADD CONSTRAINT lines_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY entries
+    ADD CONSTRAINT entries_pkey PRIMARY KEY (id);

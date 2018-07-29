@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/RealImage/QLedger/errors"
+	"bitbucket.org/caricah/ledger/errors"
 )
 
 // SearchNamespaceInvalidError returns invalid search namespace error type

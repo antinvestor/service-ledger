@@ -21,25 +21,25 @@ CREATE TABLE current_balances (
     balance numeric
 );
 ALTER TABLE ONLY current_balances REPLICA IDENTITY NOTHING;
-CREATE TABLE lines (
+CREATE TABLE entries (
     id bigint NOT NULL,
     transaction_id character varying NOT NULL,
     account_id character varying NOT NULL,
-    delta bigint NOT NULL
+    amount bigint NOT NULL
 );
 CREATE VIEW invalid_transactions AS
- SELECT lines.transaction_id,
-    sum(lines.delta) AS sum
-   FROM lines
-  GROUP BY lines.transaction_id
- HAVING (sum(lines.delta) > (0)::numeric);
-CREATE SEQUENCE lines_id_seq
+ SELECT entries.transaction_id,
+    sum(entries.amount) AS sum
+   FROM entries
+  GROUP BY entries.transaction_id
+ HAVING (sum(entries.amount) > (0)::numeric);
+CREATE SEQUENCE entries_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER SEQUENCE lines_id_seq OWNED BY lines.id;
+ALTER SEQUENCE entries_id_seq OWNED BY entries.id;
 CREATE TABLE schema_migrations (
     version bigint NOT NULL,
     dirty boolean NOT NULL
@@ -49,28 +49,28 @@ CREATE TABLE transactions (
     "timestamp" timestamp without time zone NOT NULL,
     data jsonb DEFAULT '{}'::jsonb NOT NULL
 );
-ALTER TABLE ONLY lines ALTER COLUMN id SET DEFAULT nextval('lines_id_seq'::regclass);
+ALTER TABLE ONLY entries ALTER COLUMN id SET DEFAULT nextval('entries_id_seq'::regclass);
 ALTER TABLE ONLY accounts
     ADD CONSTRAINT accounts_pkey PRIMARY KEY (id);
-ALTER TABLE ONLY lines
-    ADD CONSTRAINT lines_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY entries
+    ADD CONSTRAINT entries_pkey PRIMARY KEY (id);
 ALTER TABLE ONLY schema_migrations
     ADD CONSTRAINT schema_migrations_pkey PRIMARY KEY (version);
 ALTER TABLE ONLY transactions
     ADD CONSTRAINT transactions_pkey PRIMARY KEY (id);
 CREATE INDEX accounts_data_idx ON accounts USING gin (data jsonb_path_ops);
-CREATE INDEX lines_account_id_idx ON lines USING btree (account_id);
-CREATE INDEX lines_transaction_id_idx ON lines USING btree (transaction_id);
+CREATE INDEX entries_account_id_idx ON entries USING btree (account_id);
+CREATE INDEX entries_transaction_id_idx ON entries USING btree (transaction_id);
 CREATE INDEX timestamp_idx ON transactions USING brin ("timestamp");
 CREATE INDEX transactions_data_idx ON transactions USING gin (data jsonb_path_ops);
 CREATE RULE "_RETURN" AS
     ON SELECT TO current_balances DO INSTEAD  SELECT accounts.id,
     accounts.data,
-    COALESCE(sum(lines.delta), (0)::numeric) AS balance
+    COALESCE(sum(entries.amount), (0)::numeric) AS balance
    FROM (accounts
-     LEFT JOIN lines ON (((accounts.id)::text = (lines.account_id)::text)))
+     LEFT JOIN entries ON (((accounts.id)::text = (entries.account_id)::text)))
   GROUP BY accounts.id;
-ALTER TABLE ONLY lines
-    ADD CONSTRAINT lines_account_id_fkey FOREIGN KEY (account_id) REFERENCES accounts(id);
-ALTER TABLE ONLY lines
-    ADD CONSTRAINT lines_txn_fkey FOREIGN KEY (transaction_id) REFERENCES transactions(id);
+ALTER TABLE ONLY entries
+    ADD CONSTRAINT entries_account_id_fkey FOREIGN KEY (account_id) REFERENCES accounts(id);
+ALTER TABLE ONLY entries
+    ADD CONSTRAINT entries_txn_fkey FOREIGN KEY (transaction_id) REFERENCES transactions(id);

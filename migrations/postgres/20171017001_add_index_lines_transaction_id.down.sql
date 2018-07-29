@@ -1,1 +1,1 @@
-DROP INDEX IF EXISTS lines_transaction_id_idx;
+DROP INDEX IF EXISTS entries_transaction_id_idx;

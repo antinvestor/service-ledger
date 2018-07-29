@@ -9,8 +9,8 @@ import (
 	"regexp"
 	"time"
 
-	ledgerContext "github.com/RealImage/QLedger/context"
-	"github.com/RealImage/QLedger/models"
+	ledgerContext "bitbucket.org/caricah/ledger/context"
+	"bitbucket.org/caricah/ledger/models"
 )
 
 func unmarshalToTransaction(r *http.Request, txn *models.Transaction) error {
@@ -51,7 +51,7 @@ func MakeTransaction(w http.ResponseWriter, r *http.Request, context *ledgerCont
 	}
 
 	// Skip if the transaction is invalid
-	// by validating the delta values
+	// by validating the amount values
 	if !transaction.IsValid() {
 		log.Println("Transaction is invalid:", transaction.ID)
 		w.WriteHeader(http.StatusBadRequest)
@@ -67,8 +67,8 @@ func MakeTransaction(w http.ResponseWriter, r *http.Request, context *ledgerCont
 		return
 	}
 	if isExists {
-		// Check if the transaction lines are different
-		// and conflicts with the existing lines
+		// Check if the transaction entries are different
+		// and conflicts with the existing entries
 		isConflict, err := transactionsDB.IsConflict(transaction)
 		if err != nil {
 			log.Println("Error while checking for conflicting transaction:", err)

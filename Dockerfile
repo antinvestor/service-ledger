@@ -1,17 +1,17 @@
-# Start from a Debian image with the latest version of Go installed
-# and a workspace (GOPATH) configured at /go.
-FROM golang:1.9
 
-# Copy the local package files to the container's workspace.
-ADD . /go/src/github.com/RealImage/QLedger
+FROM golang:alpine as builder
+RUN mkdir /build
+ADD . /build/
+WORKDIR /build
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o ledger .
 
-# Build the QLedger command inside the container.
-# (You may fetch or manage dependencies here,
-# either manually or with a tool like "godep".)
-RUN go install github.com/RealImage/QLedger
+FROM scratch
+COPY --from=builder /build/ledger /
+COPY --from=builder /build/migrations /
+WORKDIR /
 
-# Run the QLedger command by default when the container starts.
-ENTRYPOINT /go/bin/QLedger
+# Run the ledger command by default when the container starts.
+ENTRYPOINT /ledger
 
-# Document that the service listens on port 7000.
+# Document that the service listens on port 7000 by default.
 EXPOSE 7000

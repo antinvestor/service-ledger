@@ -1,4 +1,4 @@
-transaction_id,account_id,delta
+transaction_id,account_id,amount
 100,alice,100
 100,bob,-100
 101,alice,100

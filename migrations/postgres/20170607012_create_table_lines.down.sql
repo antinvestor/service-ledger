@@ -1,1 +1,1 @@
-DROP TABLE IF EXISTS lines;
+DROP TABLE IF EXISTS entries;

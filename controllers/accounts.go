@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"regexp"
 
-	ledgerContext "github.com/RealImage/QLedger/context"
-	"github.com/RealImage/QLedger/models"
+	ledgerContext "bitbucket.org/caricah/ledger/context"
+	"bitbucket.org/caricah/ledger/models"
 )
 
 // GetAccounts returns the list of accounts that matches the search query
