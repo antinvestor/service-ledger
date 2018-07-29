@@ -10,10 +10,10 @@ import (
 	"bitbucket.org/caricah/ledger/controllers"
 	"bitbucket.org/caricah/ledger/middlewares"
 	"github.com/julienschmidt/httprouter"
-	"github.com/mattes/migrate"
-	"github.com/mattes/migrate/database"
-	"github.com/mattes/migrate/database/postgres"
-	_ "github.com/mattes/migrate/source/file"
+	"github.com/golang-migrate/migrate"
+	"github.com/golang-migrate/migrate/database"
+	"github.com/golang-migrate/migrate/database/postgres"
+	_ "github.com/golang-migrate/migrate/source/file"
 )
 
 func main() {

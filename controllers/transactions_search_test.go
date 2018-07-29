@@ -43,14 +43,14 @@ func (as *TransactionSearchSuite) SetupTest() {
 	txnDB := models.NewTransactionDB(db)
 	txn1 := &models.Transaction{
 		ID: "txn1",
-		entries: []*models.TransactionLine{
-			&models.TransactionLine{
+		Entries: []*models.TransactionEntry{
+			&models.TransactionEntry{
 				AccountID: "acc1",
-				amount:    1000,
+				Amount:    1000,
 			},
-			&models.TransactionLine{
+			&models.TransactionEntry{
 				AccountID: "acc2",
-				amount:    -1000,
+				Amount:    -1000,
 			},
 		},
 		Data: map[string]interface{}{
@@ -63,14 +63,14 @@ func (as *TransactionSearchSuite) SetupTest() {
 	assert.Equal(t, true, ok, "Error creating test transaction")
 	txn2 := &models.Transaction{
 		ID: "txn2",
-		entries: []*models.TransactionLine{
-			&models.TransactionLine{
+		Entries: []*models.TransactionEntry{
+			&models.TransactionEntry{
 				AccountID: "acc1",
-				amount:    100,
+				Amount:    100,
 			},
-			&models.TransactionLine{
+			&models.TransactionEntry{
 				AccountID: "acc2",
-				amount:    -100,
+				Amount:    -100,
 			},
 		},
 		Data: map[string]interface{}{
@@ -83,14 +83,14 @@ func (as *TransactionSearchSuite) SetupTest() {
 	assert.Equal(t, true, ok, "Error creating test transaction")
 	txn3 := &models.Transaction{
 		ID: "txn3",
-		entries: []*models.TransactionLine{
-			&models.TransactionLine{
+		Entries: []*models.TransactionEntry{
+			&models.TransactionEntry{
 				AccountID: "acc1",
-				amount:    400,
+				Amount:    400,
 			},
-			&models.TransactionLine{
+			&models.TransactionEntry{
 				AccountID: "acc2",
-				amount:    -400,
+				Amount:    -400,
 			},
 		},
 		Data: map[string]interface{}{

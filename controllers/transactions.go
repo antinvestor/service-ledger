@@ -30,8 +30,8 @@ func unmarshalToTransaction(r *http.Request, txn *models.Transaction) error {
 		}
 	}
 	// Validate timestamp format if present
-	if txn.Timestamp != "" {
-		_, err := time.Parse(models.LedgerTimestampLayout, txn.Timestamp)
+	if txn.TranactedAt != "" {
+		_, err := time.Parse(models.LedgerTimestampLayout, txn.TranactedAt)
 		if err != nil {
 			return err
 		}

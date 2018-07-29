@@ -20,21 +20,21 @@ const (
 type Transaction struct {
 	ID        string                 `json:"id"`
 	Data      map[string]interface{} `json:"data"`
-	Timestamp string                 `json:"timestamp"`
-	entries   []*TransactionLine     `json:"entries"`
+	TranactedAt string               `json:"transacted_at"`
+	Entries   []*TransactionEntry    `json:"entries"`
 }
 
-// TransactionLine represents a transaction line in a ledger
-type TransactionLine struct {
+// TransactionEntry represents a transaction line in a ledger
+type TransactionEntry struct {
 	AccountID string `json:"account"`
-	amount    int    `json:"amount"`
+	Amount    int    `json:"amount"`
 }
 
-// IsValid validates the amount list of a transaction
+// IsValid validates the Amount list of a transaction
 func (t *Transaction) IsValid() bool {
 	sum := 0
-	for _, line := range t.entries {
-		sum += line.amount
+	for _, line := range t.Entries {
+		sum += line.Amount
 	}
 	return sum == 0
 }
@@ -62,29 +62,29 @@ func (t *TransactionDB) IsExists(id string) (bool, ledgerError.ApplicationError)
 
 // IsConflict says whether a transaction conflicts with an existing transaction
 func (t *TransactionDB) IsConflict(transaction *Transaction) (bool, ledgerError.ApplicationError) {
-	// Read existing entries
-	rows, err := t.db.Query("SELECT account_id, amount FROM entries WHERE transaction_id=$1", transaction.ID)
+	// Read existing Entries
+	rows, err := t.db.Query("SELECT account_id, Amount FROM Entries WHERE transaction_id=$1", transaction.ID)
 	if err != nil {
-		log.Println("Error executing transaction entries query:", err)
+		log.Println("Error executing transaction Entries query:", err)
 		return false, DBError(err)
 	}
 	defer rows.Close()
-	var existingentries []*TransactionLine
+	var existingentries []*TransactionEntry
 	for rows.Next() {
-		line := &TransactionLine{}
-		if err := rows.Scan(&line.AccountID, &line.amount); err != nil {
-			log.Println("Error scanning transaction entries:", err)
+		line := &TransactionEntry{}
+		if err := rows.Scan(&line.AccountID, &line.Amount); err != nil {
+			log.Println("Error scanning transaction Entries:", err)
 			return false, DBError(err)
 		}
 		existingentries = append(existingentries, line)
 	}
 	if err := rows.Err(); err != nil {
-		log.Println("Error iterating transaction entries rows:", err)
+		log.Println("Error iterating transaction Entries rows:", err)
 		return false, DBError(err)
 	}
 
-	// Compare new and existing transaction entries
-	return !containsSameElements(transaction.entries, existingentries), nil
+	// Compare new and existing transaction Entries
+	return !containsSameElements(transaction.Entries, existingentries), nil
 }
 
 // Transact creates the input transaction in the DB
@@ -108,14 +108,14 @@ func (t *TransactionDB) Transact(txn *Transaction) bool {
 		return false
 	}
 
-	// Accounts do not need to be predefined
-	// they are called into existence when they are first used.
-	for _, line := range txn.entries {
-		_, err = tx.Exec("INSERT INTO accounts (id) VALUES ($1) ON CONFLICT (id) DO NOTHING", line.AccountID)
-		if err != nil {
-			return handleTransactionError(tx, errors.Wrap(err, "insert account failed"))
-		}
-	}
+	//// Accounts do not need to be predefined
+	//// they are called into existence when they are first used.
+	//for _, line := range txn.Entries {
+	//	_, err = tx.Exec("INSERT INTO accounts (id) VALUES ($1) ON CONFLICT (id) DO NOTHING", line.AccountID)
+	//	if err != nil {
+	//		return handleTransactionError(tx, errors.Wrap(err, "insert account failed"))
+	//	}
+	//}
 
 	// Add transaction
 	data, err := json.Marshal(txn.Data)
@@ -127,11 +127,11 @@ func (t *TransactionDB) Transact(txn *Transaction) bool {
 		transactionData = string(data)
 	}
 
-	if txn.Timestamp == "" {
-		txn.Timestamp = time.Now().UTC().Format(LedgerTimestampLayout)
+	if txn.TranactedAt == "" {
+		txn.TranactedAt = time.Now().UTC().Format(LedgerTimestampLayout)
 	}
 
-	_, err = tx.Exec("INSERT INTO transactions (id, timestamp, data) VALUES ($1, $2, $3)", txn.ID, txn.Timestamp, transactionData)
+	_, err = tx.Exec("INSERT INTO transactions (id, transacted_at, data) VALUES ($1, $2, $3)", txn.ID, txn.TranactedAt, transactionData)
 	if err != nil {
 		// Ignore duplicate transactions and return success response
 		if err.(*pq.Error).Code.Name() == "unique_violation" {
@@ -145,11 +145,11 @@ func (t *TransactionDB) Transact(txn *Transaction) bool {
 		return handleTransactionError(tx, errors.Wrap(err, "insert transaction failed"))
 	}
 
-	// Add transaction entries
-	for _, line := range txn.entries {
-		_, err = tx.Exec("INSERT INTO entries (transaction_id, account_id, amount) VALUES ($1, $2, $3)", txn.ID, line.AccountID, line.amount)
+	// Add transaction Entries
+	for _, line := range txn.Entries {
+		_, err = tx.Exec("INSERT INTO Entries (transaction_id, account_id, Amount) VALUES ($1, $2, $3)", txn.ID, line.AccountID, line.Amount)
 		if err != nil {
-			return handleTransactionError(tx, errors.Wrap(err, "insert entries failed"))
+			return handleTransactionError(tx, errors.Wrap(err, "insert Entries failed"))
 		}
 	}
 

@@ -29,13 +29,13 @@ type TransactionResult struct {
 	ID        string                   `json:"id"`
 	Timestamp string                   `json:"timestamp"`
 	Data      json.RawMessage          `json:"data"`
-	entries   []*TransactionLineResult `json:"entries"`
+	entries   []*TransactionLineResult `json:"Entries"`
 }
 
-// TransactionLineResult represents the response format of transaction entries
+// TransactionLineResult represents the response format of transaction Entries
 type TransactionLineResult struct {
 	AccountID string `json:"account"`
-	amount    int    `json:"amount"`
+	amount    int    `json:"Amount"`
 }
 
 // AccountResult represents the response format of accounts
@@ -198,7 +198,7 @@ func (rawQuery *SearchRawQuery) ToSQLQuery(namespace string) *SearchSQLQuery {
 							ORDER BY entries.account_id
 					)) AS account_array,
 					array_to_json(ARRAY(
-						SELECT entries.amount FROM entries
+						SELECT entries.Amount FROM entries
 							WHERE transaction_id=transactions.id
 							ORDER BY entries.account_id
 					)) AS amount_array
