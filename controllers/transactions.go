@@ -11,6 +11,7 @@ import (
 
 	ledgerContext "bitbucket.org/caricah/service-ledger/context"
 	"bitbucket.org/caricah/service-ledger/models"
+	"bitbucket.org/caricah/service-ledger/ledger"
 )
 
 func unmarshalToTransaction(r *http.Request, txn *models.Transaction) error {
@@ -89,7 +90,7 @@ func MakeTransaction(w http.ResponseWriter, r *http.Request, context *ledgerCont
 	}
 
 	// Otherwise, do transaction
-	done := transactionsDB.Transact(transaction)
+	done, err := transactionsDB.Transact(transaction)
 	if !done {
 		log.Println("Transaction failed:", transaction.ID)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -119,8 +120,8 @@ func GetTransactions(w http.ResponseWriter, r *http.Request, context *ledgerCont
 	results, aerr := engine.Query(query)
 	if aerr != nil {
 		log.Println("Error while querying:", aerr)
-		switch aerr.ErrorCode() {
-		case "search.query.invalid":
+		switch aerr {
+		case ledger.ErrorSearchQueryHasInvalidFormart:
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		default:

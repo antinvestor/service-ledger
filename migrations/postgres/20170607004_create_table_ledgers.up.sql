@@ -1,8 +1,19 @@
 BEGIN;
 
+CREATE OR REPLACE FUNCTION generate_ledger_ref()
+  RETURNS varchar AS $$
+        DECLARE
+			ret varchar;
+		BEGIN
+		      RETURN base36_encode(extract(epoch from now())+random()*100000+1);
+
+    END;
+$$ LANGUAGE 'plpgsql' IMMUTABLE;
+
 
 CREATE TABLE ledgers (
     ledger_id SERIAL not null primary key,
+    reference character varying default generate_ledger_ref(),
     ledger_type character varying not null,
     data jsonb default '{}'::jsonb not null,
     parent_ledger_id bigint references ledgers(ledger_id),

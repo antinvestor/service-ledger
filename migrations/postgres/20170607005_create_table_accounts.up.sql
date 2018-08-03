@@ -3,6 +3,7 @@ BEGIN;
 CREATE TABLE accounts (
     account_id SERIAL not null primary key,
     reference character varying not null,
+    currency character varying not null,
     ledger_id bigint references ledgers(ledger_id),
     data jsonb default '{}'::jsonb not null,
     created_at timestamp default current_timestamp,

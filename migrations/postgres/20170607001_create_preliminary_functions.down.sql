@@ -1,0 +1,7 @@
+BEGIN;
+
+DROP FUNCTION IF EXISTS base36_encode;
+
+DROP FUNCTION IF EXISTS base36_decode;
+
+COMMIT;

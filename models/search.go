@@ -3,12 +3,11 @@ package models
 import (
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"regexp"
 	"strconv"
 	"strings"
 
-	ledgerError "bitbucket.org/caricah/service-ledger/errors"
+	"bitbucket.org/caricah/service-ledger/ledger"
 )
 
 var (
@@ -57,16 +56,16 @@ type LedgerResult struct {
 }
 
 // NewSearchEngine returns a new instance of `SearchEngine`
-func NewSearchEngine(db *sql.DB, namespace string) (*SearchEngine, ledgerError.ApplicationError) {
+func NewSearchEngine(db *sql.DB, namespace string) (*SearchEngine, *ledger.ApplicationLedgerError) {
 	if namespace != SearchNamespaceAccounts && namespace != SearchNamespaceTransactions && namespace != SearchNamespaceLedgers {
-		return nil, SearchNamespaceInvalidError(namespace)
+		return nil, ledger.ErrorSearchNamespaceUnkown
 	}
 
 	return &SearchEngine{db: db, namespace: namespace}, nil
 }
 
 // Query returns the results of a searc query
-func (engine *SearchEngine) Query(q string) (interface{}, ledgerError.ApplicationError) {
+func (engine *SearchEngine) Query(q string) (interface{}, *ledger.ApplicationLedgerError) {
 	rawQuery, aerr := NewSearchRawQuery(q)
 	if aerr != nil {
 		return nil, aerr
@@ -75,7 +74,7 @@ func (engine *SearchEngine) Query(q string) (interface{}, ledgerError.Applicatio
 	sqlQuery := rawQuery.ToSQLQuery(engine.namespace)
 	rows, err := engine.db.Query(sqlQuery.sql, sqlQuery.args...)
 	if err != nil {
-		return nil, DBError(err)
+		return nil, ledger.ErrorSystemFailure.Override(err.Error())
 	}
 	defer rows.Close()
 
@@ -83,11 +82,11 @@ func (engine *SearchEngine) Query(q string) (interface{}, ledgerError.Applicatio
 	case SearchNamespaceLedgers:
 		ledgers := make([]*LedgerResult, 0)
 		for rows.Next() {
-			ledger := &LedgerResult{}
-			if err := rows.Scan(&ledger.Reference, &ledger.Type, &ledger.Parent, &ledger.Data); err != nil {
-				return nil, DBError(err)
+			lg := &LedgerResult{}
+			if err := rows.Scan(&lg.Reference, &lg.Type, &lg.Parent, &lg.Data); err != nil {
+				return nil, ledger.ErrorSystemFailure.Override(err.Error())
 			}
-			ledgers = append(ledgers, ledger)
+			ledgers = append(ledgers, lg)
 		}
 		return ledgers, nil
 
@@ -96,7 +95,7 @@ func (engine *SearchEngine) Query(q string) (interface{}, ledgerError.Applicatio
 		for rows.Next() {
 			acc := &AccountResult{}
 			if err := rows.Scan(&acc.Reference, &acc.Ledger,  &acc.Balance, &acc.Data); err != nil {
-				return nil, DBError(err)
+				return nil, ledger.ErrorSystemFailure.Override(err.Error())
 			}
 			accounts = append(accounts, acc)
 		}
@@ -108,7 +107,7 @@ func (engine *SearchEngine) Query(q string) (interface{}, ledgerError.Applicatio
 			txn := &TransactionResult{}
 			var rawAccounts, rawamount string
 			if err := rows.Scan(&txn.Reference, &txn.TransactedAt, &txn.Data, &rawAccounts, &rawamount); err != nil {
-				return nil, DBError(err)
+				return nil, ledger.ErrorSystemFailure.Override(err.Error())
 			}
 
 			var accounts []string
@@ -127,7 +126,7 @@ func (engine *SearchEngine) Query(q string) (interface{}, ledgerError.Applicatio
 		}
 		return transactions, nil
 	default:
-		return nil, SearchNamespaceInvalidError(engine.namespace)
+		return nil, ledger.ErrorSearchNamespaceUnkown
 	}
 }
 
@@ -181,11 +180,11 @@ func hasValidKeys(items interface{}) bool {
 }
 
 // NewSearchRawQuery returns a new instance of `SearchRawQuery`
-func NewSearchRawQuery(q string) (*SearchRawQuery, ledgerError.ApplicationError) {
+func NewSearchRawQuery(q string) (*SearchRawQuery, *ledger.ApplicationLedgerError) {
 	var rawQuery *SearchRawQuery
 	err := json.Unmarshal([]byte(q), &rawQuery)
 	if err != nil {
-		return nil, SearchQueryInvalidError(err)
+		return nil, ledger.ErrorSearchQueryHasInvalidFormart
 	}
 
 	checkList := []interface{}{
@@ -198,7 +197,7 @@ func NewSearchRawQuery(q string) (*SearchRawQuery, ledgerError.ApplicationError)
 	}
 	for _, item := range checkList {
 		if !hasValidKeys(item) {
-			return nil, SearchQueryInvalidError(errors.New("Invalid key(s) in search query"))
+			return nil, ledger.ErrorSearchQueryHasInvalidKeys
 		}
 	}
 	return rawQuery, nil

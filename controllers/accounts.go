@@ -10,6 +10,7 @@ import (
 
 	ledgerContext "bitbucket.org/caricah/service-ledger/context"
 	"bitbucket.org/caricah/service-ledger/models"
+	"bitbucket.org/caricah/service-ledger/ledger"
 )
 
 // GetAccounts returns the list of accounts that matches the search query
@@ -32,8 +33,8 @@ func GetAccounts(w http.ResponseWriter, r *http.Request, context *ledgerContext.
 	results, aerr := engine.Query(query)
 	if aerr != nil {
 		log.Println("Error while querying:", aerr)
-		switch aerr.ErrorCode() {
-		case "search.query.invalid":
+		switch aerr {
+		case ledger.ErrorSearchQueryHasInvalidFormart:
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		default:
