@@ -1,1 +1,0 @@
-DROP SEQUENCE IF EXISTS entries_id_seq;

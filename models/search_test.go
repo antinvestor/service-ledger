@@ -14,8 +14,10 @@ import (
 type SearchSuite struct {
 	suite.Suite
 	db    *sql.DB
+	ledgerDB LedgerDB
 	accDB AccountDB
 	txnDB TransactionDB
+	ledgerId int64
 }
 
 func (ss *SearchSuite) SetupSuite() {
@@ -32,10 +34,17 @@ func (ss *SearchSuite) SetupSuite() {
 	log.Println("Successfully established connection to database.")
 	ss.accDB = NewAccountDB(db)
 	ss.txnDB = NewTransactionDB(db)
+	ss.ledgerDB = NewLedgerDB(db)
+
+	ledgerID, err := ss.ledgerDB.CreateLedger(&Ledger{Type: "ASSET",})
+	if err != nil {
+		log.Panic("Unable to create ledger for account", err)
+	}
 
 	// Create test accounts
 	acc1 := &Account{
-		ID: "acc1",
+		Reference: "acc1",
+		LedgerID: ledgerID,
 		Data: map[string]interface{}{
 			"customer_id": "C1",
 			"status":      "active",
@@ -45,7 +54,8 @@ func (ss *SearchSuite) SetupSuite() {
 	err = ss.accDB.CreateAccount(acc1)
 	assert.Equal(t, nil, err, "Error creating test account")
 	acc2 := &Account{
-		ID: "acc2",
+		Reference: "acc2",
+		LedgerID: ledgerID,
 		Data: map[string]interface{}{
 			"customer_id": "C2",
 			"status":      "inactive",
@@ -57,14 +67,14 @@ func (ss *SearchSuite) SetupSuite() {
 
 	// Create test transactions
 	txn1 := &Transaction{
-		ID: "txn1",
+		Reference: "txn1",
 		Entries: []*TransactionEntry{
-			&TransactionEntry{
-				AccountID: "acc1",
+			{
+				Account: "acc1",
 				Amount:    1000,
 			},
-			&TransactionEntry{
-				AccountID: "acc2",
+			{
+				Account: "acc2",
 				Amount:    -1000,
 			},
 		},
@@ -77,14 +87,14 @@ func (ss *SearchSuite) SetupSuite() {
 	ok := ss.txnDB.Transact(txn1)
 	assert.Equal(t, true, ok, "Error creating test transaction")
 	txn2 := &Transaction{
-		ID: "txn2",
+		Reference: "txn2",
 		Entries: []*TransactionEntry{
-			&TransactionEntry{
-				AccountID: "acc1",
+			{
+				Account: "acc1",
 				Amount:    100,
 			},
-			&TransactionEntry{
-				AccountID: "acc2",
+			{
+				Account: "acc2",
 				Amount:    -100,
 			},
 		},
@@ -97,14 +107,14 @@ func (ss *SearchSuite) SetupSuite() {
 	ok = ss.txnDB.Transact(txn2)
 	assert.Equal(t, true, ok, "Error creating test transaction")
 	txn3 := &Transaction{
-		ID: "txn3",
+		Reference: "txn3",
 		Entries: []*TransactionEntry{
-			&TransactionEntry{
-				AccountID: "acc1",
+			{
+				Account: "acc1",
 				Amount:    400,
 			},
-			&TransactionEntry{
-				AccountID: "acc2",
+			{
+				Account: "acc2",
 				Amount:    -400,
 			},
 		},
@@ -126,7 +136,7 @@ func (ss *SearchSuite) TestSearchAccountsWithBothMustAndShould() {
         "query": {
             "must": {
                 "fields": [
-                    {"id": {"eq": "acc1"}}
+                    {"reference": {"eq": "acc1"}}
                 ],
                 "terms": [
                     {"status": "active"}
@@ -146,7 +156,7 @@ func (ss *SearchSuite) TestSearchAccountsWithBothMustAndShould() {
 	assert.Equal(t, nil, err, "Error in building search query")
 	accounts, _ := results.([]*AccountResult)
 	assert.Equal(t, 1, len(accounts), "Account count doesn't match")
-	assert.Equal(t, "acc1", accounts[0].ID, "Account ID doesn't match")
+	assert.Equal(t, "acc1", accounts[0].Reference, "Account Reference doesn't match")
 }
 
 func (ss *SearchSuite) TestSearchTransactionsWithBothMustAndShould() {
@@ -157,7 +167,7 @@ func (ss *SearchSuite) TestSearchTransactionsWithBothMustAndShould() {
         "query": {
             "must": {
                 "fields": [
-                    {"id": {"eq": "txn1"}}
+                    {"reference": {"eq": "txn1"}}
                 ],
                 "terms": [
                     {"action": "setcredit"}
@@ -179,24 +189,29 @@ func (ss *SearchSuite) TestSearchTransactionsWithBothMustAndShould() {
 	assert.Equal(t, nil, err, "Error in building search query")
 	transactions, _ := results.([]*TransactionResult)
 	assert.Equal(t, 1, len(transactions), "Transaction count doesn't match")
-	assert.Equal(t, "txn1", transactions[0].ID, "Transaction ID doesn't match")
+	assert.Equal(t, "txn1", transactions[0].Reference, "Transaction Reference doesn't match")
 }
 
 func (ss *SearchSuite) TearDownSuite() {
 	log.Println("Cleaning up the test database")
 
 	t := ss.T()
-	_, err := ss.db.Exec(`DELETE FROM Entries`)
+	_, err := ss.db.Exec(`DELETE FROM entries WHERE transaction_id IN (
+					SELECT transaction_id FROM transactions WHERE reference IN($1, $2, $3))`, "txn1", "txn2", "txn3")
 	if err != nil {
 		t.Fatal("Error deleting Entries:", err)
 	}
-	_, err = ss.db.Exec(`DELETE FROM transactions`)
+	_, err = ss.db.Exec(`DELETE FROM transactions WHERE reference IN($1, $2, $3)`, "txn1", "txn2", "txn3")
 	if err != nil {
 		t.Fatal("Error deleting transactions:", err)
 	}
-	_, err = ss.db.Exec(`DELETE FROM accounts`)
+	_, err = ss.db.Exec(`DELETE FROM accounts WHERE reference IN($1, $2)`, "acc1", "acc2")
 	if err != nil {
 		t.Fatal("Error deleting accounts:", err)
+	}
+	_, err = ss.db.Exec(`DELETE FROM ledgers WHERE ledger_id = $1`, ss.ledgerId)
+	if err != nil {
+		t.Fatal("Error deleting ledgers:", err)
 	}
 }
 

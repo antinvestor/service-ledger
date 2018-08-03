@@ -1,2 +1,0 @@
-ALTER TABLE ONLY accounts
-    DROP CONSTRAINT IF EXISTS accounts_pkey;

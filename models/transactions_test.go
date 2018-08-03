@@ -27,20 +27,37 @@ func (ts *TransactionsModelSuite) SetupSuite() {
 		log.Println("Successfully established connection to database.")
 		ts.db = db
 	}
+
+	//Create test accounts.
+	ledgersDB := NewLedgerDB(ts.db)
+	accountsDB := NewAccountDB(ts.db)
+
+
+	ledgerID, err := ledgersDB.CreateLedger(&Ledger{Type: "ASSET",})
+	if err != nil {
+		log.Panic("Unable to create ledger for account", err)
+	}
+	accountsDB.CreateAccount(&Account{Reference:"a1",LedgerID: ledgerID})
+	accountsDB.CreateAccount(&Account{Reference:"a2",LedgerID: ledgerID})
+	accountsDB.CreateAccount(&Account{Reference:"a3",LedgerID: ledgerID})
+	accountsDB.CreateAccount(&Account{Reference:"a4",LedgerID: ledgerID})
+	accountsDB.CreateAccount(&Account{Reference:"b1",LedgerID: ledgerID})
+	accountsDB.CreateAccount(&Account{Reference:"b2",LedgerID: ledgerID})
+
 }
 
 func (ts *TransactionsModelSuite) TestIsValid() {
 	t := ts.T()
 
 	transaction := &Transaction{
-		ID: "t001",
+		Reference: "t001",
 		Entries: []*TransactionEntry{
-			&TransactionEntry{
-				AccountID: "a1",
+			{
+				Account: "a1",
 				Amount:    100,
 			},
-			&TransactionEntry{
-				AccountID: "a2",
+			{
+				Account: "a2",
 				Amount:    -100,
 			},
 		},
@@ -62,14 +79,14 @@ func (ts *TransactionsModelSuite) TestIsExists() {
 	assert.Equal(t, exists, false, "Transaction should not exist")
 
 	transaction := &Transaction{
-		ID: "t001",
+		Reference: "t001",
 		Entries: []*TransactionEntry{
-			&TransactionEntry{
-				AccountID: "a1",
+			{
+				Account: "a1",
 				Amount:    100,
 			},
-			&TransactionEntry{
-				AccountID: "a2",
+			{
+				Account: "a2",
 				Amount:    -100,
 			},
 		},
@@ -87,14 +104,14 @@ func (ts *TransactionsModelSuite) TestIsConflict() {
 
 	transactionDB := NewTransactionDB(ts.db)
 	transaction := &Transaction{
-		ID: "t002",
+		Reference: "t002",
 		Entries: []*TransactionEntry{
-			&TransactionEntry{
-				AccountID: "a1",
+			{
+				Account: "a1",
 				Amount:    100,
 			},
-			&TransactionEntry{
-				AccountID: "a2",
+			{
+				Account: "a2",
 				Amount:    -100,
 			},
 		},
@@ -103,18 +120,18 @@ func (ts *TransactionsModelSuite) TestIsConflict() {
 	assert.Equal(t, done, true, "Transaction should be created")
 
 	conflicts, err := transactionDB.IsConflict(transaction)
-	assert.Equal(t, err, nil, "Error while checking for conflict transaction")
-	assert.Equal(t, conflicts, false, "Transaction should not conflict")
+	assert.Equal(t, nil, err, "Error while checking for conflict transaction")
+	assert.Equal(t, false, conflicts, "Transaction should not conflict")
 
 	transaction = &Transaction{
-		ID: "t002",
+		Reference: "t002",
 		Entries: []*TransactionEntry{
-			&TransactionEntry{
-				AccountID: "a1",
+			{
+				Account: "a1",
 				Amount:    50,
 			},
-			&TransactionEntry{
-				AccountID: "a2",
+			{
+				Account: "a2",
 				Amount:    -50,
 			},
 		},
@@ -124,14 +141,14 @@ func (ts *TransactionsModelSuite) TestIsConflict() {
 	assert.Equal(t, conflicts, true, "Transaction should conflict since amounts are different from first received")
 
 	transaction = &Transaction{
-		ID: "t002",
+		Reference: "t002",
 		Entries: []*TransactionEntry{
-			&TransactionEntry{
-				AccountID: "b1",
+			{
+				Account: "b1",
 				Amount:    100,
 			},
-			&TransactionEntry{
-				AccountID: "b2",
+			{
+				Account: "b2",
 				Amount:    -100,
 			},
 		},
@@ -147,14 +164,14 @@ func (ts *TransactionsModelSuite) TestTransact() {
 	transactionDB := NewTransactionDB(ts.db)
 
 	transaction := &Transaction{
-		ID: "t003",
+		Reference: "t003",
 		Entries: []*TransactionEntry{
-			&TransactionEntry{
-				AccountID: "a1",
+			{
+				Account: "a1",
 				Amount:    100,
 			},
-			&TransactionEntry{
-				AccountID: "a2",
+			{
+				Account: "a2",
 				Amount:    -100,
 			},
 		},
@@ -176,14 +193,14 @@ func (ts *TransactionsModelSuite) TestDuplicateTransactions() {
 
 	transactionDB := NewTransactionDB(ts.db)
 	transaction := &Transaction{
-		ID: "t005",
+		Reference: "t005",
 		Entries: []*TransactionEntry{
-			&TransactionEntry{
-				AccountID: "a1",
+			{
+				Account: "a1",
 				Amount:    100,
 			},
-			&TransactionEntry{
-				AccountID: "a2",
+			{
+				Account: "a2",
 				Amount:    -100,
 			},
 		},
@@ -213,14 +230,14 @@ func (ts *TransactionsModelSuite) TestTransactWithBoundaryValues() {
 	// In-boundary value transaction
 	boundaryValue := 9223372036854775807 // Max +ve for 2^64
 	transaction := &Transaction{
-		ID: "t004",
+		Reference: "t004",
 		Entries: []*TransactionEntry{
-			&TransactionEntry{
-				AccountID: "a3",
+			{
+				Account: "a3",
 				Amount:    boundaryValue,
 			},
-			&TransactionEntry{
-				AccountID: "a4",
+			{
+				Account: "a4",
 				Amount:    -boundaryValue,
 			},
 		},
@@ -245,7 +262,7 @@ func (ts *TransactionsModelSuite) TearDownSuite() {
 	log.Println("Cleaning up the test database")
 
 	t := ts.T()
-	_, err := ts.db.Exec(`DELETE FROM Entries`)
+	_, err := ts.db.Exec(`DELETE FROM entries`)
 	if err != nil {
 		t.Fatal("Error deleting Entries:", err)
 	}
@@ -256,6 +273,10 @@ func (ts *TransactionsModelSuite) TearDownSuite() {
 	_, err = ts.db.Exec(`DELETE FROM accounts`)
 	if err != nil {
 		t.Fatal("Error deleting accounts:", err)
+	}
+	_, err = ts.db.Exec(`DELETE FROM ledgers`)
+	if err != nil {
+		t.Fatal("Error deleting ledgers:", err)
 	}
 }
 

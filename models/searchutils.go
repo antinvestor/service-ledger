@@ -165,7 +165,7 @@ func convertFieldsToSQL(fields []map[string]map[string]interface{}) (where []str
 	// Sample ranges
 	/*
 	   "fields": [
-	       {"id": {"eq": "ACME.CREDIT"}, "balance": {"lt": 0}},
+	       {"reference": {"eq": "ACME.CREDIT"}, "balance": {"lt": 0}},
 	   ]
 	*/
 	// Corresponding SQL

@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"os"
 
-	ledgerContext "bitbucket.org/caricah/ledger/context"
-	"bitbucket.org/caricah/ledger/controllers"
-	"bitbucket.org/caricah/ledger/middlewares"
+	ledgerContext "bitbucket.org/caricah/service-ledger/context"
+	"bitbucket.org/caricah/service-ledger/controllers"
+	"bitbucket.org/caricah/service-ledger/middlewares"
 	"github.com/julienschmidt/httprouter"
 	"github.com/golang-migrate/migrate"
 	"github.com/golang-migrate/migrate/database"

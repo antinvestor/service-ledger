@@ -1,1 +1,0 @@
-CREATE INDEX transacted_at_idx ON transactions USING brin (transacted_at);

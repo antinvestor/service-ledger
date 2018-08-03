@@ -1,4 +1,6 @@
 
+BEGIN;
+
 CREATE OR REPLACE FUNCTION update_account_balance()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -8,3 +10,5 @@ END;
 $$ language 'plpgsql';
 
 CREATE TRIGGER update_account_balance_trigger BEFORE INSERT ON entries FOR EACH ROW EXECUTE PROCEDURE  update_account_balance();
+
+COMMIT;

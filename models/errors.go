@@ -1,7 +1,7 @@
 package models
 
 import (
-	"bitbucket.org/caricah/ledger/errors"
+	"bitbucket.org/caricah/service-ledger/errors"
 )
 
 // SearchNamespaceInvalidError returns invalid search namespace error type

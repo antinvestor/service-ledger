@@ -9,8 +9,8 @@ import (
 	"regexp"
 	"time"
 
-	ledgerContext "bitbucket.org/caricah/ledger/context"
-	"bitbucket.org/caricah/ledger/models"
+	ledgerContext "bitbucket.org/caricah/service-ledger/context"
+	"bitbucket.org/caricah/service-ledger/models"
 )
 
 func unmarshalToTransaction(r *http.Request, txn *models.Transaction) error {
@@ -59,8 +59,8 @@ func MakeTransaction(w http.ResponseWriter, r *http.Request, context *ledgerCont
 	}
 
 	transactionsDB := models.NewTransactionDB(context.DB)
-	// Check if a transaction with same ID already exists
-	isExists, err := transactionsDB.IsExists(transaction.ID)
+	// Check if a transaction with same Reference already exists
+	isExists, err := transactionsDB.IsExists(transaction.Reference)
 	if err != nil {
 		log.Println("Error while checking for existing transaction:", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -83,7 +83,7 @@ func MakeTransaction(w http.ResponseWriter, r *http.Request, context *ledgerCont
 		}
 		// Otherwise the transaction is just a duplicate
 		// The exactly duplicate transactions are ignored
-		// log.Println("Transaction is duplicate:", transaction.ID)
+		// log.Println("Transaction is duplicate:", transaction.Reference)
 		w.WriteHeader(http.StatusAccepted)
 		return
 	}
@@ -141,7 +141,7 @@ func GetTransactions(w http.ResponseWriter, r *http.Request, context *ledgerCont
 	return
 }
 
-// UpdateTransaction updates the data of a transaction with the input ID
+// UpdateTransaction updates the data of a transaction with the input Reference
 func UpdateTransaction(w http.ResponseWriter, r *http.Request, context *ledgerContext.AppContext) {
 	transaction := &models.Transaction{}
 	err := unmarshalToTransaction(r, transaction)
@@ -152,15 +152,15 @@ func UpdateTransaction(w http.ResponseWriter, r *http.Request, context *ledgerCo
 	}
 
 	transactionDB := models.NewTransactionDB(context.DB)
-	// Check if a transaction with same ID already exists
-	isExists, err := transactionDB.IsExists(transaction.ID)
+	// Check if a transaction with same Reference already exists
+	isExists, err := transactionDB.IsExists(transaction.Reference)
 	if err != nil {
 		log.Println("Error while checking for existing transaction:", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	if !isExists {
-		log.Println("Transaction doesn't exist:", transaction.ID)
+		log.Println("Transaction doesn't exist:", transaction.Reference)
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}

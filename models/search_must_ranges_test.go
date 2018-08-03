@@ -20,7 +20,7 @@ func (ss *SearchSuite) TestSearchAccountsWithMustRanges() {
 	assert.Equal(t, nil, err, "Error in building search query")
 	accounts, _ := results.([]*AccountResult)
 	assert.Equal(t, 1, len(accounts), "Accounts count doesn't match")
-	assert.Equal(t, "acc1", accounts[0].ID, "Account ID doesn't match")
+	assert.Equal(t, "acc1", accounts[0].Reference, "Account Reference doesn't match")
 
 	query = `{
         "query": {
@@ -56,7 +56,7 @@ func (ss *SearchSuite) TestSearchTransactionsWithMustRanges() {
 	assert.Equal(t, nil, err, "Error in building search query")
 	transactions, _ := results.([]*TransactionResult)
 	assert.Equal(t, 1, len(transactions), "Transactions count doesn't match")
-	assert.Equal(t, "txn1", transactions[0].ID, "Transaction ID doesn't match")
+	assert.Equal(t, "txn1", transactions[0].Reference, "Transaction Reference doesn't match")
 
 	query = `{
         "query": {

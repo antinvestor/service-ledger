@@ -9,12 +9,13 @@ import (
 	"os"
 	"testing"
 
-	ledgerContext "bitbucket.org/caricah/ledger/context"
-	"bitbucket.org/caricah/ledger/middlewares"
+	ledgerContext "bitbucket.org/caricah/service-ledger/context"
+	"bitbucket.org/caricah/service-ledger/middlewares"
 
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"bitbucket.org/caricah/service-ledger/models"
 )
 
 var (
@@ -24,6 +25,7 @@ var (
 type TransactionsSuite struct {
 	suite.Suite
 	context *ledgerContext.AppContext
+	ledgerId int64
 }
 
 func (ts *TransactionsSuite) SetupSuite() {
@@ -36,6 +38,20 @@ func (ts *TransactionsSuite) SetupSuite() {
 	}
 	log.Println("Successfully established connection to database.")
 	ts.context = &ledgerContext.AppContext{DB: db}
+
+	//Create test ledger and accounts.
+	ledgersDB := models.NewLedgerDB(db)
+	accountsDB := models.NewAccountDB(db)
+
+
+	ts.ledgerId, err = ledgersDB.CreateLedger(&models.Ledger{Type: "ASSET",})
+	if err != nil {
+		log.Panic("Unable to create ledger for account", err)
+	}
+	accountsDB.CreateAccount(&models.Account{Reference:"bob",LedgerID: ts.ledgerId})
+	accountsDB.CreateAccount(&models.Account{Reference:"carly",LedgerID: ts.ledgerId})
+	accountsDB.CreateAccount(&models.Account{Reference:"alice",LedgerID: ts.ledgerId})
+	accountsDB.CreateAccount(&models.Account{Reference:"dev",LedgerID: ts.ledgerId})
 }
 
 func (ts *TransactionsSuite) TestValidAndRepeatedTransaction() {
@@ -43,7 +59,7 @@ func (ts *TransactionsSuite) TestValidAndRepeatedTransaction() {
 
 	// Valid transaction
 	payload := `{
-	  "id": "t001",
+	  "reference": "t001",
 	  "entries": [
 	    {
 	      "account": "alice",
@@ -79,7 +95,7 @@ func (ts *TransactionsSuite) TestValidAndRepeatedTransaction() {
 
 	// Conflict transaction
 	payload = `{
-	  "id": "t001",
+	  "reference": "t001",
 	  "entries": [
 	    {
 	      "account": "alice",
@@ -104,7 +120,7 @@ func (ts *TransactionsSuite) TestNoOpTransaction() {
 	t := ts.T()
 	rr := httptest.NewRecorder()
 	payload := `{
-	  "id": "t002",
+	  "reference": "t002",
 	  "entries": []
 	}`
 
@@ -122,7 +138,7 @@ func (ts *TransactionsSuite) TestInvalidTransaction() {
 	t := ts.T()
 	rr := httptest.NewRecorder()
 	payload := `{
-	  "id": "t003",
+	  "reference": "t003",
 	  "entries": [
 	    {
 	      "account": "alice",
@@ -166,7 +182,7 @@ func (ts *TransactionsSuite) TestFailTransaction() {
 	t := ts.T()
 	rr := httptest.NewRecorder()
 	payload := `{
-	  "id": "t004",
+	  "reference": "t004",
 	  "entries": [
 	    {
 	      "account": "alice",
@@ -198,7 +214,7 @@ func (ts *TransactionsSuite) TestCreateTransactionWithBoundaryValues() {
 
 	// In-boundary value transaction
 	payload := `{
-	  "id": "t005",
+	  "reference": "t005",
 	  "entries": [
 	    {
 	      "account": "carly",
@@ -225,7 +241,7 @@ func (ts *TransactionsSuite) TestCreateTransactionWithBoundaryValues() {
 
 	// Out-of-boundary value transaction
 	payload = `{
-	  "id": "t006",
+	  "reference": "t006",
 	  "entries": [
 	    {
 	      "account": "eve",
@@ -255,15 +271,23 @@ func (ts *TransactionsSuite) TearDownSuite() {
 	log.Println("Cleaning up the test database")
 
 	t := ts.T()
-	_, err := ts.context.DB.Exec(`DELETE FROM entries`)
+	_, err := ts.context.DB.Exec(`DELETE FROM entries WHERE transaction_id IN (
+				SELECT transaction_id FROM transactions WHERE reference IN($1, $2, $3, $4, $5, $6))`,
+		"t001","t002","t003","t004","t005","t006" )
 	if err != nil {
 		t.Fatal("Error deleting entries:", err)
 	}
-	_, err = ts.context.DB.Exec(`DELETE FROM transactions`)
+	_, err = ts.context.DB.Exec(`DELETE FROM transactions WHERE reference IN ($1, $2, $3, $4, $5, $6)`,
+		"t001","t002","t003","t004","t005","t006" )
 	if err != nil {
 		t.Fatal("Error deleting transactions:", err)
 	}
-	_, err = ts.context.DB.Exec(`DELETE FROM accounts`)
+	_, err = ts.context.DB.Exec(`DELETE FROM accounts WHERE reference IN ($1, $2, $3, $4)`,
+		"alice", "bob", "carly", "dev" )
+	if err != nil {
+		t.Fatal("Error deleting accounts:", err)
+	}
+	_, err = ts.context.DB.Exec(`DELETE FROM ledgers WHERE ledger_id=$1`, ts.ledgerId)
 	if err != nil {
 		t.Fatal("Error deleting accounts:", err)
 	}

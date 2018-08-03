@@ -17,10 +17,10 @@ import (
 	"testing"
 	"time"
 
-	ledgerContext "bitbucket.org/caricah/ledger/context"
-	"bitbucket.org/caricah/ledger/controllers"
-	"bitbucket.org/caricah/ledger/middlewares"
-	"bitbucket.org/caricah/ledger/models"
+	ledgerContext "bitbucket.org/caricah/service-ledger/context"
+	"bitbucket.org/caricah/service-ledger/controllers"
+	"bitbucket.org/caricah/service-ledger/middlewares"
+	"bitbucket.org/caricah/service-ledger/models"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/suite"
 )
@@ -29,11 +29,9 @@ func RunCSVTests(accountsEndpoint string, transactionsEndpoint string, filename 
 	// Timestamp to avoid conflict IDs
 	timestamp := time.Now().UTC().Format("20060102150405")
 
-	log.Println("Importing data from CSV:", filename)
 	transactions, accounts := ImportTransactionCSV(filename)
 
 	// test sequential transactions
-	log.Println("Testing sequential transactions...")
 	PrepareExpectedBalance(accountsEndpoint, accounts, load)
 	for _, transaction := range transactions {
 		for i := 1; i <= load; i++ {
@@ -41,7 +39,7 @@ func RunCSVTests(accountsEndpoint string, transactionsEndpoint string, filename 
 			t := CloneTransaction(transaction, tag)
 			status := PostTransaction(transactionsEndpoint, t)
 			if status != http.StatusCreated {
-				log.Fatalf("Sequential transaction:%v failed with status code:%v", t["id"], status)
+				log.Fatalf("Sequential transaction:%v failed with status code:%v", t["reference"], status)
 			}
 		}
 	}
@@ -60,7 +58,7 @@ func RunCSVTests(accountsEndpoint string, transactionsEndpoint string, filename 
 			go func() {
 				status := PostTransaction(transactionsEndpoint, t)
 				if status != http.StatusCreated {
-					log.Fatalf("Parallel transaction:%v failed with status code:%v", t["id"], status)
+					log.Fatalf("Parallel transaction:%v failed with status code:%v", t["reference"], status)
 				}
 				pwg.Done()
 			}()
@@ -94,9 +92,9 @@ func RunCSVTests(accountsEndpoint string, transactionsEndpoint string, filename 
 			}()
 			localwg.Wait()
 			if (status1 != http.StatusCreated && status1 != http.StatusAccepted) || (status2 != http.StatusCreated && status2 != http.StatusAccepted) {
-				log.Fatalf("Parallel repeated transactions with same ID %v are not accepted", t["id"])
+				log.Fatalf("Parallel repeated transactions with same Reference %v are not accepted", t["reference"])
 			} else if status1 >= 400 && status2 >= 400 {
-				log.Fatalf("Both parallel repeated transactions with same ID %v are failed", t["id"])
+				log.Fatalf("Both parallel repeated transactions with same Reference %v are failed", t["reference"])
 			}
 		}
 	}
@@ -128,7 +126,7 @@ func ImportTransactionCSV(filename string) ([]map[string]interface{}, []map[stri
 		// track the transactions
 		if _, ok := transactions[transactionID]; !ok {
 			transactions[transactionID] = map[string]interface{}{
-				"_id": transactionID,
+				"_reference": transactionID,
 				"entries": []map[string]interface{}{
 					{
 						"account": accountID,
@@ -148,7 +146,7 @@ func ImportTransactionCSV(filename string) ([]map[string]interface{}, []map[stri
 		// track the accounts
 		if _, ok := accounts[accountID]; !ok {
 			accounts[accountID] = map[string]interface{}{
-				"id":         accountID,
+				"reference":         accountID,
 				"amount_sum": amount,
 			}
 		} else {
@@ -175,7 +173,7 @@ func ImportTransactionCSV(filename string) ([]map[string]interface{}, []map[stri
 func GetAccountBalance(endpoint string, accountID interface{}) int {
 	payload := []byte(fmt.Sprintf(`{
 	  "query": {
-	    "must": {"fields": [{"id": {"eq": "%s"}}]}
+	    "must": {"fields": [{"reference": {"eq": "%s"}}]}
 	  }
 	}`, accountID))
 	req, _ := http.NewRequest("POST", endpoint, bytes.NewBuffer(payload))
@@ -200,7 +198,6 @@ func GetAccountBalance(endpoint string, accountID interface{}) int {
 }
 
 func PostTransaction(endpoint string, transaction map[string]interface{}) int {
-	log.Printf("Posting transaction: %v", transaction["id"])
 	payload, err := json.Marshal(transaction)
 	if err != nil {
 		log.Fatalf("Invalid transaction data: %v (%v)", transaction, err)
@@ -208,36 +205,31 @@ func PostTransaction(endpoint string, transaction map[string]interface{}) int {
 	transactionsURL := endpoint + "/v1/transactions"
 	res, err := http.Post(transactionsURL, "application/json", bytes.NewBuffer(payload))
 	if err != nil {
-		log.Fatalf("Error in transaction:%v (%v)", transaction["id"], err)
+		log.Fatalf("Error in transaction:%v (%v)", transaction["reference"], err)
 	}
-	log.Printf("Completed transaction:%v with status:%v", transaction["id"], res.StatusCode)
 	return res.StatusCode
 }
 
 func CloneTransaction(transaction map[string]interface{}, tag string) map[string]interface{} {
 	t := make(map[string]interface{})
-	t["id"] = fmt.Sprintf("%v_%v", tag, transaction["_id"])
+	t["reference"] = fmt.Sprintf("%v_%v", tag, transaction["_reference"])
 	t["entries"] = transaction["entries"]
 	return t
 }
 
 func PrepareExpectedBalance(endpoint string, accounts []map[string]interface{}, load int) {
-	log.Println("Preparing expected balances...")
 	for _, acc := range accounts {
-		currentBalance := GetAccountBalance(endpoint, acc["id"])
+		currentBalance := GetAccountBalance(endpoint, acc["reference"])
 		amountSum, _ := acc["amount_sum"].(int)
 		acc["expected_balance"] = currentBalance + (amountSum * load)
-		log.Printf("Expected balance of account:%v = %v", acc["id"], acc["expected_balance"])
 	}
 }
 
 func VerifyExpectedBalance(endpoint string, accounts []map[string]interface{}) {
-	log.Println("Verifying expected balances...")
 	for _, acc := range accounts {
-		currentBalance := GetAccountBalance(endpoint, acc["id"])
-		log.Printf("Current balance of account:%v = %v", acc["id"], currentBalance)
+		currentBalance := GetAccountBalance(endpoint, acc["reference"])
 		if currentBalance != acc["expected_balance"] {
-			panic("Incorrect balance")
+			panic(fmt.Sprintf("Incorrect balances for account:[%v]   %v -> %v ", acc["reference"],  currentBalance, acc["expected_balance"] ))
 		}
 	}
 }
@@ -250,7 +242,6 @@ type CSVSuite struct {
 }
 
 func (cs *CSVSuite) SetupTest() {
-	log.Println("Connecting to the test database")
 	db, err := sql.Open("postgres", os.Getenv("TEST_DATABASE_URL"))
 	if err != nil {
 		log.Panic("Unable to connect to Database:", err)
@@ -260,6 +251,22 @@ func (cs *CSVSuite) SetupTest() {
 	cs.context = &ledgerContext.AppContext{DB: db}
 	cs.accountServer = httptest.NewServer(middlewares.ContextMiddleware(controllers.GetAccounts, cs.context))
 	cs.transactionsServer = httptest.NewServer(middlewares.ContextMiddleware(controllers.MakeTransaction, cs.context))
+
+
+	//Create test ledger and accounts.
+	ledgersDB := models.NewLedgerDB(db)
+	accountsDB := models.NewAccountDB(db)
+
+
+	ledgerID, err := ledgersDB.CreateLedger(&models.Ledger{Type: "ASSET",})
+	if err != nil {
+		log.Panic("Unable to create ledger for account", err)
+	}
+	accountsDB.CreateAccount(&models.Account{Reference:"bob",LedgerID: ledgerID})
+	accountsDB.CreateAccount(&models.Account{Reference:"carly",LedgerID: ledgerID})
+	accountsDB.CreateAccount(&models.Account{Reference:"alice",LedgerID: ledgerID})
+	accountsDB.CreateAccount(&models.Account{Reference:"dev",LedgerID: ledgerID})
+
 }
 
 func (cs *CSVSuite) TestTransactionsLoad() {
@@ -268,11 +275,9 @@ func (cs *CSVSuite) TestTransactionsLoad() {
 }
 
 func (cs *CSVSuite) TearDownTest() {
-	log.Println("Closing test endpoints...")
 	defer cs.accountServer.Close()
 	defer cs.transactionsServer.Close()
 
-	log.Println("Cleaning up the test database")
 	t := cs.T()
 	_, err := cs.context.DB.Exec(`DELETE FROM entries`)
 	if err != nil {

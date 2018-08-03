@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"regexp"
 
-	ledgerContext "bitbucket.org/caricah/ledger/context"
-	"bitbucket.org/caricah/ledger/models"
+	ledgerContext "bitbucket.org/caricah/service-ledger/context"
+	"bitbucket.org/caricah/service-ledger/models"
 )
 
 // GetAccounts returns the list of accounts that matches the search query
@@ -73,7 +73,7 @@ func unmarshalToAccount(r *http.Request, account *models.Account) error {
 	return nil
 }
 
-// AddAccount creates a new account with the input ID and data
+// AddAccount creates a new account with the input Reference and data
 func AddAccount(w http.ResponseWriter, r *http.Request, context *ledgerContext.AppContext) {
 	account := &models.Account{}
 	err := unmarshalToAccount(r, account)
@@ -85,8 +85,8 @@ func AddAccount(w http.ResponseWriter, r *http.Request, context *ledgerContext.A
 	}
 
 	accountsDB := models.NewAccountDB(context.DB)
-	// Check if an account with same ID already exists
-	isExists, err := accountsDB.IsExists(account.ID)
+	// Check if an account with same Reference already exists
+	isExists, err := accountsDB.IsExists(account.Reference)
 	if err != nil {
 		log.Println("Error while checking for existing account:", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -109,7 +109,7 @@ func AddAccount(w http.ResponseWriter, r *http.Request, context *ledgerContext.A
 	return
 }
 
-// UpdateAccount updates data of an account with the input ID
+// UpdateAccount updates data of an account with the input Reference
 func UpdateAccount(w http.ResponseWriter, r *http.Request, context *ledgerContext.AppContext) {
 	account := &models.Account{}
 	err := unmarshalToAccount(r, account)
@@ -120,8 +120,8 @@ func UpdateAccount(w http.ResponseWriter, r *http.Request, context *ledgerContex
 	}
 
 	accountsDB := models.NewAccountDB(context.DB)
-	// Check if an account with same ID already exists
-	isExists, err := accountsDB.IsExists(account.ID)
+	// Check if an account with same Reference already exists
+	isExists, err := accountsDB.IsExists(account.Reference)
 	if err != nil {
 		log.Println("Error while checking for existing account:", err)
 		w.WriteHeader(http.StatusInternalServerError)

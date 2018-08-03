@@ -1,1 +1,0 @@
-ALTER TABLE ONLY transactions DROP COLUMN IF EXISTS data;

@@ -158,7 +158,8 @@ param 1: text[], columns to ignore in updates. Default [].
 
          Updates to ignored cols are omitted from changed_fields.
 
-         Updates with only ignored cols changed are not inserted
+         Updates with only ignored cols
+changed are not inserted
          into the audit log.
 
          Almost all the processing work is still done for updates

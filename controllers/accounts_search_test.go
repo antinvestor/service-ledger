@@ -10,9 +10,9 @@ import (
 	"os"
 	"testing"
 
-	ledgerContext "bitbucket.org/caricah/ledger/context"
-	"bitbucket.org/caricah/ledger/middlewares"
-	"bitbucket.org/caricah/ledger/models"
+	ledgerContext "bitbucket.org/caricah/service-ledger/context"
+	"bitbucket.org/caricah/service-ledger/middlewares"
+	"bitbucket.org/caricah/service-ledger/models"
 
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
@@ -26,6 +26,7 @@ var (
 type AccountsSearchSuite struct {
 	suite.Suite
 	context *ledgerContext.AppContext
+	ledgerId int64
 }
 
 func (as *AccountsSearchSuite) SetupTest() {
@@ -39,10 +40,16 @@ func (as *AccountsSearchSuite) SetupTest() {
 	log.Println("Successfully established connection to database.")
 	as.context = &ledgerContext.AppContext{DB: db}
 
+	//Create test ledger.
+	ledgersDB := models.NewLedgerDB(db)
+	as.ledgerId, err = ledgersDB.CreateLedger(&models.Ledger{Type: "ASSET",})
+	assert.Equal(t, nil, err, "Error creating test ledger")
+
 	// Create test accounts
 	accDB := models.NewAccountDB(db)
 	acc1 := &models.Account{
-		ID: "acc1",
+		Reference: "acc1",
+		LedgerID: as.ledgerId,
 		Data: map[string]interface{}{
 			"customer_id": "C1",
 			"status":      "active",
@@ -50,9 +57,10 @@ func (as *AccountsSearchSuite) SetupTest() {
 		},
 	}
 	err = accDB.CreateAccount(acc1)
-	assert.Equal(t, nil, err, "Error creating test account")
+	assert.Equal(t, nil, err,"Error creating test account with ledger "+string(as.ledgerId))
 	acc2 := &models.Account{
-		ID: "acc2",
+		Reference: "acc2",
+		LedgerID: as.ledgerId,
 		Data: map[string]interface{}{
 			"customer_id": "C2",
 			"status":      "inactive",
@@ -71,7 +79,7 @@ func (as *AccountsSearchSuite) TestAccountsSearch() {
         "query": {
             "must": {
                 "fields": [
-                    {"id": {"eq": "acc1"}}
+                    {"reference": {"eq": "acc1"}}
                 ],
                 "terms": [
                     {"status": "active"}
@@ -102,8 +110,25 @@ func (as *AccountsSearchSuite) TestAccountsSearch() {
 		t.Errorf("Invalid json response: %v", rr.Body.String())
 	}
 	assert.Equal(t, 1, len(accounts), "Accounts count doesn't match")
-	assert.Equal(t, "acc1", accounts[0].ID, "Account ID doesn't match")
+	if len(accounts) == 1 {
+		assert.Equal(t, "acc1", accounts[0].Reference, "Account Reference doesn't match")
+	}
 }
+
+func (as *AccountsSearchSuite) TearDownSuite() {
+	log.Println("Cleaning up the test database")
+
+	t := as.T()
+	_, err := as.context.DB.Exec(`DELETE FROM accounts CASCADE `)
+	if err != nil {
+		t.Fatal("Error deleting accounts:", err)
+	}
+	_, err = as.context.DB.Exec(`DELETE FROM ledgers CASCADE`)
+	if err != nil {
+		t.Fatal("Error deleting ledgers:", err)
+	}
+}
+
 
 func TestAccountsSuite(t *testing.T) {
 	suite.Run(t, new(AccountsSearchSuite))

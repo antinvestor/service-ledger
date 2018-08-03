@@ -5,14 +5,45 @@ import (
 	"encoding/json"
 	"log"
 
-	ledgerError "bitbucket.org/caricah/ledger/errors"
+	ledgerError "bitbucket.org/caricah/service-ledger/errors"
+	"database/sql/driver"
+	"errors"
 )
 
-// Account represents the ledger account with information such as ID, balance and JSON data
+// Account represents the ledger account with information such as Reference, balance and JSON data
 type Account struct {
-	ID      string                 `json:"id"`
-	Balance int                    `json:"balance"`
-	Data    map[string]interface{} `json:"data"`
+	ID        int64                  `json:"id"`
+	Reference string                 `json:"reference"`
+	Balance   int                    `json:"balance"`
+	LedgerID  int64                  `json:"ledger"`
+	Data      DataMap  				 `json:"data"`
+}
+
+type DataMap map[string]interface{}
+
+func (p DataMap) Value() (driver.Value, error) {
+	j, err := json.Marshal(p)
+	return j, err
+}
+
+func (p *DataMap) Scan(src interface{}) error {
+	source, ok := src.([]byte)
+	if !ok {
+		return errors.New("Type assertion .([]byte) failed.")
+	}
+
+	var i interface{}
+	err := json.Unmarshal(source, &i)
+	if err != nil {
+		return err
+	}
+
+	*p, ok = i.(map[string]interface{})
+	if !ok {
+		return errors.New("Type assertion .(map[string]interface{}) failed.")
+	}
+
+	return nil
 }
 
 // AccountDB provides all functions related to ledger account
@@ -25,11 +56,13 @@ func NewAccountDB(db *sql.DB) AccountDB {
 	return AccountDB{db: db}
 }
 
-// GetByID returns an acccount with the given ID
-func (a *AccountDB) GetByID(id string) (*Account, ledgerError.ApplicationError) {
+// GetByID returns an acccount with the given Reference
+func (a *AccountDB) GetByID(id int64) (*Account, ledgerError.ApplicationError) {
 	account := &Account{ID: id}
 
-	err := a.db.QueryRow("SELECT balance FROM current_balances WHERE id=$1", &id).Scan(&account.Balance)
+	err := a.db.QueryRow(
+		"SELECT reference, data, balance FROM account LEFT JOIN current_balances WHERE account_id=$1", &account.ID).Scan(
+		&account.Reference, &account.Data, &account.Balance)
 	switch {
 	case err == sql.ErrNoRows:
 		account.Balance = 0
@@ -40,10 +73,23 @@ func (a *AccountDB) GetByID(id string) (*Account, ledgerError.ApplicationError) 
 	return account, nil
 }
 
+// GetByRef returns an acccount with the given Reference
+func (a *AccountDB) GetByRef(reference string) (*Account, ledgerError.ApplicationError) {
+	account := &Account{}
+	err := a.db.QueryRow(
+		"SELECT  accounts.account_id, reference, ledger_id, data, balance FROM accounts LEFT JOIN current_balances USING(account_id) WHERE reference=$1", &reference).Scan(
+		&account.ID, &account.Reference, &account.LedgerID, &account.Data, &account.Balance)
+	if err != nil {
+		return nil, DBError(err)
+	}
+
+	return account, nil
+}
+
 // IsExists says whether an account exists or not
-func (a *AccountDB) IsExists(id string) (bool, ledgerError.ApplicationError) {
+func (a *AccountDB) IsExists(reference string) (bool, ledgerError.ApplicationError) {
 	var exists bool
-	err := a.db.QueryRow("SELECT EXISTS (SELECT id FROM accounts WHERE id=$1)", id).Scan(&exists)
+	err := a.db.QueryRow("SELECT EXISTS (SELECT account_id FROM accounts WHERE reference=$1)", reference).Scan(&exists)
 	if err != nil {
 		log.Println("Error executing account exists query:", err)
 		return false, DBError(err)
@@ -63,8 +109,15 @@ func (a *AccountDB) CreateAccount(account *Account) ledgerError.ApplicationError
 		accountData = string(data)
 	}
 
-	q := "INSERT INTO accounts (id, data)  VALUES ($1, $2)"
-	_, err = a.db.Exec(q, account.ID, accountData)
+	if account.LedgerID > 0 {
+		err := a.db.QueryRow("SELECT ledger_id FROM ledgers WHERE ledger_id = ($1)", account.LedgerID).Scan(&account.LedgerID)
+		if err != nil {
+			return DBError(err)
+		}
+	}
+
+	q := "INSERT INTO accounts (reference, ledger_id, data)  VALUES ($1, $2, $3)"
+	_, err = a.db.Exec(q, account.Reference, account.LedgerID, accountData)
 	if err != nil {
 		return DBError(err)
 	}
@@ -83,7 +136,7 @@ func (a *AccountDB) UpdateAccount(account *Account) ledgerError.ApplicationError
 		accountData = string(data)
 	}
 
-	q := "UPDATE accounts SET data = $1 WHERE id = $2"
+	q := "UPDATE accounts SET data = $1 WHERE account_id = $2"
 	_, err = a.db.Exec(q, accountData, account.ID)
 	if err != nil {
 		return DBError(err)

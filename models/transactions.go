@@ -6,9 +6,11 @@ import (
 	"log"
 	"time"
 
-	ledgerError "bitbucket.org/caricah/ledger/errors"
+	ledgerError "bitbucket.org/caricah/service-ledger/errors"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
+	"strings"
+	"fmt"
 )
 
 const (
@@ -18,23 +20,30 @@ const (
 
 // Transaction represents a transaction in a ledger
 type Transaction struct {
-	ID        string                 `json:"id"`
-	Data      map[string]interface{} `json:"data"`
+	ID 			int64				 `json:"id"`
+	Reference   string          	 `json:"reference"`
+	Data     	DataMap				 `json:"data"`
 	TranactedAt string               `json:"transacted_at"`
-	Entries   []*TransactionEntry    `json:"entries"`
+	Entries   	[]*TransactionEntry  `json:"entries"`
 }
 
 // TransactionEntry represents a transaction line in a ledger
 type TransactionEntry struct {
-	AccountID string `json:"account"`
+	ID int64
+	AccountID int64
+	Account string `json:"account"`
 	Amount    int    `json:"amount"`
+}
+
+func (t *TransactionEntry) Equal(ot TransactionEntry) bool {
+	return strings.ToLower(t.Account) == strings.ToLower(ot.Account) && t.Amount == ot.Amount
 }
 
 // IsValid validates the Amount list of a transaction
 func (t *Transaction) IsValid() bool {
 	sum := 0
-	for _, line := range t.Entries {
-		sum += line.Amount
+	for _, entry := range t.Entries {
+		sum += entry.Amount
 	}
 	return sum == 0
 }
@@ -50,9 +59,9 @@ func NewTransactionDB(db *sql.DB) TransactionDB {
 }
 
 // IsExists says whether a transaction already exists or not
-func (t *TransactionDB) IsExists(id string) (bool, ledgerError.ApplicationError) {
+func (t *TransactionDB) IsExists(reference string) (bool, ledgerError.ApplicationError) {
 	var exists bool
-	err := t.db.QueryRow("SELECT EXISTS (SELECT id FROM transactions WHERE id=$1)", id).Scan(&exists)
+	err := t.db.QueryRow("SELECT EXISTS (SELECT transaction_id FROM transactions WHERE reference=$1)", reference).Scan(&exists)
 	if err != nil {
 		log.Println("Error executing transaction exists query:", err)
 		return false, DBError(err)
@@ -63,7 +72,7 @@ func (t *TransactionDB) IsExists(id string) (bool, ledgerError.ApplicationError)
 // IsConflict says whether a transaction conflicts with an existing transaction
 func (t *TransactionDB) IsConflict(transaction *Transaction) (bool, ledgerError.ApplicationError) {
 	// Read existing Entries
-	rows, err := t.db.Query("SELECT account_id, Amount FROM Entries WHERE transaction_id=$1", transaction.ID)
+	rows, err := t.db.Query("SELECT entries.entry_id, accounts.account_id, accounts.reference, entries.amount FROM entries LEFT JOIN accounts USING(account_id) LEFT JOIN transactions USING(transaction_id) WHERE transactions.reference=$1", transaction.Reference)
 	if err != nil {
 		log.Println("Error executing transaction Entries query:", err)
 		return false, DBError(err)
@@ -71,12 +80,12 @@ func (t *TransactionDB) IsConflict(transaction *Transaction) (bool, ledgerError.
 	defer rows.Close()
 	var existingentries []*TransactionEntry
 	for rows.Next() {
-		line := &TransactionEntry{}
-		if err := rows.Scan(&line.AccountID, &line.Amount); err != nil {
+		entry := &TransactionEntry{}
+		if err := rows.Scan(&entry.ID, &entry.AccountID, &entry.Account, &entry.Amount); err != nil {
 			log.Println("Error scanning transaction Entries:", err)
 			return false, DBError(err)
 		}
-		existingentries = append(existingentries, line)
+		existingentries = append(existingentries, entry)
 	}
 	if err := rows.Err(); err != nil {
 		log.Println("Error iterating transaction Entries rows:", err)
@@ -89,6 +98,24 @@ func (t *TransactionDB) IsConflict(transaction *Transaction) (bool, ledgerError.
 
 // Transact creates the input transaction in the DB
 func (t *TransactionDB) Transact(txn *Transaction) bool {
+
+
+	//// Accounts have to be predefined hence check all references exist.
+
+	for _, entry := range txn.Entries {
+
+		err := t.db.QueryRow("SELECT account_id FROM accounts WHERE reference = $1", entry.Account ).Scan(&entry.AccountID)
+		if err != nil {
+			log.Println( fmt.Sprintf("could not validate account %s exist", entry.Account))
+			return false
+		}
+
+		if entry.Amount == 0{
+			log.Println( fmt.Sprintf("a zero amount can not participate in a transaction for account %s exist", entry.Account))
+			return false
+		}
+	}
+
 	// Start the transaction
 	var err error
 	tx, err := t.db.Begin()
@@ -108,14 +135,6 @@ func (t *TransactionDB) Transact(txn *Transaction) bool {
 		return false
 	}
 
-	//// Accounts do not need to be predefined
-	//// they are called into existence when they are first used.
-	//for _, line := range txn.Entries {
-	//	_, err = tx.Exec("INSERT INTO accounts (id) VALUES ($1) ON CONFLICT (id) DO NOTHING", line.AccountID)
-	//	if err != nil {
-	//		return handleTransactionError(tx, errors.Wrap(err, "insert account failed"))
-	//	}
-	//}
 
 	// Add transaction
 	data, err := json.Marshal(txn.Data)
@@ -131,7 +150,8 @@ func (t *TransactionDB) Transact(txn *Transaction) bool {
 		txn.TranactedAt = time.Now().UTC().Format(LedgerTimestampLayout)
 	}
 
-	_, err = tx.Exec("INSERT INTO transactions (id, transacted_at, data) VALUES ($1, $2, $3)", txn.ID, txn.TranactedAt, transactionData)
+	var transactionID int64
+	 err = tx.QueryRow("INSERT INTO transactions (reference, transacted_at, data) VALUES ($1, $2, $3)  RETURNING transaction_id", txn.Reference, txn.TranactedAt, transactionData).Scan(&transactionID)
 	if err != nil {
 		// Ignore duplicate transactions and return success response
 		if err.(*pq.Error).Code.Name() == "unique_violation" {
@@ -145,9 +165,12 @@ func (t *TransactionDB) Transact(txn *Transaction) bool {
 		return handleTransactionError(tx, errors.Wrap(err, "insert transaction failed"))
 	}
 
+
 	// Add transaction Entries
 	for _, line := range txn.Entries {
-		_, err = tx.Exec("INSERT INTO Entries (transaction_id, account_id, Amount) VALUES ($1, $2, $3)", txn.ID, line.AccountID, line.Amount)
+		_, err = tx.Exec(
+			"INSERT INTO entries (transaction_id, account_id, amount) VALUES ($1, $2, $3)  RETURNING entry_id",
+			transactionID, line.AccountID, line.Amount)
 		if err != nil {
 			return handleTransactionError(tx, errors.Wrap(err, "insert Entries failed"))
 		}
@@ -173,7 +196,7 @@ func (t *TransactionDB) UpdateTransaction(txn *Transaction) ledgerError.Applicat
 		tData = string(data)
 	}
 
-	q := "UPDATE transactions SET data = $1 WHERE id = $2"
+	q := "UPDATE transactions SET data = $1 WHERE transaction_id = $2"
 	_, err = t.db.Exec(q, tData, txn.ID)
 	if err != nil {
 		return DBError(err)

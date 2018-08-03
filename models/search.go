@@ -8,10 +8,12 @@ import (
 	"strconv"
 	"strings"
 
-	ledgerError "bitbucket.org/caricah/ledger/errors"
+	ledgerError "bitbucket.org/caricah/service-ledger/errors"
 )
 
 var (
+	// SearchNamespaceAccounts holds search namespace of accounts
+	SearchNamespaceLedgers = "ledgers"
 	// SearchNamespaceAccounts holds search namespace of accounts
 	SearchNamespaceAccounts = "accounts"
 	// SearchNamespaceTransactions holds search namespace of transactions
@@ -26,28 +28,37 @@ type SearchEngine struct {
 
 // TransactionResult represents the response format of transactions
 type TransactionResult struct {
-	ID        string                   `json:"id"`
-	Timestamp string                   `json:"timestamp"`
-	Data      json.RawMessage          `json:"data"`
-	entries   []*TransactionLineResult `json:"Entries"`
+	Reference string                    `json:"reference"`
+	TransactedAt string                    `json:"transacted_at"`
+	Data      json.RawMessage           `json:"data"`
+	Entries   []*TransactionEntryResult `json:"entries"`
 }
 
-// TransactionLineResult represents the response format of transaction Entries
-type TransactionLineResult struct {
+// TransactionEntryResult represents the response format of transaction Entries
+type TransactionEntryResult struct {
 	AccountID string `json:"account"`
-	amount    int    `json:"Amount"`
+	Amount    int    `json:"amount"`
 }
 
 // AccountResult represents the response format of accounts
 type AccountResult struct {
-	ID      string          `json:"id"`
-	Balance int             `json:"balance"`
-	Data    json.RawMessage `json:"data"`
+	Reference string          `json:"reference"`
+	Ledger    string          `json:"ledger"`
+	Balance   int             `json:"balance"`
+	Data      json.RawMessage `json:"data"`
+}
+
+// LedgerResult represents the response format of accounts
+type LedgerResult struct {
+	Reference string          `json:"reference"`
+	Type      string          `json:"balance"`
+	Parent    string          `json:"parent_ledger"`
+	Data      json.RawMessage `json:"data"`
 }
 
 // NewSearchEngine returns a new instance of `SearchEngine`
 func NewSearchEngine(db *sql.DB, namespace string) (*SearchEngine, ledgerError.ApplicationError) {
-	if namespace != SearchNamespaceAccounts && namespace != SearchNamespaceTransactions {
+	if namespace != SearchNamespaceAccounts && namespace != SearchNamespaceTransactions && namespace != SearchNamespaceLedgers {
 		return nil, SearchNamespaceInvalidError(namespace)
 	}
 
@@ -69,11 +80,22 @@ func (engine *SearchEngine) Query(q string) (interface{}, ledgerError.Applicatio
 	defer rows.Close()
 
 	switch engine.namespace {
+	case SearchNamespaceLedgers:
+		ledgers := make([]*LedgerResult, 0)
+		for rows.Next() {
+			ledger := &LedgerResult{}
+			if err := rows.Scan(&ledger.Reference, &ledger.Type, &ledger.Parent, &ledger.Data); err != nil {
+				return nil, DBError(err)
+			}
+			ledgers = append(ledgers, ledger)
+		}
+		return ledgers, nil
+
 	case SearchNamespaceAccounts:
 		accounts := make([]*AccountResult, 0)
 		for rows.Next() {
 			acc := &AccountResult{}
-			if err := rows.Scan(&acc.ID, &acc.Balance, &acc.Data); err != nil {
+			if err := rows.Scan(&acc.Reference, &acc.Ledger,  &acc.Balance, &acc.Data); err != nil {
 				return nil, DBError(err)
 			}
 			accounts = append(accounts, acc)
@@ -85,7 +107,7 @@ func (engine *SearchEngine) Query(q string) (interface{}, ledgerError.Applicatio
 		for rows.Next() {
 			txn := &TransactionResult{}
 			var rawAccounts, rawamount string
-			if err := rows.Scan(&txn.ID, &txn.Timestamp, &txn.Data, &rawAccounts, &rawamount); err != nil {
+			if err := rows.Scan(&txn.Reference, &txn.TransactedAt, &txn.Data, &rawAccounts, &rawamount); err != nil {
 				return nil, DBError(err)
 			}
 
@@ -93,14 +115,14 @@ func (engine *SearchEngine) Query(q string) (interface{}, ledgerError.Applicatio
 			var amount []int
 			json.Unmarshal([]byte(rawAccounts), &accounts)
 			json.Unmarshal([]byte(rawamount), &amount)
-			var entries []*TransactionLineResult
+			var entries []*TransactionEntryResult
 			for i, acc := range accounts {
-				l := &TransactionLineResult{}
+				l := &TransactionEntryResult{}
 				l.AccountID = acc
-				l.amount = amount[i]
+				l.Amount = amount[i]
 				entries = append(entries, l)
 			}
-			txn.entries = entries
+			txn.Entries = entries
 			transactions = append(transactions, txn)
 		}
 		return transactions, nil
@@ -111,8 +133,8 @@ func (engine *SearchEngine) Query(q string) (interface{}, ledgerError.Applicatio
 
 // QueryContainer represents the format of query subsection inside `must` or `should`
 type QueryContainer struct {
-	Fields     []map[string]map[string]interface{} `json:"fields"`
-	Terms      []map[string]interface{}            `json:"terms"`
+	Fields []map[string]map[string]interface{} `json:"fields"`
+	Terms      []map[string]interface{} `json:"terms"`
 	RangeItems []map[string]map[string]interface{} `json:"ranges"`
 }
 
@@ -188,18 +210,20 @@ func (rawQuery *SearchRawQuery) ToSQLQuery(namespace string) *SearchSQLQuery {
 	var args []interface{}
 
 	switch namespace {
+	case "ledgers":
+		q = "SELECT reference, ledger_type, parent_ledger_id, data FROM ledgers"
 	case "accounts":
-		q = "SELECT id, balance, data FROM current_balances"
+		q = "SELECT reference, ledger_id, balance, data FROM accounts LEFT JOIN  current_balances USING(account_id)"
 	case "transactions":
-		q = `SELECT id, timestamp, data,
+		q = `SELECT reference, transacted_at, data,
 					array_to_json(ARRAY(
-						SELECT entries.account_id FROM entries
-							WHERE transaction_id=transactions.id
+						SELECT accounts.reference FROM entries LEFT JOIN accounts USING(account_id)
+							WHERE transaction_id=transactions.transaction_id
 							ORDER BY entries.account_id
 					)) AS account_array,
 					array_to_json(ARRAY(
-						SELECT entries.Amount FROM entries
-							WHERE transaction_id=transactions.id
+						SELECT entries.amount FROM entries
+							WHERE transaction_id=transactions.transaction_id
 							ORDER BY entries.account_id
 					)) AS amount_array
 			FROM transactions`
@@ -257,7 +281,7 @@ func (rawQuery *SearchRawQuery) ToSQLQuery(namespace string) *SearchSQLQuery {
 	}
 
 	if namespace == "transactions" {
-		q = q + " ORDER BY timestamp"
+		q = q + " ORDER BY transacted_at"
 	}
 
 	if offset > 0 {

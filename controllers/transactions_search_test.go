@@ -10,9 +10,9 @@ import (
 	"os"
 	"testing"
 
-	ledgerContext "bitbucket.org/caricah/ledger/context"
-	"bitbucket.org/caricah/ledger/middlewares"
-	"bitbucket.org/caricah/ledger/models"
+	ledgerContext "bitbucket.org/caricah/service-ledger/context"
+	"bitbucket.org/caricah/service-ledger/middlewares"
+	"bitbucket.org/caricah/service-ledger/models"
 
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
@@ -26,6 +26,7 @@ var (
 type TransactionSearchSuite struct {
 	suite.Suite
 	context *ledgerContext.AppContext
+	ledgerId int64
 }
 
 func (as *TransactionSearchSuite) SetupTest() {
@@ -39,17 +40,49 @@ func (as *TransactionSearchSuite) SetupTest() {
 	log.Println("Successfully established connection to database.")
 	as.context = &ledgerContext.AppContext{DB: db}
 
+
+	//Create test ledger.
+	ledgersDB := models.NewLedgerDB(db)
+	as.ledgerId, err = ledgersDB.CreateLedger(&models.Ledger{Type: "ASSET",})
+	assert.Equal(t, nil, err, "Error creating test ledger")
+
+	// Create test accounts
+	accDB := models.NewAccountDB(db)
+	acc1 := &models.Account{
+		Reference: "acc1",
+		LedgerID: as.ledgerId,
+		Data: map[string]interface{}{
+			"customer_id": "C1",
+			"status":      "active",
+			"created":     "2017-01-01",
+		},
+	}
+	err = accDB.CreateAccount(acc1)
+	assert.Equal(t, nil, err,"Error creating test account with ledger "+string(as.ledgerId))
+	acc2 := &models.Account{
+		Reference: "acc2",
+		LedgerID: as.ledgerId,
+		Data: map[string]interface{}{
+			"customer_id": "C2",
+			"status":      "inactive",
+			"created":     "2017-06-30",
+		},
+	}
+	err = accDB.CreateAccount(acc2)
+	assert.Equal(t, nil, err, "Error creating test account")
+
+
 	// Create test transactions
 	txnDB := models.NewTransactionDB(db)
 	txn1 := &models.Transaction{
-		ID: "txn1",
+		Reference: "txn1",
 		Entries: []*models.TransactionEntry{
-			&models.TransactionEntry{
-				AccountID: "acc1",
+			{
+				Account: "acc1",
 				Amount:    1000,
 			},
-			&models.TransactionEntry{
-				AccountID: "acc2",
+			{
+				Account: "acc2",
 				Amount:    -1000,
 			},
 		},
@@ -62,14 +95,14 @@ func (as *TransactionSearchSuite) SetupTest() {
 	ok := txnDB.Transact(txn1)
 	assert.Equal(t, true, ok, "Error creating test transaction")
 	txn2 := &models.Transaction{
-		ID: "txn2",
+		Reference: "txn2",
 		Entries: []*models.TransactionEntry{
-			&models.TransactionEntry{
-				AccountID: "acc1",
+			{
+				Account: "acc1",
 				Amount:    100,
 			},
-			&models.TransactionEntry{
-				AccountID: "acc2",
+			{
+				Account: "acc2",
 				Amount:    -100,
 			},
 		},
@@ -82,14 +115,14 @@ func (as *TransactionSearchSuite) SetupTest() {
 	ok = txnDB.Transact(txn2)
 	assert.Equal(t, true, ok, "Error creating test transaction")
 	txn3 := &models.Transaction{
-		ID: "txn3",
+		Reference: "txn3",
 		Entries: []*models.TransactionEntry{
-			&models.TransactionEntry{
-				AccountID: "acc1",
+			{
+				Account: "acc1",
 				Amount:    400,
 			},
-			&models.TransactionEntry{
-				AccountID: "acc2",
+			{
+				Account: "acc2",
 				Amount:    -400,
 			},
 		},
@@ -111,7 +144,7 @@ func (as *TransactionSearchSuite) TestTransactionsSearch() {
         "query": {
             "must": {
                 "fields": [
-                    {"id": {"eq": "txn1"}}
+                    {"reference": {"eq": "txn1"}}
                 ],
                 "terms": [
                     {"action": "setcredit"}
@@ -144,8 +177,32 @@ func (as *TransactionSearchSuite) TestTransactionsSearch() {
 		t.Errorf("Invalid json response: %v", rr.Body.String())
 	}
 	assert.Equal(t, 1, len(transactions), "Transactions count doesn't match")
-	assert.Equal(t, "txn1", transactions[0].ID, "Transaction ID doesn't match")
+	assert.Equal(t, "txn1", transactions[0].Reference, "Transaction Reference doesn't match")
 }
+
+func (as *TransactionSearchSuite) TearDownSuite() {
+	log.Println("Cleaning up the test search transactions database")
+
+	t := as.T()
+	_, err := as.context.DB.Exec(`DELETE FROM entries`)
+	if err != nil {
+		t.Fatal("Error deleting accounts:", err)
+	}
+	_, err = as.context.DB.Exec(`DELETE FROM transactions WHERE reference IN ($1, $2, $3)`, "txn1", "txn2", "txn3")
+	if err != nil {
+		t.Fatal("Error deleting accounts:", err)
+	}
+	_, err = as.context.DB.Exec(`DELETE FROM accounts WHERE reference IN($1, $2)`, "acc1", "acc2")
+	if err != nil {
+		t.Fatal("Error deleting accounts:", err)
+	}
+	_, err = as.context.DB.Exec(`DELETE FROM ledgers WHERE ledger_id = $1`, as.ledgerId)
+	if err != nil {
+		t.Fatal("Error deleting ledgers:", err)
+	}
+}
+
+
 
 func TestTransactionSearchSuite(t *testing.T) {
 	suite.Run(t, new(TransactionSearchSuite))

@@ -24,6 +24,19 @@
   version = "v3.4.0"
 
 [[projects]]
+  digest = "1:2e3c336fc7fde5c984d2841455a658a6d626450b1754a854b3b32e7a8f49a07a"
+  name = "github.com/google/go-cmp"
+  packages = [
+    "cmp",
+    "cmp/internal/diff",
+    "cmp/internal/function",
+    "cmp/internal/value",
+  ]
+  pruneopts = "UT"
+  revision = "3af367b6b30c263d47e8895973edcca9a49cf029"
+  version = "v0.2.0"
+
+[[projects]]
   digest = "1:ccfa094742ce1c97fd3f6481e1bf98f3d9862510eee2bc0eb56e2745396bd330"
   name = "github.com/julienschmidt/httprouter"
   packages = ["."]
@@ -78,6 +91,7 @@
     "github.com/golang-migrate/migrate/database",
     "github.com/golang-migrate/migrate/database/postgres",
     "github.com/golang-migrate/migrate/source/file",
+    "github.com/google/go-cmp/cmp",
     "github.com/julienschmidt/httprouter",
     "github.com/lib/pq",
     "github.com/pkg/errors",

@@ -20,7 +20,7 @@ Transaction can be created as follows:
 `POST /v1/transactions`
 ```
 {
-  "id": "abcd1234",
+  "reference": "abcd1234",
   "entries": [
     {
       "account": "alice",
@@ -42,7 +42,7 @@ transactions), can be overridden using the `timestamp` property in the payload a
 `POST /v1/transactions`
 ```
 {
-  "id": "abcd1234",
+  "reference": "abcd1234",
   "timestamp": "2017-01-01 13:01:05.000",
   ...
 
@@ -76,7 +76,7 @@ The transactions can be created with `data` as follows:
 `POST /v1/transactions`
 ```
 {
-  "id": "abcd1234",
+  "reference": "abcd1234",
   "entries": [
     {
       "account": "alice",
@@ -108,7 +108,7 @@ The transaction with ID `abcd1234` is updated with `data` as follows:
 `PUT /v1/transactions`
 ```
 {
-  "id": "abcd1234",
+  "reference": "abcd1234",
   "data": {
     "christmas-offer": "",
     "hold-on": "",
@@ -133,7 +133,7 @@ An account with ID `alice` can be created with `data` as follows:
 `POST /v1/accounts`
 ```
 {
-  "id": "alice",
+  "reference": "alice",
   "data": {
     "product": "qw",
     "date": "2017-01-01"
@@ -146,7 +146,7 @@ An account can be updated with `data` as follows:
 `PUT /v1/accounts`
 ```
 {
-  "id": "alice",
+  "reference": "alice",
   "data": {
     "product": "qw",
     "date": "2017-01-05"
@@ -165,13 +165,13 @@ The transactions and accounts can be filtered from the endpoints `GET /v1/transa
 Find items where the specified column exists with the specified value in the specified range.
 
 Example fields:
-- Field `{"id": {"eq": "ACME.CREDIT"}}` filters items where the column `id` is equal to `ACME.CREDIT`
+- Field `{"reference": {"eq": "ACME.CREDIT"}}` filters items where the column `id` is equal to `ACME.CREDIT`
 - Field `{"balance": {"ne": 0}}` filters items where the column `balance` is not equal to `0`.
 - Field `{"balance": {"lt": 0}}` filters items where the column `balance` is less than `0`
 - Field `{"timestamp": {"gte": "2017-01-01T05:30"}}` filters items where `timestamp` is greater than or equal to `2017-01-01T05:30`
-- Field `{"id": {"ne": "ACME.CREDIT"}}` filters items where the column `id` is not equal to `ACME.CREDIT`
-- Field `{"id": {"like": "%.DEBIT"}}` filters items where the column `id` ends with `.DEBIT`
-- Field `{"id": {"notlike": "%.DEBIT"}}` filters items where the column `id` doesn't ends with `.DEBIT`
+- Field `{"reference": {"ne": "ACME.CREDIT"}}` filters items where the column `id` is not equal to `ACME.CREDIT`
+- Field `{"reference": {"like": "%.DEBIT"}}` filters items where the column `id` ends with `.DEBIT`
+- Field `{"reference": {"notlike": "%.DEBIT"}}` filters items where the column `id` doesn't ends with `.DEBIT`
 
 > The supported field operators are `lt`(less than), `lte`(less than or equal), `gt`(greater than), `gte`(greater than or equal), `eq`(equal), `ne`(not equal), `like`(like patterns), `notlike`(not like patterns).
 
@@ -253,7 +253,7 @@ Example: The following query matches requests to match transactions which satisf
   "query": {
       "should": {
         "fields": [
-            {"id": {"eq": "intent_QW_001"}}
+            {"reference": {"eq": "intent_QW_001"}}
         ],
         "terms": [
             {"type": "company.credit", "order_id": "001"}
