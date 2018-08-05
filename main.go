@@ -3,17 +3,18 @@ package main
 import (
 	"database/sql"
 	"log"
-	"net/http"
 	"os"
 
-	ledgerContext "bitbucket.org/caricah/service-ledger/context"
-	"bitbucket.org/caricah/service-ledger/controllers"
-	"bitbucket.org/caricah/service-ledger/middlewares"
-	"github.com/julienschmidt/httprouter"
 	"github.com/golang-migrate/migrate"
 	"github.com/golang-migrate/migrate/database"
 	"github.com/golang-migrate/migrate/database/postgres"
 	_ "github.com/golang-migrate/migrate/source/file"
+	"google.golang.org/grpc"
+	"github.com/facebookgo/inject"
+	"net"
+	"bitbucket.org/caricah/service-ledger/controllers"
+	"bitbucket.org/caricah/service-ledger/ledger"
+	"fmt"
 )
 
 func main() {
@@ -32,49 +33,39 @@ func main() {
 	// Migrate DB changes
 	migrateDB(db)
 
-	appContext := &ledgerContext.AppContext{DB: db}
-	router := httprouter.New()
+	implementation := &controllers.LedgerServer{}
 
-	hostPrefix := os.Getenv("HOST_PREFIX")
-	// Monitors
-	router.HandlerFunc(http.MethodGet, hostPrefix+"/ping", controllers.Ping)
+	grpcServer := grpc.NewServer()
+	ledger.RegisterLedgerServiceServer(grpcServer, implementation)
 
-	// Create accounts and transactions
-	router.HandlerFunc(http.MethodPost, hostPrefix+"/v1/accounts",
-		middlewares.TokenAuthMiddleware(
-			middlewares.ContextMiddleware(controllers.AddAccount, appContext)))
-	router.HandlerFunc(http.MethodPost, hostPrefix+"/v1/transactions",
-		middlewares.TokenAuthMiddleware(
-			middlewares.ContextMiddleware(controllers.MakeTransaction, appContext)))
+	graph := inject.Graph{}
 
-	// Read or search accounts and transactions
-	router.HandlerFunc(http.MethodGet, hostPrefix+"/v1/accounts",
-		middlewares.TokenAuthMiddleware(
-			middlewares.ContextMiddleware(controllers.GetAccounts, appContext)))
-	router.HandlerFunc(http.MethodPost, hostPrefix+"/v1/accounts/_search",
-		middlewares.TokenAuthMiddleware(
-			middlewares.ContextMiddleware(controllers.GetAccounts, appContext)))
-	router.HandlerFunc(http.MethodGet, hostPrefix+"/v1/transactions",
-		middlewares.TokenAuthMiddleware(
-			middlewares.ContextMiddleware(controllers.GetTransactions, appContext)))
-	router.HandlerFunc(http.MethodPost, hostPrefix+"/v1/transactions/_search",
-		middlewares.TokenAuthMiddleware(
-			middlewares.ContextMiddleware(controllers.GetTransactions, appContext)))
+	if err = graph.Provide(
+		&inject.Object{Name: "db", Value: db},
+		&inject.Object{Value: implementation}); nil != err {
+		log.Panic(err)
+	}
 
-	// Update data of accounts and transactions
-	router.HandlerFunc(http.MethodPut, hostPrefix+"/v1/accounts",
-		middlewares.TokenAuthMiddleware(
-			middlewares.ContextMiddleware(controllers.UpdateAccount, appContext)))
-	router.HandlerFunc(http.MethodPut, hostPrefix+"/v1/transactions",
-		middlewares.TokenAuthMiddleware(
-			middlewares.ContextMiddleware(controllers.UpdateTransaction, appContext)))
+	if err = graph.Populate(); nil != err {
+		log.Panic(err)
+	}
 
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "7000"
 	}
+
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%v", port))
+	if err != nil {
+		log.Panicf("Could not start on supplied port %v %v ", port, err)
+	}
+
 	log.Println("Running server on port:", port)
-	log.Fatal(http.ListenAndServe(":"+port, router))
+
+	// start the server
+	if err := grpcServer.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %s", err)
+	}
 
 	defer func() {
 		if r := recover(); r != nil {

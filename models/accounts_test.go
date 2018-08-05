@@ -14,7 +14,8 @@ import (
 type AccountsSuite struct {
 	suite.Suite
 	db *sql.DB
-	ledgerId int64
+	ledger *Ledger
+
 }
 
 func (as *AccountsSuite) SetupTest() {
@@ -26,17 +27,16 @@ func (as *AccountsSuite) SetupTest() {
 	}
 	as.db = db
 
-
 	//Create test accounts.
 	ledgersDB := NewLedgerDB(as.db)
 	accountsDB := NewAccountDB(as.db)
 
-	as.ledgerId, err = ledgersDB.CreateLedger(&Ledger{Type: "ASSET",})
+	as.ledger = &Ledger{Type: "ASSET"}
+	as.ledger, err = ledgersDB.CreateLedger(as.ledger)
 	if err != nil {
-		log.Panic("Unable to create ledger for account", err)
+		as.Errorf(err, "Unable to create ledger for account")
 	}
-	accountsDB.CreateAccount(&Account{Reference:"100",LedgerID: as.ledgerId})
-
+	accountsDB.CreateAccount(&Account{Reference:"100", LedgerID: as.ledger.ID,  Ledger: as.ledger.Reference.String, Currency: "UGX",})
 
 }
 
@@ -45,22 +45,26 @@ func (as *AccountsSuite) TestAccountsInfoAPI() {
 
 	accountsDB := NewAccountDB(as.db)
 	account, err := accountsDB.GetByRef("100")
-	assert.Equal(t, nil, err, "Error while getting acccount")
 	if err != nil{
-		log.Fatalf("we still have errors %v", err)
+		as.Errorf(err,"Error getting account info api account")
+	}else {
+		assert.Equal(t, nil, err, "Error while getting acccount")
+		assert.Equal(t, "100", account.Reference, "Invalid account Reference")
+		assert.Equal(t, 0, account.Balance, "Invalid account balance")
 	}
-	assert.Equal(t, "100", account.Reference, "Invalid account Reference")
-	assert.Equal(t, 0, account.Balance, "Invalid account balance")
 }
+
+
+
 
 func (as *AccountsSuite) TearDownSuite() {
 
 	t := as.T()
-	_, err :=  as.db.Exec(`DELETE FROM accounts WHERE reference=$1`, "100")
+	_, err :=  as.db.Exec(`DELETE FROM accounts WHERE reference = $1`, "100")
 	if err != nil {
 		t.Fatal("Error deleting accounts:", err)
 	}
-	_, err = as.db.Exec(`DELETE FROM ledgers WHERE ledger_id = $1`, as.ledgerId)
+	_, err = as.db.Exec(`DELETE FROM ledgers WHERE ledger_id = $1`, as.ledger.ID)
 	if err != nil {
 		t.Fatal("Error deleting ledgers:", err)
 	}

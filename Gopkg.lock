@@ -10,6 +10,22 @@
   version = "v1.1.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:fdc1ae96a37dfc9e054eb6717fed35454089f3224985c9547667a6ea029f0d5c"
+  name = "github.com/facebookgo/inject"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "f23751cae28bef101a38b79266785d3b574cf7e8"
+
+[[projects]]
+  branch = "master"
+  digest = "1:ebaa56dda9c50929b1ade8dc5388e1d0f7861c6e3af78459ac560212310feb25"
+  name = "github.com/facebookgo/structtag"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "217e25fb96916cc60332e399c9aa63f5c422ceed"
+
+[[projects]]
   digest = "1:2c42ca83bbb9bea0307416eedd38350ace4a67705fcb7a17eab352fd1529ee03"
   name = "github.com/golang-migrate/migrate"
   packages = [
@@ -36,14 +52,6 @@
   pruneopts = "UT"
   revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
   version = "v1.1.0"
-
-[[projects]]
-  digest = "1:ccfa094742ce1c97fd3f6481e1bf98f3d9862510eee2bc0eb56e2745396bd330"
-  name = "github.com/julienschmidt/httprouter"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "8c199fb6259ffc1af525cc3ad52ee60ba8359669"
-  version = "v1.1"
 
 [[projects]]
   branch = "master"
@@ -109,12 +117,15 @@
   revision = "0ffbfd41fbef8ffcf9b62b0b0aa3a5873ed7a4fe"
 
 [[projects]]
-  digest = "1:a2ab62866c75542dd18d2b069fec854577a20211d7c0ea6ae746072a1dccdd18"
+  digest = "1:ddcc18f18fcdf62053163063bcd94c37c764c0419908aa4da4baeb082cd02014"
   name = "golang.org/x/text"
   packages = [
     "collate",
     "collate/build",
+    "currency",
+    "internal",
     "internal/colltab",
+    "internal/format",
     "internal/gen",
     "internal/tag",
     "internal/triegen",
@@ -178,17 +189,18 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/facebookgo/inject",
     "github.com/golang-migrate/migrate",
     "github.com/golang-migrate/migrate/database",
     "github.com/golang-migrate/migrate/database/postgres",
     "github.com/golang-migrate/migrate/source/file",
     "github.com/golang/protobuf/proto",
-    "github.com/julienschmidt/httprouter",
     "github.com/lib/pq",
     "github.com/pkg/errors",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/suite",
     "golang.org/x/net/context",
+    "golang.org/x/text/currency",
     "google.golang.org/grpc",
   ]
   solver-name = "gps-cdcl"

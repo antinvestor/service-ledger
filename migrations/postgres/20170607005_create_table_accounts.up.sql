@@ -17,7 +17,7 @@ CREATE TABLE accounts (
 );
 
 CREATE INDEX accounts_ledger_id_idx ON accounts USING btree (ledger_id);
-
+CREATE INDEX accounts_reference_idx ON accounts USING hash (reference);
 CREATE INDEX accounts_data_idx ON accounts USING GIN (data jsonb_path_ops);
 
 COMMIT;

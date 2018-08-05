@@ -31,9 +31,13 @@ func containsSameElements(l1 []*TransactionEntry, l2 []*TransactionEntry) bool {
 	sort.Sort(Orderedentries(lc1))
 	sort.Sort(Orderedentries(lc2))
 
+	if len(lc1) != len(lc2) {
+		return false
+	}
+
 	for i, entry := range lc1 {
 
-		if strings.ToLower(entry.Account) != strings.ToLower(lc2[i].Account)  || entry.Amount != lc2[i].Amount{
+		if strings.ToUpper(entry.Account) != strings.ToUpper(lc2[i].Account)  || entry.Amount != lc2[i].Amount{
 			return false
 		}
 

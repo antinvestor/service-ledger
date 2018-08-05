@@ -13,8 +13,8 @@ import (
 
 type LedgersSuite struct {
 	suite.Suite
-	db *sql.DB
-	insertedLedgerId int64
+	db     *sql.DB
+	ledger *Ledger
 }
 
 func (ls *LedgersSuite) SetupTest() {
@@ -29,11 +29,13 @@ func (ls *LedgersSuite) SetupTest() {
 	}
 
 	//Create test ledger.
-	ledgersDB := NewLedgerDB(db)
-	ls.insertedLedgerId, err = ledgersDB.CreateLedger(&Ledger{Type: "ASSET",})
+	ledgersDB := NewLedgerDB(ls.db)
+	ls.ledger = &Ledger{Type: "ASSET",}
+	ls.ledger, err = ledgersDB.CreateLedger(ls.ledger)
 	if err != nil {
-		log.Panic("Unable to create ledger for account", err)
+		ls.Errorf(err,"Error creating ledger", err)
 	}
+
 
 }
 
@@ -41,9 +43,9 @@ func (ls *LedgersSuite) TestLedgersInfoAPI() {
 	t := ls.T()
 
 	ledgersDB := NewLedgerDB(ls.db)
-	ledger, err := ledgersDB.GetByID(ls.insertedLedgerId)
-	assert.Equal(t, nil, err, "Error while getting ledger "+string(ls.insertedLedgerId))
-	assert.Equal(t, ls.insertedLedgerId, ledger.ID, "Invalid ledger id")
+	lg, err := ledgersDB.GetByRef(ls.ledger.Reference.String)
+	assert.Equal(t, nil, err, "Error while getting ledger "+ lg.Reference.String)
+	assert.Equal(t, lg.ID, lg.ID, "Invalid ledger id")
 
 }
 
@@ -51,7 +53,7 @@ func (ls *LedgersSuite) TearDownSuite() {
 	log.Println("Cleaning up the model ledger test database")
 
 	t := ls.T()
-	_, err := ls.db.Exec(`DELETE FROM ledgers WHERE ledger_id = $1`, ls.insertedLedgerId)
+	_, err := ls.db.Exec(`DELETE FROM ledgers WHERE reference = $1`, ls.ledger.Reference)
 	if err != nil {
 		t.Fatal("Error deleting Entries:", err)
 	}

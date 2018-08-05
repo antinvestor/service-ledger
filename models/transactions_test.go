@@ -15,6 +15,7 @@ import (
 type TransactionsModelSuite struct {
 	suite.Suite
 	db *sql.DB
+	ledger *Ledger
 }
 
 func (ts *TransactionsModelSuite) SetupSuite() {
@@ -32,17 +33,17 @@ func (ts *TransactionsModelSuite) SetupSuite() {
 	ledgersDB := NewLedgerDB(ts.db)
 	accountsDB := NewAccountDB(ts.db)
 
-
-	ledgerID, err := ledgersDB.CreateLedger(&Ledger{Type: "ASSET",})
+	ts.ledger = &Ledger{Type: "ASSET",}
+	ts.ledger, err = ledgersDB.CreateLedger(ts.ledger)
 	if err != nil {
-		log.Panic("Unable to create ledger for account", err)
+		ts.Errorf( err,"Unable to create ledger for account")
 	}
-	accountsDB.CreateAccount(&Account{Reference:"a1",LedgerID: ledgerID})
-	accountsDB.CreateAccount(&Account{Reference:"a2",LedgerID: ledgerID})
-	accountsDB.CreateAccount(&Account{Reference:"a3",LedgerID: ledgerID})
-	accountsDB.CreateAccount(&Account{Reference:"a4",LedgerID: ledgerID})
-	accountsDB.CreateAccount(&Account{Reference:"b1",LedgerID: ledgerID})
-	accountsDB.CreateAccount(&Account{Reference:"b2",LedgerID: ledgerID})
+	accountsDB.CreateAccount(&Account{Reference:"a1",LedgerID: ts.ledger.ID, Currency: "UGX",})
+	accountsDB.CreateAccount(&Account{Reference:"a2",LedgerID: ts.ledger.ID, Currency: "UGX",})
+	accountsDB.CreateAccount(&Account{Reference:"a3",LedgerID: ts.ledger.ID, Currency: "UGX",})
+	accountsDB.CreateAccount(&Account{Reference:"a4",LedgerID: ts.ledger.ID, Currency: "UGX",})
+	accountsDB.CreateAccount(&Account{Reference:"b1",LedgerID: ts.ledger.ID, Currency: "UGX",})
+	accountsDB.CreateAccount(&Account{Reference:"b2",LedgerID: ts.ledger.ID, Currency: "UGX",})
 
 }
 
@@ -91,8 +92,8 @@ func (ts *TransactionsModelSuite) TestIsExists() {
 			},
 		},
 	}
-	done := transactionDB.Transact(transaction)
-	assert.Equal(t, done, true, "Transaction should be created")
+	done, err := transactionDB.Transact(transaction)
+	assert.NotEqual(t, nil, done, "Transaction should be created")
 
 	exists, err = transactionDB.IsExists("t001")
 	assert.Equal(t, err, nil, "Error while checking for existing transaction")
@@ -116,8 +117,8 @@ func (ts *TransactionsModelSuite) TestIsConflict() {
 			},
 		},
 	}
-	done := transactionDB.Transact(transaction)
-	assert.Equal(t, done, true, "Transaction should be created")
+	done, err := transactionDB.Transact(transaction)
+	assert.NotEqual(t, nil, done, "Transaction should be created")
 
 	conflicts, err := transactionDB.IsConflict(transaction)
 	assert.Equal(t, nil, err, "Error while checking for conflict transaction")
@@ -180,8 +181,8 @@ func (ts *TransactionsModelSuite) TestTransact() {
 			"tag2": "val2",
 		},
 	}
-	done := transactionDB.Transact(transaction)
-	assert.Equal(t, done, true, "Transaction should be created")
+	done, err := transactionDB.Transact(transaction)
+	assert.NotEqual(t, nil, done, "Transaction should be created")
 
 	exists, err := transactionDB.IsExists("t003")
 	assert.Equal(t, err, nil, "Error while checking for existing transaction")
@@ -210,8 +211,8 @@ func (ts *TransactionsModelSuite) TestDuplicateTransactions() {
 	wg.Add(5)
 	for i := 1; i <= 5; i++ {
 		go func(txn *Transaction) {
-			done := transactionDB.Transact(transaction)
-			assert.Equal(t, done, true, "Transaction creation should be success")
+			trxn, _ := transactionDB.Transact(transaction)
+			assert.NotEqual(t, nil, trxn, "Transaction creation should be success")
 			wg.Done()
 		}(transaction)
 	}
@@ -228,7 +229,7 @@ func (ts *TransactionsModelSuite) TestTransactWithBoundaryValues() {
 	transactionDB := NewTransactionDB(ts.db)
 
 	// In-boundary value transaction
-	boundaryValue := 9223372036854775807 // Max +ve for 2^64
+	boundaryValue := int64(9223372036854775807) // Max +ve for 2^64
 	transaction := &Transaction{
 		Reference: "t004",
 		Entries: []*TransactionEntry{
@@ -246,8 +247,8 @@ func (ts *TransactionsModelSuite) TestTransactWithBoundaryValues() {
 			"tag2": "val2",
 		},
 	}
-	done := transactionDB.Transact(transaction)
-	assert.Equal(t, true, done, "Transaction should be created")
+	done, _ := transactionDB.Transact(transaction)
+	assert.NotEqual(t, nil, done, "Transaction should be created")
 	exists, err := transactionDB.IsExists("t004")
 	assert.Equal(t, nil, err, "Error while checking for existing transaction")
 	assert.Equal(t, true, exists, "Transaction should exist")
@@ -262,19 +263,20 @@ func (ts *TransactionsModelSuite) TearDownSuite() {
 	log.Println("Cleaning up the test database")
 
 	t := ts.T()
-	_, err := ts.db.Exec(`DELETE FROM entries`)
+	_, err := ts.db.Exec(`DELETE FROM entries WHERE transaction_id 
+		IN (SELECT transaction_id FROM transactions WHERE reference IN($1, $2, $3, $4,$5 ))`,"T001","T002","T003","T004","T005" )
 	if err != nil {
 		t.Fatal("Error deleting Entries:", err)
 	}
-	_, err = ts.db.Exec(`DELETE FROM transactions`)
+	_, err = ts.db.Exec(`DELETE FROM transactions WHERE reference IN ($1, $2, $3, $4,$5 )`, "T001","T002","T003","T004","T005")
 	if err != nil {
 		t.Fatal("Error deleting transactions:", err)
 	}
-	_, err = ts.db.Exec(`DELETE FROM accounts`)
+	_, err = ts.db.Exec(`DELETE FROM accounts WHERE reference IN ($1, $2, $3, $4,$5,$6 )`, "A1","A2","A3","A4","B1","B2",)
 	if err != nil {
 		t.Fatal("Error deleting accounts:", err)
 	}
-	_, err = ts.db.Exec(`DELETE FROM ledgers`)
+	_, err = ts.db.Exec(`DELETE FROM ledgers WHERE ledger_id=$1`, ts.ledger.ID)
 	if err != nil {
 		t.Fatal("Error deleting ledgers:", err)
 	}

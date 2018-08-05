@@ -171,7 +171,7 @@ func convertFieldsToSQL(fields []map[string]map[string]interface{}) (where []str
 	// Corresponding SQL
 	/*
 	   -- numeric value
-	   SELECT id, balance, data FROM accounts WHERE id = 'ACME.CREDIT' AND balance < 0;
+	   SELECT reference, balance, data FROM accounts WHERE reference = 'ACME.CREDIT' AND balance < 0;
 	*/
 	for _, field := range fields {
 		var conditions []string
@@ -179,7 +179,12 @@ func convertFieldsToSQL(fields []map[string]map[string]interface{}) (where []str
 			for op, value := range comparison {
 				condn := fmt.Sprintf("%s %s ?", key, sqlComparisonOp(op))
 				conditions = append(conditions, condn)
-				args = append(args, value)
+
+				if key == "reference"{
+					args = append(args, strings.ToUpper(fmt.Sprintf("%v",value)))
+				}else {
+					args = append(args, value)
+				}
 			}
 		}
 		where = append(where, "("+strings.Join(conditions, " AND ")+")")

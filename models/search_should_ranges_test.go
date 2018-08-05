@@ -18,7 +18,7 @@ func (ss *SearchSuite) TestSearchAccountsWithShouldRanges() {
     }`
 	results, err := engine.Query(query)
 	assert.Equal(t, nil, err, "Error in building search query")
-	accounts, _ := results.([]*AccountResult)
+	accounts, _ := results.([]*Account)
 	assert.Equal(t, 2, len(accounts), "Accounts count doesn't match")
 
 	query = `{
@@ -33,7 +33,7 @@ func (ss *SearchSuite) TestSearchAccountsWithShouldRanges() {
     }`
 	results, err = engine.Query(query)
 	assert.Equal(t, nil, err, "Error in building search query")
-	accounts, _ = results.([]*AccountResult)
+	accounts, _ = results.([]*Account)
 	assert.Equal(t, 0, len(accounts), "No account should exist for given query")
 }
 
@@ -53,7 +53,7 @@ func (ss *SearchSuite) TestSearchTransactionsWithShouldRanges() {
     }`
 	results, err := engine.Query(query)
 	assert.Equal(t, nil, err, "Error in building search query")
-	transactions, _ := results.([]*TransactionResult)
+	transactions, _ := results.([]*Transaction)
 	assert.Equal(t, 3, len(transactions), "Transactions count doesn't match")
 
 	query = `{
@@ -68,6 +68,6 @@ func (ss *SearchSuite) TestSearchTransactionsWithShouldRanges() {
     }`
 	results, err = engine.Query(query)
 	assert.Equal(t, nil, err, "Error in building search query")
-	transactions, _ = results.([]*TransactionResult)
+	transactions, _ = results.([]*Transaction)
 	assert.Equal(t, 0, len(transactions), "No transaction should exist for given query")
 }
