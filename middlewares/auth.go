@@ -1,27 +1,34 @@
 package middlewares
 
 import (
-	"net/http"
-	"os"
+		"os"
 	"strings"
+	"google.golang.org/grpc"
+		"google.golang.org/grpc/codes"
+	"context"
+	"google.golang.org/grpc/status"
 )
 
-// TokenAuthMiddleware is a middleware that provides authentication functionality
-func TokenAuthMiddleware(handler http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// Check whether token authentication enabled
-		envToken := strings.TrimSpace(os.Getenv("LEDGER_AUTH_TOKEN"))
-		if envToken != "" {
-			var requestToken string
-			// Get the token in the header
-			requestToken = strings.TrimSpace(r.Header.Get("Authorization"))
-			requestToken = strings.TrimPrefix(requestToken, "Bearer ")
-			// Validate token
-			if requestToken != envToken {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
+
+
+func AuthInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+
+
+	envToken := strings.TrimSpace(os.Getenv("LEDGER_AUTH_TOKEN"))
+	if envToken != "" {
+
+		requestToken := ctx.Value("token")
+		if requestToken == nil {
+			return nil, status.Errorf(codes.Unauthenticated, "incorrect access token")
 		}
-		handler.ServeHTTP(w, r)
+		token := requestToken.(string)
+		// Validate token
+		if token != envToken {
+			return nil, status.Errorf(codes.Unauthenticated, "incorrect access token")
+		}
+
+
 	}
+
+	return handler(ctx, req)
 }

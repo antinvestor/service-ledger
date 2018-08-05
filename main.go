@@ -15,6 +15,7 @@ import (
 	"bitbucket.org/caricah/service-ledger/controllers"
 	"bitbucket.org/caricah/service-ledger/ledger"
 	"fmt"
+	"bitbucket.org/caricah/service-ledger/middlewares"
 )
 
 func main() {
@@ -35,7 +36,9 @@ func main() {
 
 	implementation := &controllers.LedgerServer{}
 
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(middlewares.AuthInterceptor),
+	)
 	ledger.RegisterLedgerServiceServer(grpcServer, implementation)
 
 	graph := inject.Graph{}
