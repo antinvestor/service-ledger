@@ -31,7 +31,6 @@ bin/
 *.log
 *.log.*
 .DS_Store
-ledger
 .rvmrc
 dump.rdb
 git
