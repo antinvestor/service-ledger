@@ -9,10 +9,10 @@ WORKDIR /go/src/bitbucket.org/caricah/service-ledger
 # Build the Ledger command inside the container.
 RUN go install bitbucket.org/caricah/service-ledger
 
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o ledger .
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o ledger_binary .
 
 FROM scratch
-COPY --from=builder /go/src/bitbucket.org/caricah/service-ledger/ledger /
+COPY --from=builder /go/src/bitbucket.org/caricah/service-ledger/ledger_binary /ledger
 COPY --from=builder /go/src/bitbucket.org/caricah/service-ledger/migrations /
 WORKDIR /
 
