@@ -10,8 +10,7 @@ import (
 	"github.com/golang-migrate/migrate/database/postgres"
 	_ "github.com/golang-migrate/migrate/source/file"
 	"google.golang.org/grpc"
-	"github.com/facebookgo/inject"
-	"net"
+		"net"
 	"bitbucket.org/caricah/service-ledger/controllers"
 	"bitbucket.org/caricah/service-ledger/ledger"
 	"fmt"
@@ -34,24 +33,12 @@ func main() {
 	// Migrate DB changes
 	migrateDB(db)
 
-	implementation := &controllers.LedgerServer{}
+	implementation := &controllers.LedgerServer{DB: db}
 
 	grpcServer := grpc.NewServer(
 		grpc.UnaryInterceptor(middlewares.AuthInterceptor),
 	)
 	ledger.RegisterLedgerServiceServer(grpcServer, implementation)
-
-	graph := inject.Graph{}
-
-	if err = graph.Provide(
-		&inject.Object{Name: "db", Value: db},
-		&inject.Object{Value: implementation}); nil != err {
-		log.Panic(err)
-	}
-
-	if err = graph.Populate(); nil != err {
-		log.Panic(err)
-	}
 
 	port := os.Getenv("PORT")
 	if port == "" {

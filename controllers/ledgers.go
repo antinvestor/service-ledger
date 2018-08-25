@@ -8,7 +8,7 @@ import (
 		)
 
 type LedgerServer struct {
-	DB    *sql.DB `inject:"db"`
+	DB    *sql.DB
 }
 
 func ToMap(raw map[string]*ledger.Any) models.DataMap {
