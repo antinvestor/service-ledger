@@ -12,7 +12,7 @@ type Account struct {
 	ID        int64                  `json:"id"`
 	Reference string                 `json:"reference"`
 	Currency  string 				 `json:"currency"`
-	Balance   int                    `json:"balance"`
+	Balance   int64                    `json:"balance"`
 	LedgerID  int64
 	Ledger  string                   `json:"ledger"`
 	Data      DataMap  				 `json:"data"`

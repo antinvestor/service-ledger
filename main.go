@@ -5,16 +5,16 @@ import (
 	"log"
 	"os"
 
+	"bitbucket.org/caricah/service-ledger/controllers"
+	"bitbucket.org/caricah/service-ledger/ledger"
+	"bitbucket.org/caricah/service-ledger/middlewares"
+	"fmt"
 	"github.com/golang-migrate/migrate"
 	"github.com/golang-migrate/migrate/database"
 	"github.com/golang-migrate/migrate/database/postgres"
 	_ "github.com/golang-migrate/migrate/source/file"
 	"google.golang.org/grpc"
-		"net"
-	"bitbucket.org/caricah/service-ledger/controllers"
-	"bitbucket.org/caricah/service-ledger/ledger"
-	"fmt"
-	"bitbucket.org/caricah/service-ledger/middlewares"
+	"net"
 )
 
 func main() {

@@ -281,3 +281,7 @@ Example: The following query matches requests to match transactions which satisf
 ## Environment Variables:
 
 Please read the documentation of all QLedger environment variables [here](./context#environment-variables)
+
+
+
+protoc -I=./ledger --go_out=plugins=grpc:./ledger ./ledger/ledger.proto

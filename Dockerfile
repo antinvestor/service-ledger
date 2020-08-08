@@ -1,5 +1,5 @@
 
-FROM golang:1.10 as builder
+FROM golang:1.14 as builder
 
 # Copy the local package files to the container's workspace.
 ADD . /go/src/bitbucket.org/caricah/service-ledger
@@ -9,15 +9,16 @@ WORKDIR /go/src/bitbucket.org/caricah/service-ledger
 # Build the Ledger command inside the container.
 RUN go install bitbucket.org/caricah/service-ledger
 
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o ledger_binary .
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o /ledger_service .
 
 FROM scratch
-COPY --from=builder /go/src/bitbucket.org/caricah/service-ledger/ledger_binary /ledger
+COPY --from=builder /ledger_service /ledger_service
 COPY --from=builder /go/src/bitbucket.org/caricah/service-ledger/migrations /
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 WORKDIR /
 
 # Run the ledger command by default when the container starts.
-ENTRYPOINT /ledger
+ENTRYPOINT /ledger_service
 
 # Document that the service listens on port 7000 by default.
 EXPOSE 7000

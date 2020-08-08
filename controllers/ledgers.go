@@ -1,29 +1,29 @@
 package controllers
 
 import (
-	"bitbucket.org/caricah/service-ledger/models"
 	"bitbucket.org/caricah/service-ledger/ledger"
+	"bitbucket.org/caricah/service-ledger/models"
 	"context"
 	"database/sql"
-		)
+	"github.com/golang/protobuf/ptypes/any"
+)
 
 type LedgerServer struct {
-	DB    *sql.DB
+	DB *sql.DB
 }
 
-func ToMap(raw map[string]*ledger.Any) models.DataMap {
+func ToMap(raw map[string]*any.Any) models.DataMap {
 
 	dataMap := make(models.DataMap, 0)
-	for key, val := range raw{
+	for key, val := range raw {
 		dataMap[key] = val.Value
 	}
 	return dataMap
 }
 
-func FromMap(model  models.DataMap)map[string]*ledger.Any {
-	return make(map[string]*ledger.Any, 0)
+func FromMap(model models.DataMap) map[string]*any.Any {
+	return make(map[string]*any.Any, 0)
 }
-
 
 func fromLedgerType(raw ledger.LedgerType) string {
 	return ledger.LedgerType_name[int32(raw)]
@@ -34,13 +34,12 @@ func toLedgerType(model string) ledger.LedgerType {
 	return ledger.LedgerType(ledgerType)
 }
 
-
-func ledgerToApi(mLg *models.Ledger) *ledger.Ledger{
+func ledgerToApi(mLg *models.Ledger) *ledger.Ledger {
 	return &ledger.Ledger{Reference: mLg.Reference.String, Type: toLedgerType(mLg.Type),
 		Parent: mLg.Parent, Data: FromMap(mLg.Data)}
 }
 
-func ledgerFromApi(aLg *ledger.Ledger) *models.Ledger{
+func ledgerFromApi(aLg *ledger.Ledger) *models.Ledger {
 	return &models.Ledger{Reference: sql.NullString{String: aLg.Reference}, Type: fromLedgerType(aLg.Type),
 		Parent: aLg.Parent, Data: ToMap(aLg.Data)}
 
