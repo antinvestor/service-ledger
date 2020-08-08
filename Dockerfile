@@ -10,7 +10,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags '-extldflag
 
 FROM scratch
 COPY --from=builder /ledger_service /ledger_service
-COPY --from=builder /go/src/bitbucket.org/caricah/service-ledger/migrations /
+COPY --from=builder /go/src/bitbucket.org/caricah/service-ledger/migrations /migrations
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 WORKDIR /
 
