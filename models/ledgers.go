@@ -13,10 +13,10 @@ import (
 type Ledger struct {
 	ID        int64          `json:"id"`
 	Reference sql.NullString `json:"reference"`
-	Type      string         `json:"type"`
+	Type      sql.NullString `json:"type"`
 	ParentID  sql.NullInt64
-	Parent    string  `json:"parent"`
-	Data      DataMap `json:"data"`
+	Parent    sql.NullString `json:"parent"`
+	Data      DataMap        `json:"data"`
 }
 
 type DataMap map[string]string
@@ -43,16 +43,13 @@ func (p *DataMap) Scan(src interface{}) error {
 		return errors.New("database value was not a jsonb string")
 	}
 
-	var i interface{}
+	var i map[string]string
 	err := json.Unmarshal(source, &i)
 	if err != nil {
 		return err
 	}
 
-	*p, ok = i.(map[string]string)
-	if !ok {
-		return errors.New("data map should always be a key value store")
-	}
+	*p = i
 
 	return nil
 }
@@ -135,8 +132,8 @@ func (l *LedgerDB) CreateLedger(lg *Ledger) (*Ledger, ledger.ApplicationLedgerEr
 		lg.Reference.String = generateReference("lgr")
 	}
 
-	if lg.Parent != "" {
-		err = l.db.QueryRow("SELECT ledger_id FROM ledgers WHERE reference = ($1)", strings.ToUpper(lg.Parent)).Scan(&lg.ParentID)
+	if lg.Parent.Valid {
+		err = l.db.QueryRow("SELECT ledger_id FROM ledgers WHERE reference = ($1)", strings.ToUpper(lg.Parent.String)).Scan(&lg.ParentID)
 	} else if lg.ParentID.Valid {
 		err = l.db.QueryRow("SELECT ledger_id FROM ledgers WHERE ledger_id = ($1)", lg.ParentID).Scan(&lg.ParentID)
 	}

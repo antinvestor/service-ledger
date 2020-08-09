@@ -105,8 +105,10 @@ func (a *AccountDB) CreateAccount(account *Account) (*Account, ledger.Applicatio
 			return nil, ledger.ErrorAccountWithReferenceExists
 		}
 	}
+
+
 	if account.Ledger != "" {
-		err := a.db.QueryRow("SELECT ledger_id FROM ledgers WHERE reference = ($1)", strings.ToUpper(account.Ledger)).Scan(&account.Ledger)
+		err := a.db.QueryRow("SELECT ledger_id FROM ledgers WHERE reference = ($1)", strings.ToUpper(account.Ledger)).Scan(&account.LedgerID)
 		switch {
 		case err == sql.ErrNoRows:
 			return nil, ledger.ErrorLedgerNotFound

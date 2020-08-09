@@ -76,7 +76,7 @@ func (engine *SearchEngine) Query(q string) (interface{}, ledger.ApplicationLedg
 		for rows.Next() {
 			txn := &Transaction{}
 			var rawAccounts, rawamount string
-			if err := rows.Scan(&txn.ID, &txn.Reference, &txn.TransactedAt, &txn.Data, &rawAccounts, &rawamount); err != nil {
+			if err := rows.Scan(&txn.ID, &txn.Reference, &txn.Currency, &txn.TransactedAt, &txn.Data, &rawAccounts, &rawamount); err != nil {
 				return nil, ledger.ErrorSystemFailure.Override(err)
 			}
 
@@ -184,7 +184,7 @@ func (rawQuery *SearchRawQuery) ToSQLQuery(namespace string) *SearchSQLQuery {
 	case "accounts":
 		q = "SELECT account_id, reference, ledger_id, balance, data FROM accounts LEFT JOIN  current_balances USING(account_id)"
 	case "transactions":
-		q = `SELECT transaction_id, reference, transacted_at, data,
+		q = `SELECT transaction_id, reference, currency, transacted_at, data,
 					array_to_json(ARRAY(
 						SELECT accounts.reference FROM entries LEFT JOIN accounts USING(account_id)
 							WHERE transaction_id=transactions.transaction_id

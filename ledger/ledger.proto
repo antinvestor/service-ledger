@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+option java_multiple_files = true;
+
 package ledger;
 
 import "google/type/money.proto";
@@ -30,7 +32,7 @@ message Account {
   map<string, string> data = 5;
 };
 
-message TransactionEntry{
+message TransactionEntry {
   string account = 1;
   google.type.Money amount = 2;
   bool credit = 3;
@@ -44,38 +46,47 @@ message Transaction {
   repeated TransactionEntry entries = 5;
 }
 
-
 // The ledger service definition.
 service LedgerService {
 
   // Searches for an ledger based on details
-  rpc SearchLedgers(SearchRequest) returns (stream Ledger) {}
+  rpc SearchLedgers (SearchRequest) returns (stream Ledger) {
+  }
 
   // Creates a new ledger based on supplied data
-  rpc CreateLedger(Ledger) returns (Ledger) {}
+  rpc CreateLedger (Ledger) returns (Ledger) {
+  }
 
   // Updates the data component of the ledger.
-  rpc UpdateLedger(Ledger) returns (Ledger) {}
+  rpc UpdateLedger (Ledger) returns (Ledger) {
+  }
 
   // Searches for an account based on details
-  rpc SearchAccounts(SearchRequest) returns (stream Account) {}
+  rpc SearchAccounts (SearchRequest) returns (stream Account) {
+  }
 
   // Creates a new account based on supplied data
-  rpc CreateAccount(Account) returns (Account) {}
+  rpc CreateAccount (Account) returns (Account) {
+  }
 
   // Updates the data component of the account.
-  rpc UpdateAccount(Account) returns (Account) {}
+  rpc UpdateAccount (Account) returns (Account) {
+  }
 
   // Searches for a transaction based on details
-  rpc SearchTransactions(SearchRequest) returns (stream Transaction) {}
+  rpc SearchTransactions (SearchRequest) returns (stream Transaction) {
+  }
 
   // Creates a new transaction
-  rpc CreateTransaction(Transaction) returns (Transaction){}
+  rpc CreateTransaction (Transaction) returns (Transaction) {
+  }
 
   // Reverses a transaction by creating a new one with inverted entries
-  rpc ReverseTransaction(Transaction) returns (Transaction){}
+  rpc ReverseTransaction (Transaction) returns (Transaction) {
+  }
 
   // Updates a transaction's details
-  rpc UpdateTransaction(Transaction) returns (Transaction){}
+  rpc UpdateTransaction (Transaction) returns (Transaction) {
+  }
 }
 

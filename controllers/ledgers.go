@@ -34,13 +34,16 @@ func toLedgerType(model string) ledger.LedgerType {
 }
 
 func ledgerToApi(mLg *models.Ledger) *ledger.Ledger {
-	return &ledger.Ledger{Reference: mLg.Reference.String, Type: toLedgerType(mLg.Type),
-		Parent: mLg.Parent, Data: FromMap(mLg.Data)}
+	return &ledger.Ledger{Reference: mLg.Reference.String, Type: toLedgerType(mLg.Type.String),
+		Parent: mLg.Parent.String, Data: FromMap(mLg.Data)}
 }
 
 func ledgerFromApi(aLg *ledger.Ledger) *models.Ledger {
-	return &models.Ledger{Reference: sql.NullString{String: aLg.Reference}, Type: fromLedgerType(aLg.Type),
-		Parent: aLg.Parent, Data: ToMap(aLg.Data)}
+	return &models.Ledger{
+		Reference: sql.NullString{String: aLg.Reference},
+		Type: sql.NullString{String:fromLedgerType(aLg.Type)},
+		Parent: sql.NullString{String:aLg.Parent},
+		Data: ToMap(aLg.Data)}
 
 }
 
@@ -57,13 +60,13 @@ func (ledgerSrv *LedgerServer) SearchLedgers(request *ledger.SearchRequest, serv
 		return aerr
 	}
 
-	castLedgers, ok := results.([]models.Ledger)
+	castLedgers, ok := results.([]*models.Ledger)
 	if !ok {
 		return ledger.ErrorSearchQueryResultsNotCasting
 	}
 
 	for _, lg := range castLedgers {
-		server.Send(ledgerToApi(&lg))
+		server.Send(ledgerToApi(lg))
 	}
 
 	return nil

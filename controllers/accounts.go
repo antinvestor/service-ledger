@@ -53,13 +53,13 @@ func (ledgerSrv *LedgerServer) SearchAccounts(
 		return aerr
 	}
 
-	castAccounts, ok := results.([]models.Account)
+	castAccounts, ok := results.([]*models.Account)
 	if !ok {
 		return ledger.ErrorSearchQueryResultsNotCasting
 	}
 
 	for _, account := range castAccounts {
-		server.Send(accountToApi(&account))
+		server.Send(accountToApi(account))
 	}
 
 	return nil
