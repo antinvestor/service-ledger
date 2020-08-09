@@ -5,24 +5,23 @@ import (
 	"bitbucket.org/caricah/service-ledger/models"
 	"context"
 	"database/sql"
-	"github.com/golang/protobuf/ptypes/any"
 )
 
 type LedgerServer struct {
 	DB *sql.DB
 }
 
-func ToMap(raw map[string]*any.Any) models.DataMap {
+func ToMap(raw map[string]string) models.DataMap {
 
 	dataMap := make(models.DataMap, 0)
 	for key, val := range raw {
-		dataMap[key] = val.Value
+		dataMap[key] = val
 	}
 	return dataMap
 }
 
-func FromMap(model models.DataMap) map[string]*any.Any {
-	return make(map[string]*any.Any, 0)
+func FromMap(model models.DataMap) map[string]string {
+	return make(map[string]string, 0)
 }
 
 func fromLedgerType(raw ledger.LedgerType) string {

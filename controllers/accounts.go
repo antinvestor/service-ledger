@@ -5,19 +5,19 @@ import (
 	"bitbucket.org/caricah/service-ledger/models"
 	"context"
 	"google.golang.org/genproto/googleapis/type/money"
-
 )
 
+const NanoAmountDivisor = 1000000000
+const DefaultAmountDivisor = 10000
+
 func toMoneyInt(naive int64) (unit int64, nanos int32) {
-	unit = naive / 1000000
-	nanos = int32(naive - unit) * 1000
+	unit = naive / DefaultAmountDivisor
+	nanos = int32(naive-unit) * NanoAmountDivisor / DefaultAmountDivisor
 	return
 }
 
-
-func fromMoney(unit int64, nanos int32) (naive int64) {
-	naive = unit*1000000 + int64(nanos)/1000
-	return
+func fromMoney(m *money.Money) (naive int64) {
+	return m.Units*DefaultAmountDivisor + int64(m.Nanos)*DefaultAmountDivisor/NanoAmountDivisor
 }
 
 func accountToApi(mAcc *models.Account) *ledger.Account {
@@ -26,12 +26,12 @@ func accountToApi(mAcc *models.Account) *ledger.Account {
 	balance := money.Money{CurrencyCode: mAcc.Currency, Units: units, Nanos: nanos}
 
 	return &ledger.Account{Reference: mAcc.Reference,
-			Ledger: mAcc.Ledger, Balance: &balance, Data: FromMap(mAcc.Data)}
+		Ledger: mAcc.Ledger, Balance: &balance, Data: FromMap(mAcc.Data)}
 }
 
 func accountFromApi(account *ledger.Account) *models.Account {
 
-	naive := fromMoney(account.Balance.Units, account.Balance.Nanos)
+	naive := fromMoney(account.Balance)
 
 	return &models.Account{Reference: account.Reference, Ledger: account.Ledger,
 		Currency: account.Balance.CurrencyCode, Balance: naive, Data: ToMap(account.Data)}

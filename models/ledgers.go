@@ -1,11 +1,11 @@
 package models
 
 import (
-	"database/sql"
-	"encoding/json"
-	"database/sql/driver"
-	"errors"
 	"bitbucket.org/caricah/service-ledger/ledger"
+	"database/sql"
+	"database/sql/driver"
+	"encoding/json"
+	"errors"
 	"strings"
 )
 
@@ -19,12 +19,12 @@ type Ledger struct {
 	Data      DataMap `json:"data"`
 }
 
-type DataMap map[string]interface{}
+type DataMap map[string]string
 
 func (p DataMap) Value() (driver.Value, error) {
 
-	if p == nil{
-		p = make(map[string]interface{})
+	if p == nil {
+		p = make(map[string]string)
 	}
 
 	j, err := json.Marshal(p)
@@ -49,7 +49,7 @@ func (p *DataMap) Scan(src interface{}) error {
 		return err
 	}
 
-	*p, ok = i.(map[string]interface{})
+	*p, ok = i.(map[string]string)
 	if !ok {
 		return errors.New("data map should always be a key value store")
 	}
@@ -130,9 +130,14 @@ func (l *LedgerDB) IsExists(reference string) (bool, ledger.ApplicationLedgerErr
 func (l *LedgerDB) CreateLedger(lg *Ledger) (*Ledger, ledger.ApplicationLedgerError) {
 
 	var err error
+
+	if lg.Reference.String == "" {
+		lg.Reference.String = generateReference("lgr")
+	}
+
 	if lg.Parent != "" {
 		err = l.db.QueryRow("SELECT ledger_id FROM ledgers WHERE reference = ($1)", strings.ToUpper(lg.Parent)).Scan(&lg.ParentID)
-	}else if lg.ParentID.Valid {
+	} else if lg.ParentID.Valid {
 		err = l.db.QueryRow("SELECT ledger_id FROM ledgers WHERE ledger_id = ($1)", lg.ParentID).Scan(&lg.ParentID)
 	}
 
@@ -146,13 +151,13 @@ func (l *LedgerDB) CreateLedger(lg *Ledger) (*Ledger, ledger.ApplicationLedgerEr
 	if lg.Reference.Valid {
 		q := "INSERT INTO ledgers (reference, parent_ledger_id, ledger_type, data)  VALUES ($1, $2, $3, $4) RETURNING ledger_id, reference"
 		err = l.db.QueryRow(q, strings.ToUpper(lg.Reference.String), lg.ParentID, lg.Type, lg.Data).Scan(&lg.ID, &lg.Reference)
-	}else{
+	} else {
 		q := "INSERT INTO ledgers (parent_ledger_id, ledger_type, data)  VALUES ($1, $2, $3) RETURNING ledger_id, reference"
 		err = l.db.QueryRow(q, lg.ParentID, lg.Type, lg.Data).Scan(&lg.ID, &lg.Reference)
 	}
 
 	if err != nil {
-		return nil,ledger.ErrorSystemFailure.Override(err)
+		return nil, ledger.ErrorSystemFailure.Override(err)
 	}
 
 	return lg, nil
@@ -168,7 +173,7 @@ func (l *LedgerDB) UpdateLedger(lg *Ledger) (*Ledger, ledger.ApplicationLedgerEr
 	}
 
 	for key, value := range lg.Data {
-		if value != nil && value != existingLedger.Data[key] {
+		if value != "" && value != existingLedger.Data[key] {
 			existingLedger.Data[key] = value
 		}
 	}

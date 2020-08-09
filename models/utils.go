@@ -1,11 +1,10 @@
 package models
 
 import (
-
-
-		"sort"
-
-			"strings"
+	"fmt"
+	"github.com/rs/xid"
+	"sort"
+	"strings"
 )
 
 // Orderedentries implements sort.Interface for []*TransactionEntry based on
@@ -21,8 +20,6 @@ func (entries Orderedentries) Less(i, j int) bool {
 	return entries[i].Account < entries[j].Account
 }
 
-
-
 func containsSameElements(l1 []*TransactionEntry, l2 []*TransactionEntry) bool {
 	lc1 := make([]*TransactionEntry, len(l1))
 	copy(lc1, l1)
@@ -37,10 +34,14 @@ func containsSameElements(l1 []*TransactionEntry, l2 []*TransactionEntry) bool {
 
 	for i, entry := range lc1 {
 
-		if strings.ToUpper(entry.Account) != strings.ToUpper(lc2[i].Account)  || entry.Amount != lc2[i].Amount{
+		if strings.ToUpper(entry.Account) != strings.ToUpper(lc2[i].Account) || entry.Amount != lc2[i].Amount {
 			return false
 		}
 
 	}
 	return true
+}
+
+func generateReference(prefix string) string {
+	return fmt.Sprintf("%s_%s", prefix, xid.New().String())
 }

@@ -25,9 +25,6 @@ type SearchEngine struct {
 	namespace string
 }
 
-
-
-
 // NewSearchEngine returns a new instance of `SearchEngine`
 func NewSearchEngine(db *sql.DB, namespace string) (*SearchEngine, ledger.ApplicationLedgerError) {
 	if namespace != SearchNamespaceAccounts && namespace != SearchNamespaceTransactions && namespace != SearchNamespaceLedgers {
@@ -67,7 +64,7 @@ func (engine *SearchEngine) Query(q string) (interface{}, ledger.ApplicationLedg
 		accounts := make([]*Account, 0)
 		for rows.Next() {
 			acc := &Account{}
-			if err := rows.Scan(&acc.ID, &acc.Reference, &acc.Ledger,  &acc.Balance, &acc.Data); err != nil {
+			if err := rows.Scan(&acc.ID, &acc.Reference, &acc.Ledger, &acc.Balance, &acc.Data); err != nil {
 				return nil, ledger.ErrorSystemFailure.Override(err)
 			}
 			accounts = append(accounts, acc)
@@ -105,8 +102,8 @@ func (engine *SearchEngine) Query(q string) (interface{}, ledger.ApplicationLedg
 
 // QueryContainer represents the format of query subsection inside `must` or `should`
 type QueryContainer struct {
-	Fields []map[string]map[string]interface{} `json:"fields"`
-	Terms      []map[string]interface{} `json:"terms"`
+	Fields     []map[string]map[string]interface{} `json:"fields"`
+	Terms      []map[string]interface{}            `json:"terms"`
 	RangeItems []map[string]map[string]interface{} `json:"ranges"`
 }
 

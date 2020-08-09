@@ -13,6 +13,7 @@ require (
 	github.com/lib/pq v1.8.0
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/pkg/errors v0.8.1
+	github.com/rs/xid v1.2.1
 	github.com/stretchr/testify v1.6.1
 	golang.org/x/text v0.3.3
 	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013

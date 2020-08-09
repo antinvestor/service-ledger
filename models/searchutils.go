@@ -180,9 +180,9 @@ func convertFieldsToSQL(fields []map[string]map[string]interface{}) (where []str
 				condn := fmt.Sprintf("%s %s ?", key, sqlComparisonOp(op))
 				conditions = append(conditions, condn)
 
-				if key == "reference"{
-					args = append(args, strings.ToUpper(fmt.Sprintf("%v",value)))
-				}else {
+				if key == "reference" {
+					args = append(args, strings.ToUpper(fmt.Sprintf("%v", value)))
+				} else {
 					args = append(args, value)
 				}
 			}

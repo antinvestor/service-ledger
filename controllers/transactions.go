@@ -4,14 +4,16 @@ import (
 	"bitbucket.org/caricah/service-ledger/ledger"
 	"bitbucket.org/caricah/service-ledger/models"
 	"context"
+	"google.golang.org/genproto/googleapis/type/money"
 )
 
 func transactionToApi(mTxn *models.Transaction) *ledger.Transaction {
 
 	apiEntries := make([]*ledger.TransactionEntry, len(mTxn.Entries))
 	for _, mEntry := range mTxn.Entries {
-
-		apiEntries = append(apiEntries, &ledger.TransactionEntry{Account: mEntry.Account, Amount: mEntry.Amount})
+		units, nanos := toMoneyInt(mEntry.Amount)
+		entryAmount := money.Money{Units: units, Nanos: nanos, CurrencyCode: mTxn.Currency}
+		apiEntries = append(apiEntries, &ledger.TransactionEntry{Account: mEntry.Account, Amount: &entryAmount})
 	}
 	return &ledger.Transaction{Reference: mTxn.Reference, TransactedAt: mTxn.TransactedAt, Data: FromMap(mTxn.Data), Entries: apiEntries}
 }
@@ -19,9 +21,12 @@ func transactionToApi(mTxn *models.Transaction) *ledger.Transaction {
 func transactionFromApi(aTxn *ledger.Transaction) *models.Transaction {
 	modelEntries := make([]*models.TransactionEntry, len(aTxn.Entries))
 	for _, mEntry := range aTxn.Entries {
-		modelEntries = append(modelEntries, &models.TransactionEntry{Account: mEntry.Account, Amount: mEntry.Amount})
+		amount := fromMoney(mEntry.Amount)
+		modelEntries = append(modelEntries, &models.TransactionEntry{Account: mEntry.Account, Amount: amount})
 	}
-	return &models.Transaction{Reference: aTxn.Reference, TransactedAt: aTxn.TransactedAt, Data: ToMap(aTxn.Data), Entries: modelEntries}
+	return &models.Transaction{Reference: aTxn.Reference,
+		Currency: aTxn.Currency, TransactedAt: aTxn.TransactedAt,
+		Data: ToMap(aTxn.Data), Entries: modelEntries}
 }
 
 // Creates a new transaction
