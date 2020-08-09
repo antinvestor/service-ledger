@@ -126,14 +126,14 @@ func (a *AccountDB) CreateAccount(account *Account) (*Account, ledger.Applicatio
 		return nil, ledger.ErrorUnspecifiedID
 	}
 
-	currencyUnit, err1 := currency.ParseISO(account.Currency)
-	if err1 != nil {
+	currencyUnit, err := currency.ParseISO(account.Currency)
+	if err != nil {
 		return nil, ledger.ErrorAccountsCurrencyUnknown
 	}
 
 	q := "INSERT INTO accounts (reference, currency, ledger_id, data)  VALUES ($1, $2, $3, $4)"
-	_, err1 = a.db.Exec(q, strings.ToUpper(account.Reference), currencyUnit.String(), account.LedgerID, account.Data)
-	if err1 != nil {
+	_, err = a.db.Exec(q, strings.ToUpper(account.Reference), currencyUnit.String(), account.LedgerID, account.Data)
+	if err != nil {
 		return nil, ledger.ErrorSystemFailure.Override(err)
 	}
 
