@@ -32,6 +32,7 @@ type TransactionEntry struct {
 	AccountID int64
 	Account   string `json:"account"`
 	Amount    int64  `json:"amount"`
+	Credit    bool 	`json:"credit"`
 }
 
 func (t *TransactionEntry) Equal(ot TransactionEntry) bool {
@@ -86,7 +87,7 @@ func (t *TransactionDB) Validate(txn *Transaction) (map[string]Account, ledger.A
 
 	placeholderString := strings.Join(placeholders, ",")
 
-	query := "SELECT account_id, reference, currency, data, balance FROM accounts LEFT JOIN current_balances USING(account_id) WHERE reference IN (%s)"
+	query := "SELECT a.account_id, a.reference, a.currency, a.data, b.balance, l.ledger_type FROM accounts a LEFT JOIN current_balances b USING(account_id) LEFT JOIN ledgers l USING(ledger_id) WHERE reference IN (%s)"
 
 	rows, err := t.db.Query(fmt.Sprintf(query, placeholderString), accountRefs...)
 
@@ -103,9 +104,10 @@ func (t *TransactionDB) Validate(txn *Transaction) (map[string]Account, ledger.A
 	accountsMap := map[string]Account{}
 	for rows.Next() {
 		account := Account{}
-		if err := rows.Scan(&account.ID, &account.Reference, &account.Currency, &account.Data, &account.Balance); err != nil {
+		if err := rows.Scan(&account.ID, &account.Reference, &account.Currency, &account.Data, &account.Balance, &account.LedgerType); err != nil {
 			return nil, ledger.ErrorSystemFailure.Override(err)
 		}
+
 		accountsMap[account.Reference] = account
 	}
 	if err := rows.Err(); err != nil {
@@ -122,7 +124,6 @@ func (t *TransactionDB) Validate(txn *Transaction) (map[string]Account, ledger.A
 		if !ok {
 			//// Accounts have to be predefined hence check all references exist.
 			return nil, ledger.ErrorAccountNotFound.Extend(fmt.Sprintf("Account %s was not found in the system", entry.Account))
-
 		}
 
 		if txn.Currency != account.Currency {
@@ -243,11 +244,22 @@ func (t *TransactionDB) Transact(txn *Transaction) (*Transaction, ledger.Applica
 	entryParams := make([]interface{}, 0)
 	for i, line := range txn.Entries {
 		account := accountsMap[strings.ToUpper(line.Account)]
-		placeHolders[i] = fmt.Sprintf("($%d, $%d, $%d)", i*3+1, i*3+2, i*3+3)
-		entryParams = append(entryParams, transactionID, account.ID, line.Amount)
+		placeHolders[i] = fmt.Sprintf("($%d, $%d, $%d, $%d)", i*4+1, i*4+2, i*4+3, i*4+4)
+
+		entryAmount := line.Amount
+		if line.Amount < 0 {
+			entryAmount = - line.Amount
+		}
+		// Decide the signage of entry based on : https://en.wikipedia.org/wiki/Double-entry_bookkeeping :DEADCLIC
+		if line.Credit && ( account.LedgerType == "ASSET" || account.LedgerType == "EXPENSE") ||
+			!line.Credit && ( account.LedgerType == "LIABILITY" || account.LedgerType == "INCOME" || account.LedgerType == "CAPITAL" ){
+				entryAmount = -entryAmount
+		}
+
+		entryParams = append(entryParams, transactionID, account.ID, line.Credit,  entryAmount)
 	}
 
-	insertQuery := "INSERT INTO entries (transaction_id, account_id, amount) VALUES " + strings.Join(placeHolders, ",")
+	insertQuery := "INSERT INTO entries (transaction_id, account_id, credit, amount) VALUES " + strings.Join(placeHolders, ",")
 
 	_, err = tx.Exec(insertQuery, entryParams...)
 	if err != nil {
@@ -319,6 +331,7 @@ func (t *TransactionDB) Reverse(txn *Transaction) (*Transaction, ledger.Applicat
 	}
 
 	for _, entry := range reversalTxn.Entries {
+		entry.Credit = !entry.Credit
 		entry.Amount *= -1
 	}
 

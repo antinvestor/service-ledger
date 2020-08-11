@@ -16,6 +16,7 @@ type Account struct {
 	LedgerID  int64
 	Ledger    string  `json:"ledger"`
 	Data      DataMap `json:"data"`
+	LedgerType string `json:"ledger_type"`
 }
 
 // AccountDB provides all functions related to ledger account
