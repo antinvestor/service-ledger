@@ -4,29 +4,35 @@ import (
 	"bitbucket.org/caricah/service-ledger/ledger"
 	"bitbucket.org/caricah/service-ledger/models"
 	"context"
+	"database/sql"
 	"google.golang.org/genproto/googleapis/type/money"
+	"strings"
 )
 
 func transactionToApi(mTxn *models.Transaction) *ledger.Transaction {
 
 	apiEntries := make([]*ledger.TransactionEntry, len(mTxn.Entries))
 	for _, mEntry := range mTxn.Entries {
-		units, nanos := toMoneyInt(mEntry.Amount)
-		entryAmount := money.Money{Units: units, Nanos: nanos, CurrencyCode: mTxn.Currency}
-		apiEntries = append(apiEntries, &ledger.TransactionEntry{Account: mEntry.Account, Amount: &entryAmount})
+		units, nanos := toMoneyInt(mEntry.Amount.Int64)
+		entryAmount := money.Money{Units: units, Nanos: nanos, CurrencyCode: mTxn.Currency.String}
+		apiEntries = append(apiEntries, &ledger.TransactionEntry{Account: mEntry.Account.String, Amount: &entryAmount})
 	}
-	return &ledger.Transaction{Reference: mTxn.Reference, TransactedAt: mTxn.TransactedAt, Data: FromMap(mTxn.Data), Entries: apiEntries}
+	return &ledger.Transaction{Reference: mTxn.Reference.String, TransactedAt: mTxn.TransactedAt.String, Data: FromMap(mTxn.Data), Entries: apiEntries}
 }
 
 func transactionFromApi(aTxn *ledger.Transaction) *models.Transaction {
 	modelEntries := make([]*models.TransactionEntry, len(aTxn.Entries))
 	for _, mEntry := range aTxn.Entries {
 		amount := fromMoney(mEntry.Amount)
-		modelEntries = append(modelEntries, &models.TransactionEntry{Account: mEntry.Account, Amount: amount})
+		modelEntries = append(modelEntries, &models.TransactionEntry{
+			Account: sql.NullString{String: strings.ToUpper(mEntry.Account), Valid: true},
+			Amount:  sql.NullInt64{Int64: amount, Valid: true}})
 	}
-	return &models.Transaction{Reference: aTxn.Reference,
-		Currency: aTxn.Currency, TransactedAt: aTxn.TransactedAt,
-		Data: ToMap(aTxn.Data), Entries: modelEntries}
+	return &models.Transaction{
+		Reference: sql.NullString{String: strings.ToUpper(aTxn.Reference), Valid: true},
+		Currency:     sql.NullString{String: aTxn.Currency, Valid: true},
+		TransactedAt: sql.NullString{String: aTxn.TransactedAt, Valid: true},
+		Data:         ToMap(aTxn.Data), Entries: modelEntries}
 }
 
 // Creates a new transaction

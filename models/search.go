@@ -86,9 +86,10 @@ func (engine *SearchEngine) Query(q string) (interface{}, ledger.ApplicationLedg
 			json.Unmarshal([]byte(rawamount), &amount)
 			var entries []*TransactionEntry
 			for i, acc := range accounts {
-				l := &TransactionEntry{}
-				l.Account = acc
-				l.Amount = amount[i]
+				l := &TransactionEntry{
+					Account: sql.NullString{String: acc, Valid: true},
+					Amount: sql.NullInt64{Int64: amount[i], Valid: true},
+				}
 				entries = append(entries, l)
 			}
 			txn.Entries = entries

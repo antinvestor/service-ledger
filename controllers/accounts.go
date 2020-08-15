@@ -4,7 +4,9 @@ import (
 	"bitbucket.org/caricah/service-ledger/ledger"
 	"bitbucket.org/caricah/service-ledger/models"
 	"context"
+	"database/sql"
 	"google.golang.org/genproto/googleapis/type/money"
+	"strings"
 )
 
 const NanoAmountDivisor = 1000000000
@@ -22,20 +24,24 @@ func fromMoney(m *money.Money) (naive int64) {
 
 func accountToApi(mAcc *models.Account) *ledger.Account {
 
-	units, nanos := toMoneyInt(mAcc.Balance)
-	balance := money.Money{CurrencyCode: mAcc.Currency, Units: units, Nanos: nanos}
+	units, nanos := toMoneyInt(mAcc.Balance.Int64)
+	balance := money.Money{CurrencyCode: mAcc.Currency.String, Units: units, Nanos: nanos}
 
-	return &ledger.Account{Reference: mAcc.Reference,
-		Ledger: mAcc.Ledger, Balance: &balance, Data: FromMap(mAcc.Data)}
+	return &ledger.Account{Reference: strings.ToUpper(mAcc.Reference.String),
+		Ledger: mAcc.Ledger.String, Balance: &balance, Data: FromMap(mAcc.Data)}
 }
 
 func accountFromApi(account *ledger.Account) *models.Account {
 
 	naive := fromMoney(account.Balance)
 
-	return &models.Account{Reference: account.Reference, Ledger: account.Ledger,
-		Currency: account.Balance.CurrencyCode, Balance: naive, Data: ToMap(account.Data)}
-
+	return &models.Account{
+		ID: sql.NullInt64{},
+		Reference: sql.NullString{String: account.Reference, Valid: true},
+		Ledger: sql.NullString{String: account.Ledger, Valid: true},
+		Currency: sql.NullString{String: account.Balance.CurrencyCode, Valid: true},
+		Balance: sql.NullInt64{Int64: naive, Valid: true},
+		Data: ToMap(account.Data)}
 }
 
 func (ledgerSrv *LedgerServer) SearchAccounts(
@@ -59,7 +65,7 @@ func (ledgerSrv *LedgerServer) SearchAccounts(
 	}
 
 	for _, account := range castAccounts {
-		server.Send(accountToApi(account))
+		_ = server.Send(accountToApi(account))
 	}
 
 	return nil

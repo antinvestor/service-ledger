@@ -6,6 +6,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
+	"log"
 	"strings"
 )
 
@@ -73,9 +74,8 @@ func (l *LedgerDB) GetByID(id int64) (*Ledger, ledger.ApplicationLedgerError) {
 
 	gl := &Ledger{ID: id}
 
-	err := l.db.QueryRow(
-		"SELECT ledger_id, reference, ledger_type, parent_ledger_id, data FROM ledgers WHERE ledger_id=$1", &id).
-		Scan(&gl.ID, &gl.Reference, &gl.Type, &gl.ParentID, &gl.Data)
+	rows, err := l.db.Query(
+		"SELECT ledger_id, reference, ledger_type, parent_ledger_id, data FROM ledgers WHERE ledger_id=$1", &id)
 
 	switch {
 
@@ -83,6 +83,13 @@ func (l *LedgerDB) GetByID(id int64) (*Ledger, ledger.ApplicationLedgerError) {
 		return nil, ledger.ErrorLedgerNotFound
 	case err != nil:
 		return nil, ledger.ErrorSystemFailure.Override(err)
+	}
+
+	for rows.Next() {
+		err = rows.Scan(&gl.ID, &gl.Reference, &gl.Type, &gl.ParentID, &gl.Data)
+		if err != nil {
+			return nil, ledger.ErrorSystemFailure.Override(err)
+		}
 	}
 
 	return gl, nil
@@ -95,13 +102,11 @@ func (l *LedgerDB) GetByRef(reference string) (*Ledger, ledger.ApplicationLedger
 		return nil, ledger.ErrorUnspecifiedReference
 	}
 
-	reference = strings.ToUpper(reference)
-
 	lg := new(Ledger)
 
-	err := l.db.QueryRow(
-		"SELECT ledger_id, reference, ledger_type, parent_ledger_id, data FROM ledgers WHERE reference=$1", reference).
-		Scan(&lg.ID, &lg.Reference, &lg.Type, &lg.ParentID, &lg.Data)
+	rows, err := l.db.Query(
+		"SELECT ledger_id, reference, ledger_type, parent_ledger_id, data FROM ledgers WHERE reference=$1", reference)
+
 	switch {
 
 	case err == sql.ErrNoRows:
@@ -110,13 +115,19 @@ func (l *LedgerDB) GetByRef(reference string) (*Ledger, ledger.ApplicationLedger
 		return nil, ledger.ErrorSystemFailure.Override(err)
 	}
 
+	for rows.Next() {
+		err = rows.Scan(&lg.ID, &lg.Reference, &lg.Type, &lg.ParentID, &lg.Data)
+		if err != nil {
+			return nil, ledger.ErrorSystemFailure.Override(err)
+		}
+	}
 	return lg, nil
 }
 
 // IsExists says whether an ledger exists or not
 func (l *LedgerDB) IsExists(reference string) (bool, ledger.ApplicationLedgerError) {
 	var exists bool
-	err := l.db.QueryRow("SELECT EXISTS (SELECT ledger_id FROM ledgers WHERE reference=$1)", strings.ToUpper(reference)).Scan(&exists)
+	err := l.db.QueryRow("SELECT EXISTS (SELECT ledger_id FROM ledgers WHERE reference=$1)", reference).Scan(&exists)
 	if err != nil {
 		return false, ledger.ErrorSystemFailure.Override(err)
 	}
@@ -129,31 +140,34 @@ func (l *LedgerDB) CreateLedger(lg *Ledger) (*Ledger, ledger.ApplicationLedgerEr
 	var err error
 
 	if lg.Reference.String == "" {
-		lg.Reference.String = generateReference("lgr")
+		lg.Reference = generateReference("lgr")
 	}
 
 	if lg.Parent.Valid {
-		err = l.db.QueryRow("SELECT ledger_id FROM ledgers WHERE reference = ($1)", strings.ToUpper(lg.Parent.String)).Scan(&lg.ParentID)
-	} else if lg.ParentID.Valid {
-		err = l.db.QueryRow("SELECT ledger_id FROM ledgers WHERE ledger_id = ($1)", lg.ParentID).Scan(&lg.ParentID)
+
+		pLg, err := l.GetByRef(lg.Parent.String)
+		if err != nil {
+			return nil, ledger.ErrorSystemFailure.Override(err)
+		}
+
+		log.Printf("parent ledger found to have type value : %v, id : %v ", pLg.Type, pLg.ID)
+
+
+		lg.ParentID.Int64 = pLg.ID
 	}
 
-	switch {
-	case err == sql.ErrNoRows:
-		return nil, ledger.ErrorLedgerNotFound
-	case err != nil:
-		return nil, ledger.ErrorSystemFailure.Override(err)
-	}
+	log.Printf("ledger type value : %v and parent id %v : from reference : %v", lg.Type, lg.ParentID, lg.Parent)
 
 	if lg.Reference.Valid {
 		q := "INSERT INTO ledgers (reference, parent_ledger_id, ledger_type, data)  VALUES ($1, $2, $3, $4) RETURNING ledger_id, reference"
-		err = l.db.QueryRow(q, strings.ToUpper(lg.Reference.String), lg.ParentID, lg.Type, lg.Data).Scan(&lg.ID, &lg.Reference)
+		err = l.db.QueryRow(q, strings.ToUpper(lg.Reference.String), lg.ParentID, lg.Type.String, lg.Data).Scan(&lg.ID, &lg.Reference)
 	} else {
 		q := "INSERT INTO ledgers (parent_ledger_id, ledger_type, data)  VALUES ($1, $2, $3) RETURNING ledger_id, reference"
-		err = l.db.QueryRow(q, lg.ParentID, lg.Type, lg.Data).Scan(&lg.ID, &lg.Reference)
+		err = l.db.QueryRow(q, lg.ParentID, lg.Type.String, lg.Data).Scan(&lg.ID, &lg.Reference)
 	}
 
 	if err != nil {
+		log.Printf("error : %v", err)
 		return nil, ledger.ErrorSystemFailure.Override(err)
 	}
 

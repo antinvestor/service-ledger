@@ -40,9 +40,10 @@ func ledgerToApi(mLg *models.Ledger) *ledger.Ledger {
 
 func ledgerFromApi(aLg *ledger.Ledger) *models.Ledger {
 	return &models.Ledger{
-		Reference: sql.NullString{String: aLg.Reference},
-		Type: sql.NullString{String:fromLedgerType(aLg.Type)},
-		Parent: sql.NullString{String:aLg.Parent},
+		Reference: sql.NullString{String: aLg.Reference, Valid: true},
+		Type: sql.NullString{String:fromLedgerType(aLg.Type), Valid: true},
+		Parent: sql.NullString{String:aLg.Parent, Valid: true},
+		ParentID: sql.NullInt64{Valid: false},
 		Data: ToMap(aLg.Data)}
 
 }

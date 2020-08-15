@@ -9,14 +9,14 @@ import (
 
 // Account represents the ledger account with information such as Reference, balance and JSON data
 type Account struct {
-	ID        int64  `json:"id"`
-	Reference string `json:"reference"`
-	Currency  string `json:"currency"`
-	Balance   int64  `json:"balance"`
-	LedgerID  int64
-	Ledger    string  `json:"ledger"`
-	Data      DataMap `json:"data"`
-	LedgerType string `json:"ledger_type"`
+	ID         sql.NullInt64  `json:"id"`
+	Reference  sql.NullString `json:"reference"`
+	Currency   sql.NullString `json:"currency"`
+	Balance    sql.NullInt64  `json:"balance"`
+	LedgerID   sql.NullInt64
+	Ledger     sql.NullString `json:"ledger"`
+	Data       DataMap        `json:"data"`
+	LedgerType sql.NullString `json:"ledger_type"`
 }
 
 // AccountDB provides all functions related to ledger account
@@ -91,12 +91,10 @@ func (a *AccountDB) IsExists(reference string) (bool, ledger.ApplicationLedgerEr
 // CreateAccount creates a new account in the ledger
 func (a *AccountDB) CreateAccount(account *Account) (*Account, ledger.ApplicationLedgerError) {
 
-	if account.Reference == "" {
-		account.Reference = generateReference("acc")
-	}else {
+	if account.Reference.Valid {
 
 		// Check if an account with same Reference already exists
-		isExists, err := a.IsExists(account.Reference)
+		isExists, err := a.IsExists(account.Reference.String)
 
 		if err != nil {
 			return nil, err
@@ -105,19 +103,21 @@ func (a *AccountDB) CreateAccount(account *Account) (*Account, ledger.Applicatio
 		if isExists {
 			return nil, ledger.ErrorAccountWithReferenceExists
 		}
+
+	} else {
+		account.Reference = generateReference("acc")
 	}
 
-
-	if account.Ledger != "" {
-		err := a.db.QueryRow("SELECT ledger_id FROM ledgers WHERE reference = ($1)", strings.ToUpper(account.Ledger)).Scan(&account.LedgerID)
+	if account.Ledger.Valid {
+		err := a.db.QueryRow("SELECT ledger_id FROM ledgers WHERE reference=$1", account.Ledger.String).Scan(&account.LedgerID)
 		switch {
 		case err == sql.ErrNoRows:
 			return nil, ledger.ErrorLedgerNotFound
 		case err != nil:
 			return nil, ledger.ErrorSystemFailure.Override(err)
 		}
-	} else if account.LedgerID > 0 {
-		err := a.db.QueryRow("SELECT ledger_id FROM ledgers WHERE ledger_id = ($1)", account.LedgerID).Scan(&account.LedgerID)
+	} else if account.LedgerID.Valid {
+		err := a.db.QueryRow("SELECT ledger_id FROM ledgers WHERE ledger_id = $1", account.LedgerID).Scan(&account.LedgerID)
 		switch {
 
 		case err == sql.ErrNoRows:
@@ -129,24 +129,25 @@ func (a *AccountDB) CreateAccount(account *Account) (*Account, ledger.Applicatio
 		return nil, ledger.ErrorUnspecifiedID
 	}
 
-	currencyUnit, err := currency.ParseISO(account.Currency)
+	currencyUnit, err := currency.ParseISO(account.Currency.String)
 	if err != nil {
 		return nil, ledger.ErrorAccountsCurrencyUnknown
 	}
 
 	q := "INSERT INTO accounts (reference, currency, ledger_id, data)  VALUES ($1, $2, $3, $4)"
-	_, err = a.db.Exec(q, strings.ToUpper(account.Reference), currencyUnit.String(), account.LedgerID, account.Data)
+	_, err = a.db.Exec(q, strings.ToUpper(account.Reference.String), currencyUnit.String(),
+		account.LedgerID, account.Data)
 	if err != nil {
 		return nil, ledger.ErrorSystemFailure.Override(err)
 	}
 
-	return a.GetByRef(strings.ToUpper(account.Reference))
+	return a.GetByRef(account.Reference.String)
 }
 
 // UpdateAccount updates the account with new data
 func (a *AccountDB) UpdateAccount(account *Account) (*Account, ledger.ApplicationLedgerError) {
 
-	existingAccount, err := a.GetByRef(account.Reference)
+	existingAccount, err := a.GetByRef(account.Reference.String)
 	if err != nil {
 		return nil, err
 	}
@@ -163,5 +164,5 @@ func (a *AccountDB) UpdateAccount(account *Account) (*Account, ledger.Applicatio
 		return nil, ledger.ErrorSystemFailure.Override(err1)
 	}
 
-	return a.GetByRef(account.Reference)
+	return a.GetByRef(account.Reference.String)
 }

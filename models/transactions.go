@@ -18,32 +18,32 @@ const (
 
 // Transaction represents a transaction in a ledger
 type Transaction struct {
-	ID           int64
-	Reference    string              `json:"reference"`
-	Currency     string              `json:"currency"`
+	ID           sql.NullInt64
+	Reference    sql.NullString      `json:"reference"`
+	Currency     sql.NullString      `json:"currency"`
 	Data         DataMap             `json:"data"`
-	TransactedAt string              `json:"transacted_at"`
+	TransactedAt sql.NullString      `json:"transacted_at"`
 	Entries      []*TransactionEntry `json:"entries"`
 }
 
 // TransactionEntry represents a transaction line in a ledger
 type TransactionEntry struct {
-	ID        int64
-	AccountID int64
-	Account   string `json:"account"`
-	Amount    int64  `json:"amount"`
-	Credit    bool 	`json:"credit"`
+	ID        sql.NullInt64
+	AccountID sql.NullInt64
+	Account   sql.NullString `json:"account"`
+	Amount    sql.NullInt64  `json:"amount"`
+	Credit    bool           `json:"credit"`
 }
 
 func (t *TransactionEntry) Equal(ot TransactionEntry) bool {
-	return strings.ToUpper(t.Account) == strings.ToUpper(ot.Account) && t.Amount == ot.Amount
+	return t.Account.String == ot.Account.String && t.Amount.Int64 == ot.Amount.Int64
 }
 
 // IsValid validates the Amount list of a transaction
 func (t *Transaction) IsValid() bool {
 	sum := int64(0)
 	for _, entry := range t.Entries {
-		sum += entry.Amount
+		sum += entry.Amount.Int64
 	}
 	return sum == int64(0)
 }
@@ -69,7 +69,7 @@ func (t *TransactionDB) Validate(txn *Transaction) (map[string]Account, ledger.A
 
 	accountRefSet := map[string]bool{}
 	for _, entry := range txn.Entries {
-		accountRefSet[entry.Account] = true
+		accountRefSet[entry.Account.String] = true
 	}
 
 	accountRefs := make([]interface{}, 0, len(accountRefSet))
@@ -108,7 +108,7 @@ func (t *TransactionDB) Validate(txn *Transaction) (map[string]Account, ledger.A
 			return nil, ledger.ErrorSystemFailure.Override(err)
 		}
 
-		accountsMap[account.Reference] = account
+		accountsMap[account.Reference.String] = account
 	}
 	if err := rows.Err(); err != nil {
 		return nil, ledger.ErrorSystemFailure.Override(err)
@@ -116,11 +116,11 @@ func (t *TransactionDB) Validate(txn *Transaction) (map[string]Account, ledger.A
 
 	for _, entry := range txn.Entries {
 
-		if entry.Amount == 0 {
+		if entry.Amount.Int64 == 0 {
 			return nil, ledger.ErrorTransactionEntryHasZeroAmount.Extend(fmt.Sprintf("A transaction entry for account : %s has a zero amount", entry.Account))
 		}
 
-		account, ok := accountsMap[strings.ToUpper(entry.Account)]
+		account, ok := accountsMap[entry.Account.String]
 		if !ok {
 			//// Accounts have to be predefined hence check all references exist.
 			return nil, ledger.ErrorAccountNotFound.Extend(fmt.Sprintf("Account %s was not found in the system", entry.Account))
@@ -137,7 +137,7 @@ func (t *TransactionDB) Validate(txn *Transaction) (map[string]Account, ledger.A
 
 func (t *TransactionDB) IsExists(reference string) (bool, ledger.ApplicationLedgerError) {
 	var exists bool
-	err := t.db.QueryRow("SELECT EXISTS (SELECT transaction_id FROM transactions WHERE reference=$1)", strings.ToUpper(reference)).Scan(&exists)
+	err := t.db.QueryRow("SELECT EXISTS (SELECT transaction_id FROM transactions WHERE reference=$1)", reference).Scan(&exists)
 	if err != nil {
 		return false, ledger.ErrorSystemFailure.Override(err)
 	}
@@ -147,7 +147,7 @@ func (t *TransactionDB) IsExists(reference string) (bool, ledger.ApplicationLedg
 // IsConflict says whether a transaction conflicts with an existing transaction
 func (t *TransactionDB) IsConflict(transaction *Transaction) (bool, ledger.ApplicationLedgerError) {
 	// Read existing Entries
-	rows, err := t.db.Query("SELECT entries.entry_id, accounts.account_id, accounts.reference, entries.amount FROM entries LEFT JOIN accounts USING(account_id) LEFT JOIN transactions USING(transaction_id) WHERE transactions.reference=$1", strings.ToUpper(transaction.Reference))
+	rows, err := t.db.Query("SELECT entries.entry_id, accounts.account_id, accounts.reference, entries.amount FROM entries LEFT JOIN accounts USING(account_id) LEFT JOIN transactions USING(transaction_id) WHERE transactions.reference=$1", transaction.Reference.String)
 	switch {
 
 	case err == sql.ErrNoRows:
@@ -176,12 +176,12 @@ func (t *TransactionDB) IsConflict(transaction *Transaction) (bool, ledger.Appli
 // Transact creates the input transaction in the DB
 func (t *TransactionDB) Transact(txn *Transaction) (*Transaction, ledger.ApplicationLedgerError) {
 
-	if txn.Reference == "" {
+	if !txn.Reference.Valid {
 		txn.Reference = generateReference("txn")
 	} else {
 
 		// Check if a transaction with same Reference already exists
-		isExists, err1 := t.IsExists(txn.Reference)
+		isExists, err1 := t.IsExists(txn.Reference.String)
 		if err1 != nil {
 			return nil, err1
 		}
@@ -199,7 +199,7 @@ func (t *TransactionDB) Transact(txn *Transaction) (*Transaction, ledger.Applica
 			}
 			// Otherwise the transaction is just a duplicate
 			// The exactly duplicate transactions are ignored
-			transaction, err1 := t.getByRef(txn.Reference)
+			transaction, err1 := t.getByRef(txn.Reference.String)
 			if err1 != nil {
 				return nil, err1
 			}
@@ -228,13 +228,13 @@ func (t *TransactionDB) Transact(txn *Transaction) (*Transaction, ledger.Applica
 		return nil, ledger.ErrorSystemFailure.Override(err)
 	}
 
-	if txn.TransactedAt == "" {
-		txn.TransactedAt = time.Now().UTC().Format(LedgerTimestampLayout)
+	if !txn.TransactedAt.Valid {
+		txn.TransactedAt.String = time.Now().UTC().Format(LedgerTimestampLayout)
 	}
 
 	var transactionID int64
 	err = tx.QueryRow("INSERT INTO transactions (reference, transacted_at, data) VALUES ($1, $2, $3)  RETURNING transaction_id",
-		strings.ToUpper(txn.Reference), txn.TransactedAt, txn.Data).Scan(&transactionID)
+		txn.Reference.String, txn.TransactedAt, txn.Data).Scan(&transactionID)
 	if err != nil {
 		return handleTransactionError(tx, errors.Wrap(err, "insert transaction failed"))
 	}
@@ -243,20 +243,20 @@ func (t *TransactionDB) Transact(txn *Transaction) (*Transaction, ledger.Applica
 	placeHolders := make([]string, len(txn.Entries))
 	entryParams := make([]interface{}, 0)
 	for i, line := range txn.Entries {
-		account := accountsMap[strings.ToUpper(line.Account)]
+		account := accountsMap[line.Account.String]
 		placeHolders[i] = fmt.Sprintf("($%d, $%d, $%d, $%d)", i*4+1, i*4+2, i*4+3, i*4+4)
 
-		entryAmount := line.Amount
-		if line.Amount < 0 {
-			entryAmount = - line.Amount
+		entryAmount := line.Amount.Int64
+		if line.Amount.Int64 < 0 {
+			entryAmount = - line.Amount.Int64
 		}
 		// Decide the signage of entry based on : https://en.wikipedia.org/wiki/Double-entry_bookkeeping :DEADCLIC
-		if line.Credit && ( account.LedgerType == "ASSET" || account.LedgerType == "EXPENSE") ||
-			!line.Credit && ( account.LedgerType == "LIABILITY" || account.LedgerType == "INCOME" || account.LedgerType == "CAPITAL" ){
-				entryAmount = -entryAmount
+		if line.Credit && (account.LedgerType.String == "ASSET" || account.LedgerType.String == "EXPENSE") ||
+			!line.Credit && (account.LedgerType.String == "LIABILITY" || account.LedgerType.String == "INCOME" || account.LedgerType.String == "CAPITAL") {
+			entryAmount = -entryAmount
 		}
 
-		entryParams = append(entryParams, transactionID, account.ID, line.Credit,  entryAmount)
+		entryParams = append(entryParams, transactionID, account.ID, line.Credit, entryAmount)
 	}
 
 	insertQuery := "INSERT INTO entries (transaction_id, account_id, credit, amount) VALUES " + strings.Join(placeHolders, ",")
@@ -272,7 +272,7 @@ func (t *TransactionDB) Transact(txn *Transaction) (*Transaction, ledger.Applica
 		return handleTransactionError(tx, errors.Wrap(err, "commit transaction failed"))
 	}
 
-	return t.getByRef(txn.Reference)
+	return t.getByRef(txn.Reference.String)
 }
 
 // getByRef returns a transaction with the given Reference
@@ -302,7 +302,7 @@ func (t *TransactionDB) getByRef(reference string) (*Transaction, ledger.Applica
 
 // UpdateTransaction updates data of the given transaction
 func (t *TransactionDB) UpdateTransaction(txn *Transaction) (*Transaction, ledger.ApplicationLedgerError) {
-	existingTransaction, err := t.getByRef(txn.Reference)
+	existingTransaction, err := t.getByRef(txn.Reference.String)
 	if err != nil {
 		return nil, err
 	}
@@ -325,16 +325,15 @@ func (t *TransactionDB) UpdateTransaction(txn *Transaction) (*Transaction, ledge
 func (t *TransactionDB) Reverse(txn *Transaction) (*Transaction, ledger.ApplicationLedgerError) {
 
 	// Check if a transaction with same Reference already exists
-	reversalTxn, err1 := t.getByRef(txn.Reference)
+	reversalTxn, err1 := t.getByRef(txn.Reference.String)
 	if err1 != nil {
 		return nil, err1
 	}
 
 	for _, entry := range reversalTxn.Entries {
 		entry.Credit = !entry.Credit
-		entry.Amount *= -1
 	}
 
-	reversalTxn.Reference = fmt.Sprintf("REVERSAL_%s", reversalTxn.Reference)
+	reversalTxn.Reference.String = fmt.Sprintf("REVERSAL_%s", reversalTxn.Reference.String)
 	return t.Transact(reversalTxn)
 }

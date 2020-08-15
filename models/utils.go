@@ -1,6 +1,7 @@
 package models
 
 import (
+	"database/sql"
 	"fmt"
 	"github.com/rs/xid"
 	"sort"
@@ -15,9 +16,9 @@ func (entries Orderedentries) Len() int      { return len(entries) }
 func (entries Orderedentries) Swap(i, j int) { entries[i], entries[j] = entries[j], entries[i] }
 func (entries Orderedentries) Less(i, j int) bool {
 	if entries[i].Account == entries[j].Account {
-		return entries[i].Amount < entries[j].Amount
+		return entries[i].Amount.Int64 < entries[j].Amount.Int64
 	}
-	return entries[i].Account < entries[j].Account
+	return entries[i].Account.String < entries[j].Account.String
 }
 
 func containsSameElements(l1 []*TransactionEntry, l2 []*TransactionEntry) bool {
@@ -34,7 +35,7 @@ func containsSameElements(l1 []*TransactionEntry, l2 []*TransactionEntry) bool {
 
 	for i, entry := range lc1 {
 
-		if strings.ToUpper(entry.Account) != strings.ToUpper(lc2[i].Account) || entry.Amount != lc2[i].Amount {
+		if strings.ToUpper(entry.Account.String) != strings.ToUpper(lc2[i].Account.String) || entry.Amount.Int64 != lc2[i].Amount.Int64 {
 			return false
 		}
 
@@ -42,6 +43,6 @@ func containsSameElements(l1 []*TransactionEntry, l2 []*TransactionEntry) bool {
 	return true
 }
 
-func generateReference(prefix string) string {
-	return fmt.Sprintf("%s_%s", prefix, xid.New().String())
+func generateReference(prefix string) sql.NullString {
+	return sql.NullString{String: fmt.Sprintf("%s_%s", prefix, xid.New().String()), Valid: true}
 }
