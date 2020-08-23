@@ -12,27 +12,29 @@ import (
 func transactionToApi(mTxn *models.Transaction) *ledger.Transaction {
 
 	apiEntries := make([]*ledger.TransactionEntry, len(mTxn.Entries))
-	for _, mEntry := range mTxn.Entries {
+	for index, mEntry := range mTxn.Entries {
 		units, nanos := toMoneyInt(mEntry.Amount.Int64)
 		entryAmount := money.Money{Units: units, Nanos: nanos, CurrencyCode: mTxn.Currency.String}
-		apiEntries = append(apiEntries, &ledger.TransactionEntry{Account: mEntry.Account.String, Amount: &entryAmount})
+		apiEntries[index] = &ledger.TransactionEntry{Account: mEntry.Account.String, Amount: &entryAmount}
 	}
 	return &ledger.Transaction{Reference: mTxn.Reference.String, TransactedAt: mTxn.TransactedAt.String, Data: FromMap(mTxn.Data), Entries: apiEntries}
 }
 
 func transactionFromApi(aTxn *ledger.Transaction) *models.Transaction {
 	modelEntries := make([]*models.TransactionEntry, len(aTxn.Entries))
-	for _, mEntry := range aTxn.Entries {
+	for index, mEntry := range aTxn.Entries {
 		amount := fromMoney(mEntry.Amount)
-		modelEntries = append(modelEntries, &models.TransactionEntry{
-			Account: sql.NullString{String: strings.ToUpper(mEntry.Account), Valid: true},
-			Amount:  sql.NullInt64{Int64: amount, Valid: true}})
+		modelEntries[index] = &models.TransactionEntry{
+			Credit:  mEntry.Credit,
+			Account: sql.NullString{String: strings.ToUpper(mEntry.GetAccount()), Valid: true},
+			Amount:  sql.NullInt64{Int64: amount, Valid: true}}
 	}
 	return &models.Transaction{
-		Reference: sql.NullString{String: strings.ToUpper(aTxn.Reference), Valid: true},
-		Currency:     sql.NullString{String: aTxn.Currency, Valid: true},
-		TransactedAt: sql.NullString{String: aTxn.TransactedAt, Valid: true},
-		Data:         ToMap(aTxn.Data), Entries: modelEntries}
+		Reference:    sql.NullString{String: strings.ToUpper(aTxn.Reference), Valid: aTxn.Reference != ""},
+ 		Currency:     sql.NullString{String: aTxn.Currency, Valid: aTxn.Currency != ""},
+		TransactedAt: sql.NullString{String: aTxn.TransactedAt, Valid: aTxn.TransactedAt != ""},
+		Data:         ToMap(aTxn.Data),
+		Entries:      modelEntries}
 }
 
 // Creates a new transaction
@@ -40,8 +42,10 @@ func (ledgerSrv *LedgerServer) CreateTransaction(ctx context.Context, txn *ledge
 
 	transactionsDB := models.NewTransactionDB(ledgerSrv.DB)
 
+	apiTransaction := transactionFromApi(txn)
+
 	// Otherwise, do transaction
-	transaction, err := transactionsDB.Transact(transactionFromApi(txn))
+	transaction, err := transactionsDB.Transact(apiTransaction)
 	if err != nil {
 		return nil, err
 	}

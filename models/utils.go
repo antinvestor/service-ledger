@@ -44,5 +44,6 @@ func containsSameElements(l1 []*TransactionEntry, l2 []*TransactionEntry) bool {
 }
 
 func generateReference(prefix string) sql.NullString {
-	return sql.NullString{String: fmt.Sprintf("%s_%s", prefix, xid.New().String()), Valid: true}
+	newId := fmt.Sprintf("%s_%s", prefix, xid.New().String())
+	return sql.NullString{String: strings.ToUpper(newId), Valid: true}
 }

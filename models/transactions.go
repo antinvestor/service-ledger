@@ -43,7 +43,12 @@ func (t *TransactionEntry) Equal(ot TransactionEntry) bool {
 func (t *Transaction) IsValid() bool {
 	sum := int64(0)
 	for _, entry := range t.Entries {
-		sum += entry.Amount.Int64
+		if entry.Credit {
+			sum += entry.Amount.Int64
+		}	else{
+			sum -= entry.Amount.Int64
+		}
+
 	}
 	return sum == int64(0)
 }
@@ -87,7 +92,7 @@ func (t *TransactionDB) Validate(txn *Transaction) (map[string]Account, ledger.A
 
 	placeholderString := strings.Join(placeholders, ",")
 
-	query := "SELECT a.account_id, a.reference, a.currency, a.data, b.balance, l.ledger_type FROM accounts a LEFT JOIN current_balances b USING(account_id) LEFT JOIN ledgers l USING(ledger_id) WHERE reference IN (%s)"
+	query := "SELECT a.account_id, a.reference, a.currency, a.data, b.balance, l.ledger_type FROM accounts a LEFT JOIN current_balances b USING(account_id) LEFT JOIN ledgers l USING(ledger_id) WHERE a.reference IN (%s)"
 
 	rows, err := t.db.Query(fmt.Sprintf(query, placeholderString), accountRefs...)
 
@@ -147,7 +152,7 @@ func (t *TransactionDB) IsExists(reference string) (bool, ledger.ApplicationLedg
 // IsConflict says whether a transaction conflicts with an existing transaction
 func (t *TransactionDB) IsConflict(transaction *Transaction) (bool, ledger.ApplicationLedgerError) {
 	// Read existing Entries
-	rows, err := t.db.Query("SELECT entries.entry_id, accounts.account_id, accounts.reference, entries.amount FROM entries LEFT JOIN accounts USING(account_id) LEFT JOIN transactions USING(transaction_id) WHERE transactions.reference=$1", transaction.Reference.String)
+	rows, err := t.db.Query("SELECT e.entry_id, a.account_id, a.reference, e.amount FROM entries e LEFT JOIN accounts a USING(account_id) LEFT JOIN transactions t USING(transaction_id) WHERE t.reference=$1", transaction.Reference.String)
 	switch {
 
 	case err == sql.ErrNoRows:
@@ -233,8 +238,8 @@ func (t *TransactionDB) Transact(txn *Transaction) (*Transaction, ledger.Applica
 	}
 
 	var transactionID int64
-	err = tx.QueryRow("INSERT INTO transactions (reference, transacted_at, data) VALUES ($1, $2, $3)  RETURNING transaction_id",
-		txn.Reference.String, txn.TransactedAt, txn.Data).Scan(&transactionID)
+	err = tx.QueryRow("INSERT INTO transactions (reference, currency, transacted_at, data) VALUES ($1, $2, $3, $4)  RETURNING transaction_id, reference",
+		txn.Reference.String, txn.Currency.String, txn.TransactedAt, txn.Data).Scan(&transactionID, &txn.Reference.String)
 	if err != nil {
 		return handleTransactionError(tx, errors.Wrap(err, "insert transaction failed"))
 	}
@@ -286,7 +291,7 @@ func (t *TransactionDB) getByRef(reference string) (*Transaction, ledger.Applica
 
 	transaction := new(Transaction)
 	err := t.db.QueryRow(
-		"SELECT  transaction_id, reference, transacted_at, data FROM transactions WHERE reference=$1", &reference).Scan(
+		"SELECT  t.transaction_id, t.reference, t.transacted_at, t.data FROM transactions t WHERE t.reference=$1", &reference).Scan(
 		&transaction.ID, &transaction.Reference, &transaction.TransactedAt, &transaction.Data)
 
 	switch {

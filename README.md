@@ -285,3 +285,8 @@ Please read the documentation of all QLedger environment variables [here](./cont
 
 
 protoc -I=./ledger --go_out=plugins=grpc:./ledger ./ledger/ledger.proto
+
+
+# Database improvements
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO dbuser;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO dbuser;

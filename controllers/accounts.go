@@ -37,9 +37,9 @@ func accountFromApi(account *ledger.Account) *models.Account {
 
 	return &models.Account{
 		ID: sql.NullInt64{},
-		Reference: sql.NullString{String: account.Reference, Valid: true},
-		Ledger: sql.NullString{String: account.Ledger, Valid: true},
-		Currency: sql.NullString{String: account.Balance.CurrencyCode, Valid: true},
+		Reference: sql.NullString{String: account.Reference, Valid: account.Reference != ""},
+		Ledger: sql.NullString{String: account.Ledger, Valid: account.Ledger != ""},
+		Currency: sql.NullString{String: account.Balance.CurrencyCode, Valid: account.Balance.CurrencyCode != ""},
 		Balance: sql.NullInt64{Int64: naive, Valid: true},
 		Data: ToMap(account.Data)}
 }
