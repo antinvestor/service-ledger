@@ -1,29 +1,28 @@
 package controllers
 
 import (
-	"bitbucket.org/caricah/service-ledger/models"
 	"bitbucket.org/caricah/service-ledger/ledger"
+	"bitbucket.org/caricah/service-ledger/models"
 	"context"
 	"database/sql"
-		)
+)
 
 type LedgerServer struct {
-	DB    *sql.DB
+	DB *sql.DB
 }
 
-func ToMap(raw map[string]*ledger.Any) models.DataMap {
+func ToMap(raw map[string]string) models.DataMap {
 
 	dataMap := make(models.DataMap, 0)
-	for key, val := range raw{
-		dataMap[key] = val.Value
+	for key, val := range raw {
+		dataMap[key] = val
 	}
 	return dataMap
 }
 
-func FromMap(model  models.DataMap)map[string]*ledger.Any {
-	return make(map[string]*ledger.Any, 0)
+func FromMap(model models.DataMap) map[string]string {
+	return make(map[string]string, 0)
 }
-
 
 func fromLedgerType(raw ledger.LedgerType) string {
 	return ledger.LedgerType_name[int32(raw)]
@@ -34,15 +33,18 @@ func toLedgerType(model string) ledger.LedgerType {
 	return ledger.LedgerType(ledgerType)
 }
 
-
-func ledgerToApi(mLg *models.Ledger) *ledger.Ledger{
-	return &ledger.Ledger{Reference: mLg.Reference.String, Type: toLedgerType(mLg.Type),
-		Parent: mLg.Parent, Data: FromMap(mLg.Data)}
+func ledgerToApi(mLg *models.Ledger) *ledger.Ledger {
+	return &ledger.Ledger{Reference: mLg.Reference.String, Type: toLedgerType(mLg.Type.String),
+		Parent: mLg.Parent.String, Data: FromMap(mLg.Data)}
 }
 
-func ledgerFromApi(aLg *ledger.Ledger) *models.Ledger{
-	return &models.Ledger{Reference: sql.NullString{String: aLg.Reference}, Type: fromLedgerType(aLg.Type),
-		Parent: aLg.Parent, Data: ToMap(aLg.Data)}
+func ledgerFromApi(aLg *ledger.Ledger) *models.Ledger {
+	return &models.Ledger{
+		Reference: sql.NullString{String: aLg.Reference, Valid: aLg.Reference != ""},
+		Type: sql.NullString{String:fromLedgerType(aLg.Type), Valid: true},
+		Parent: sql.NullString{String:aLg.Parent, Valid: aLg.Parent != ""},
+		ParentID: sql.NullInt64{Valid: false},
+		Data: ToMap(aLg.Data)}
 
 }
 
@@ -59,13 +61,13 @@ func (ledgerSrv *LedgerServer) SearchLedgers(request *ledger.SearchRequest, serv
 		return aerr
 	}
 
-	castLedgers, ok := results.([]models.Ledger)
+	castLedgers, ok := results.([]*models.Ledger)
 	if !ok {
 		return ledger.ErrorSearchQueryResultsNotCasting
 	}
 
 	for _, lg := range castLedgers {
-		server.Send(ledgerToApi(&lg))
+		server.Send(ledgerToApi(lg))
 	}
 
 	return nil

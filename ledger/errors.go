@@ -10,7 +10,7 @@ type ApplicationLedgerError interface {
 	ErrorCode() int32
 	String() string
 	Extend(Message string) ApplicationLedgerError
-	Override(errs ... error) ApplicationLedgerError
+	Override(errs ...error) ApplicationLedgerError
 }
 
 type applicationLedgerError struct {
@@ -49,7 +49,7 @@ func (e applicationLedgerError) Extend(Message string) ApplicationLedgerError {
 }
 
 // Extend default Message
-func (e applicationLedgerError) Override(errs ... error) ApplicationLedgerError {
+func (e applicationLedgerError) Override(errs ...error) ApplicationLedgerError {
 
 	errorStrings := make([]string, len(errs))
 
@@ -77,10 +77,10 @@ var (
 	ErrorTransactionAccountsDifferCurrency = New(34, "Transaction accounts have different currencies")
 	ErrorTransactionAlreadyExists          = New(35, "Transaction with reference/id already exists")
 	ErrorTransactionHasNonZeroSum          = New(36, "Transaction has a non zero sum")
-	ErrorTransactionIsConfilicting          = New(37, "Transaction is conflicting")
+	ErrorTransactionIsConfilicting         = New(37, "Transaction is conflicting")
 
 	ErrorSearchNamespaceUnknown       = New(41, "Search namespace provided is unknown")
 	ErrorSearchQueryHasInvalidFormart = New(42, "Search query has invalid format")
 	ErrorSearchQueryHasInvalidKeys    = New(43, "Search query has invalid keys")
-	ErrorSearchQueryResultsNotCasting    = New(44, "Search query results not casting")
+	ErrorSearchQueryResultsNotCasting = New(44, "Search query results not casting")
 )

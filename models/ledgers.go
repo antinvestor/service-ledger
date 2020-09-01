@@ -1,11 +1,12 @@
 package models
 
 import (
-	"database/sql"
-	"encoding/json"
-	"database/sql/driver"
-	"errors"
 	"bitbucket.org/caricah/service-ledger/ledger"
+	"database/sql"
+	"database/sql/driver"
+	"encoding/json"
+	"errors"
+	"log"
 	"strings"
 )
 
@@ -13,18 +14,18 @@ import (
 type Ledger struct {
 	ID        int64          `json:"id"`
 	Reference sql.NullString `json:"reference"`
-	Type      string         `json:"type"`
+	Type      sql.NullString `json:"type"`
 	ParentID  sql.NullInt64
-	Parent    string  `json:"parent"`
-	Data      DataMap `json:"data"`
+	Parent    sql.NullString `json:"parent"`
+	Data      DataMap        `json:"data"`
 }
 
-type DataMap map[string]interface{}
+type DataMap map[string]string
 
 func (p DataMap) Value() (driver.Value, error) {
 
-	if p == nil{
-		p = make(map[string]interface{})
+	if p == nil {
+		p = make(map[string]string)
 	}
 
 	j, err := json.Marshal(p)
@@ -43,16 +44,13 @@ func (p *DataMap) Scan(src interface{}) error {
 		return errors.New("database value was not a jsonb string")
 	}
 
-	var i interface{}
+	var i map[string]string
 	err := json.Unmarshal(source, &i)
 	if err != nil {
 		return err
 	}
 
-	*p, ok = i.(map[string]interface{})
-	if !ok {
-		return errors.New("data map should always be a key value store")
-	}
+	*p = i
 
 	return nil
 }
@@ -76,9 +74,8 @@ func (l *LedgerDB) GetByID(id int64) (*Ledger, ledger.ApplicationLedgerError) {
 
 	gl := &Ledger{ID: id}
 
-	err := l.db.QueryRow(
-		"SELECT ledger_id, reference, ledger_type, parent_ledger_id, data FROM ledgers WHERE ledger_id=$1", &id).
-		Scan(&gl.ID, &gl.Reference, &gl.Type, &gl.ParentID, &gl.Data)
+	rows, err := l.db.Query(
+		"SELECT ledger_id, reference, ledger_type, parent_ledger_id, data FROM ledgers WHERE ledger_id=$1", &id)
 
 	switch {
 
@@ -86,6 +83,13 @@ func (l *LedgerDB) GetByID(id int64) (*Ledger, ledger.ApplicationLedgerError) {
 		return nil, ledger.ErrorLedgerNotFound
 	case err != nil:
 		return nil, ledger.ErrorSystemFailure.Override(err)
+	}
+
+	for rows.Next() {
+		err = rows.Scan(&gl.ID, &gl.Reference, &gl.Type, &gl.ParentID, &gl.Data)
+		if err != nil {
+			return nil, ledger.ErrorSystemFailure.Override(err)
+		}
 	}
 
 	return gl, nil
@@ -98,13 +102,11 @@ func (l *LedgerDB) GetByRef(reference string) (*Ledger, ledger.ApplicationLedger
 		return nil, ledger.ErrorUnspecifiedReference
 	}
 
-	reference = strings.ToUpper(reference)
-
 	lg := new(Ledger)
 
-	err := l.db.QueryRow(
-		"SELECT ledger_id, reference, ledger_type, parent_ledger_id, data FROM ledgers WHERE reference=$1", reference).
-		Scan(&lg.ID, &lg.Reference, &lg.Type, &lg.ParentID, &lg.Data)
+	rows, err := l.db.Query(
+		"SELECT ledger_id, reference, ledger_type, parent_ledger_id, data FROM ledgers WHERE reference=$1", reference)
+
 	switch {
 
 	case err == sql.ErrNoRows:
@@ -113,13 +115,19 @@ func (l *LedgerDB) GetByRef(reference string) (*Ledger, ledger.ApplicationLedger
 		return nil, ledger.ErrorSystemFailure.Override(err)
 	}
 
+	for rows.Next() {
+		err = rows.Scan(&lg.ID, &lg.Reference, &lg.Type, &lg.ParentID, &lg.Data)
+		if err != nil {
+			return nil, ledger.ErrorSystemFailure.Override(err)
+		}
+	}
 	return lg, nil
 }
 
 // IsExists says whether an ledger exists or not
 func (l *LedgerDB) IsExists(reference string) (bool, ledger.ApplicationLedgerError) {
 	var exists bool
-	err := l.db.QueryRow("SELECT EXISTS (SELECT ledger_id FROM ledgers WHERE reference=$1)", strings.ToUpper(reference)).Scan(&exists)
+	err := l.db.QueryRow("SELECT EXISTS (SELECT ledger_id FROM ledgers WHERE reference=$1)", reference).Scan(&exists)
 	if err != nil {
 		return false, ledger.ErrorSystemFailure.Override(err)
 	}
@@ -130,29 +138,37 @@ func (l *LedgerDB) IsExists(reference string) (bool, ledger.ApplicationLedgerErr
 func (l *LedgerDB) CreateLedger(lg *Ledger) (*Ledger, ledger.ApplicationLedgerError) {
 
 	var err error
-	if lg.Parent != "" {
-		err = l.db.QueryRow("SELECT ledger_id FROM ledgers WHERE reference = ($1)", strings.ToUpper(lg.Parent)).Scan(&lg.ParentID)
-	}else if lg.ParentID.Valid {
-		err = l.db.QueryRow("SELECT ledger_id FROM ledgers WHERE ledger_id = ($1)", lg.ParentID).Scan(&lg.ParentID)
+
+	if lg.Reference.String == "" {
+		lg.Reference = generateReference("lgr")
 	}
 
-	switch {
-	case err == sql.ErrNoRows:
-		return nil, ledger.ErrorLedgerNotFound
-	case err != nil:
-		return nil, ledger.ErrorSystemFailure.Override(err)
+	if lg.Parent.Valid {
+
+		pLg, err := l.GetByRef(lg.Parent.String)
+		if err != nil {
+			return nil, ledger.ErrorSystemFailure.Override(err)
+		}
+
+		log.Printf("parent ledger found to have type value : %v, id : %v ", pLg.Type, pLg.ID)
+
+
+		lg.ParentID.Int64 = pLg.ID
 	}
+
+	log.Printf("ledger type value : %v and parent id %v : from reference : %v", lg.Type, lg.ParentID, lg.Parent)
 
 	if lg.Reference.Valid {
 		q := "INSERT INTO ledgers (reference, parent_ledger_id, ledger_type, data)  VALUES ($1, $2, $3, $4) RETURNING ledger_id, reference"
-		err = l.db.QueryRow(q, strings.ToUpper(lg.Reference.String), lg.ParentID, lg.Type, lg.Data).Scan(&lg.ID, &lg.Reference)
-	}else{
+		err = l.db.QueryRow(q, strings.ToUpper(lg.Reference.String), lg.ParentID, lg.Type.String, lg.Data).Scan(&lg.ID, &lg.Reference)
+	} else {
 		q := "INSERT INTO ledgers (parent_ledger_id, ledger_type, data)  VALUES ($1, $2, $3) RETURNING ledger_id, reference"
-		err = l.db.QueryRow(q, lg.ParentID, lg.Type, lg.Data).Scan(&lg.ID, &lg.Reference)
+		err = l.db.QueryRow(q, lg.ParentID, lg.Type.String, lg.Data).Scan(&lg.ID, &lg.Reference)
 	}
 
 	if err != nil {
-		return nil,ledger.ErrorSystemFailure.Override(err)
+		log.Printf("error : %v", err)
+		return nil, ledger.ErrorSystemFailure.Override(err)
 	}
 
 	return lg, nil
@@ -168,7 +184,7 @@ func (l *LedgerDB) UpdateLedger(lg *Ledger) (*Ledger, ledger.ApplicationLedgerEr
 	}
 
 	for key, value := range lg.Data {
-		if value != nil && value != existingLedger.Data[key] {
+		if value != "" && value != existingLedger.Data[key] {
 			existingLedger.Data[key] = value
 		}
 	}

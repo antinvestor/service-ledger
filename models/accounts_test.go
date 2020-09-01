@@ -13,9 +13,8 @@ import (
 
 type AccountsSuite struct {
 	suite.Suite
-	db *sql.DB
+	db     *sql.DB
 	ledger *Ledger
-
 }
 
 func (as *AccountsSuite) SetupTest() {
@@ -36,7 +35,7 @@ func (as *AccountsSuite) SetupTest() {
 	if err != nil {
 		as.Errorf(err, "Unable to create ledger for account")
 	}
-	accountsDB.CreateAccount(&Account{Reference:"100", LedgerID: as.ledger.ID,  Ledger: as.ledger.Reference.String, Currency: "UGX",})
+	accountsDB.CreateAccount(&Account{Reference: "100", LedgerID: as.ledger.ID, Ledger: as.ledger.Reference.String, Currency: "UGX"})
 
 }
 
@@ -45,22 +44,19 @@ func (as *AccountsSuite) TestAccountsInfoAPI() {
 
 	accountsDB := NewAccountDB(as.db)
 	account, err := accountsDB.GetByRef("100")
-	if err != nil{
-		as.Errorf(err,"Error getting account info api account")
-	}else {
+	if err != nil {
+		as.Errorf(err, "Error getting account info api account")
+	} else {
 		assert.Equal(t, nil, err, "Error while getting acccount")
 		assert.Equal(t, "100", account.Reference, "Invalid account Reference")
 		assert.Equal(t, 0, account.Balance, "Invalid account balance")
 	}
 }
 
-
-
-
 func (as *AccountsSuite) TearDownSuite() {
 
 	t := as.T()
-	_, err :=  as.db.Exec(`DELETE FROM accounts WHERE reference = $1`, "100")
+	_, err := as.db.Exec(`DELETE FROM accounts WHERE reference = $1`, "100")
 	if err != nil {
 		t.Fatal("Error deleting accounts:", err)
 	}

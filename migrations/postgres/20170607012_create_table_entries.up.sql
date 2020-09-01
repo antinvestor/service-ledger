@@ -5,6 +5,7 @@ CREATE TABLE entries (
     transaction_id bigint NOT NULL REFERENCES transactions(transaction_id),
     account_id bigint NOT NULL REFERENCES accounts(account_id),
     amount bigint NOT NULL,
+    credit boolean DEFAULT FALSE,
     account_balance bigint default 0,
     created_at timestamp default current_timestamp,
     updated_at timestamp,

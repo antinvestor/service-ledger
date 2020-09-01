@@ -1,22 +1,51 @@
 package controllers
 
 import (
-	"bitbucket.org/caricah/service-ledger/models"
 	"bitbucket.org/caricah/service-ledger/ledger"
+	"bitbucket.org/caricah/service-ledger/models"
 	"context"
+	"database/sql"
+	"google.golang.org/genproto/googleapis/type/money"
+	"strings"
 )
 
+const NanoAmountDivisor = 1000000000
+const DefaultAmountDivisor = 10000
+
+func toMoneyInt(naive int64) (unit int64, nanos int32) {
+	unit = naive / DefaultAmountDivisor
+	nanos = int32(naive-unit) * NanoAmountDivisor / DefaultAmountDivisor
+	return
+}
+
+func fromMoney(m *money.Money) (naive int64) {
+	return m.Units*DefaultAmountDivisor + int64(m.Nanos)*DefaultAmountDivisor/NanoAmountDivisor
+}
+
 func accountToApi(mAcc *models.Account) *ledger.Account {
-	return &ledger.Account{Reference: mAcc.Reference, Ledger: mAcc.Ledger, Currency: mAcc.Currency, Data: FromMap(mAcc.Data)}
+
+	units, nanos := toMoneyInt(mAcc.Balance.Int64)
+	balance := money.Money{CurrencyCode: mAcc.Currency.String, Units: units, Nanos: nanos}
+
+	return &ledger.Account{Reference: strings.ToUpper(mAcc.Reference.String),
+		Ledger: mAcc.Ledger.String, Balance: &balance, Data: FromMap(mAcc.Data)}
 }
 
 func accountFromApi(account *ledger.Account) *models.Account {
-	return &models.Account{Reference: account.Reference, Ledger: account.Ledger,
-		Currency: account.Currency, Data: ToMap(account.Data)}
 
+	naive := fromMoney(account.Balance)
+
+	return &models.Account{
+		ID: sql.NullInt64{},
+		Reference: sql.NullString{String: account.Reference, Valid: account.Reference != ""},
+		Ledger: sql.NullString{String: account.Ledger, Valid: account.Ledger != ""},
+		Currency: sql.NullString{String: account.Balance.CurrencyCode, Valid: account.Balance.CurrencyCode != ""},
+		Balance: sql.NullInt64{Int64: naive, Valid: true},
+		Data: ToMap(account.Data)}
 }
 
-func (ledgerSrv *LedgerServer) SearchAccounts(request *ledger.SearchRequest, server ledger.LedgerService_SearchAccountsServer) error {
+func (ledgerSrv *LedgerServer) SearchAccounts(
+	request *ledger.SearchRequest, server ledger.LedgerService_SearchAccountsServer) error {
 
 	engine, aerr := models.NewSearchEngine(ledgerSrv.DB, models.SearchNamespaceAccounts)
 	if aerr != nil {
@@ -30,13 +59,13 @@ func (ledgerSrv *LedgerServer) SearchAccounts(request *ledger.SearchRequest, ser
 		return aerr
 	}
 
-	castAccounts, ok := results.([]models.Account)
+	castAccounts, ok := results.([]*models.Account)
 	if !ok {
 		return ledger.ErrorSearchQueryResultsNotCasting
 	}
 
 	for _, account := range castAccounts {
-		server.Send(accountToApi(&account))
+		_ = server.Send(accountToApi(account))
 	}
 
 	return nil

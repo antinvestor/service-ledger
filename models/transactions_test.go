@@ -14,7 +14,7 @@ import (
 
 type TransactionsModelSuite struct {
 	suite.Suite
-	db *sql.DB
+	db     *sql.DB
 	ledger *Ledger
 }
 
@@ -33,17 +33,17 @@ func (ts *TransactionsModelSuite) SetupSuite() {
 	ledgersDB := NewLedgerDB(ts.db)
 	accountsDB := NewAccountDB(ts.db)
 
-	ts.ledger = &Ledger{Type: "ASSET",}
+	ts.ledger = &Ledger{Type: "ASSET"}
 	ts.ledger, err = ledgersDB.CreateLedger(ts.ledger)
 	if err != nil {
-		ts.Errorf( err,"Unable to create ledger for account")
+		ts.Errorf(err, "Unable to create ledger for account")
 	}
-	accountsDB.CreateAccount(&Account{Reference:"a1",LedgerID: ts.ledger.ID, Currency: "UGX",})
-	accountsDB.CreateAccount(&Account{Reference:"a2",LedgerID: ts.ledger.ID, Currency: "UGX",})
-	accountsDB.CreateAccount(&Account{Reference:"a3",LedgerID: ts.ledger.ID, Currency: "UGX",})
-	accountsDB.CreateAccount(&Account{Reference:"a4",LedgerID: ts.ledger.ID, Currency: "UGX",})
-	accountsDB.CreateAccount(&Account{Reference:"b1",LedgerID: ts.ledger.ID, Currency: "UGX",})
-	accountsDB.CreateAccount(&Account{Reference:"b2",LedgerID: ts.ledger.ID, Currency: "UGX",})
+	accountsDB.CreateAccount(&Account{Reference: "a1", LedgerID: ts.ledger.ID, Currency: "UGX"})
+	accountsDB.CreateAccount(&Account{Reference: "a2", LedgerID: ts.ledger.ID, Currency: "UGX"})
+	accountsDB.CreateAccount(&Account{Reference: "a3", LedgerID: ts.ledger.ID, Currency: "UGX"})
+	accountsDB.CreateAccount(&Account{Reference: "a4", LedgerID: ts.ledger.ID, Currency: "UGX"})
+	accountsDB.CreateAccount(&Account{Reference: "b1", LedgerID: ts.ledger.ID, Currency: "UGX"})
+	accountsDB.CreateAccount(&Account{Reference: "b2", LedgerID: ts.ledger.ID, Currency: "UGX"})
 
 }
 
@@ -55,11 +55,11 @@ func (ts *TransactionsModelSuite) TestIsValid() {
 		Entries: []*TransactionEntry{
 			{
 				Account: "a1",
-				Amount:    100,
+				Amount:  100,
 			},
 			{
 				Account: "a2",
-				Amount:    -100,
+				Amount:  -100,
 			},
 		},
 	}
@@ -84,11 +84,11 @@ func (ts *TransactionsModelSuite) TestIsExists() {
 		Entries: []*TransactionEntry{
 			{
 				Account: "a1",
-				Amount:    100,
+				Amount:  100,
 			},
 			{
 				Account: "a2",
-				Amount:    -100,
+				Amount:  -100,
 			},
 		},
 	}
@@ -109,11 +109,11 @@ func (ts *TransactionsModelSuite) TestIsConflict() {
 		Entries: []*TransactionEntry{
 			{
 				Account: "a1",
-				Amount:    100,
+				Amount:  100,
 			},
 			{
 				Account: "a2",
-				Amount:    -100,
+				Amount:  -100,
 			},
 		},
 	}
@@ -129,11 +129,11 @@ func (ts *TransactionsModelSuite) TestIsConflict() {
 		Entries: []*TransactionEntry{
 			{
 				Account: "a1",
-				Amount:    50,
+				Amount:  50,
 			},
 			{
 				Account: "a2",
-				Amount:    -50,
+				Amount:  -50,
 			},
 		},
 	}
@@ -146,11 +146,11 @@ func (ts *TransactionsModelSuite) TestIsConflict() {
 		Entries: []*TransactionEntry{
 			{
 				Account: "b1",
-				Amount:    100,
+				Amount:  100,
 			},
 			{
 				Account: "b2",
-				Amount:    -100,
+				Amount:  -100,
 			},
 		},
 	}
@@ -169,11 +169,11 @@ func (ts *TransactionsModelSuite) TestTransact() {
 		Entries: []*TransactionEntry{
 			{
 				Account: "a1",
-				Amount:    100,
+				Amount:  100,
 			},
 			{
 				Account: "a2",
-				Amount:    -100,
+				Amount:  -100,
 			},
 		},
 		Data: map[string]interface{}{
@@ -198,11 +198,11 @@ func (ts *TransactionsModelSuite) TestDuplicateTransactions() {
 		Entries: []*TransactionEntry{
 			{
 				Account: "a1",
-				Amount:    100,
+				Amount:  100,
 			},
 			{
 				Account: "a2",
-				Amount:    -100,
+				Amount:  -100,
 			},
 		},
 	}
@@ -235,11 +235,11 @@ func (ts *TransactionsModelSuite) TestTransactWithBoundaryValues() {
 		Entries: []*TransactionEntry{
 			{
 				Account: "a3",
-				Amount:    boundaryValue,
+				Amount:  boundaryValue,
 			},
 			{
 				Account: "a4",
-				Amount:    -boundaryValue,
+				Amount:  -boundaryValue,
 			},
 		},
 		Data: map[string]interface{}{
@@ -264,15 +264,15 @@ func (ts *TransactionsModelSuite) TearDownSuite() {
 
 	t := ts.T()
 	_, err := ts.db.Exec(`DELETE FROM entries WHERE transaction_id 
-		IN (SELECT transaction_id FROM transactions WHERE reference IN($1, $2, $3, $4,$5 ))`,"T001","T002","T003","T004","T005" )
+		IN (SELECT transaction_id FROM transactions WHERE reference IN($1, $2, $3, $4,$5 ))`, "T001", "T002", "T003", "T004", "T005")
 	if err != nil {
 		t.Fatal("Error deleting Entries:", err)
 	}
-	_, err = ts.db.Exec(`DELETE FROM transactions WHERE reference IN ($1, $2, $3, $4,$5 )`, "T001","T002","T003","T004","T005")
+	_, err = ts.db.Exec(`DELETE FROM transactions WHERE reference IN ($1, $2, $3, $4,$5 )`, "T001", "T002", "T003", "T004", "T005")
 	if err != nil {
 		t.Fatal("Error deleting transactions:", err)
 	}
-	_, err = ts.db.Exec(`DELETE FROM accounts WHERE reference IN ($1, $2, $3, $4,$5,$6 )`, "A1","A2","A3","A4","B1","B2",)
+	_, err = ts.db.Exec(`DELETE FROM accounts WHERE reference IN ($1, $2, $3, $4,$5,$6 )`, "A1", "A2", "A3", "A4", "B1", "B2")
 	if err != nil {
 		t.Fatal("Error deleting accounts:", err)
 	}

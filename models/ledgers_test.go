@@ -9,7 +9,7 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	)
+)
 
 type LedgersSuite struct {
 	suite.Suite
@@ -30,12 +30,11 @@ func (ls *LedgersSuite) SetupTest() {
 
 	//Create test ledger.
 	ledgersDB := NewLedgerDB(ls.db)
-	ls.ledger = &Ledger{Type: "ASSET",}
+	ls.ledger = &Ledger{Type: "ASSET"}
 	ls.ledger, err = ledgersDB.CreateLedger(ls.ledger)
 	if err != nil {
-		ls.Errorf(err,"Error creating ledger", err)
+		ls.Errorf(err, "Error creating ledger", err)
 	}
-
 
 }
 
@@ -44,7 +43,7 @@ func (ls *LedgersSuite) TestLedgersInfoAPI() {
 
 	ledgersDB := NewLedgerDB(ls.db)
 	lg, err := ledgersDB.GetByRef(ls.ledger.Reference.String)
-	assert.Equal(t, nil, err, "Error while getting ledger "+ lg.Reference.String)
+	assert.Equal(t, nil, err, "Error while getting ledger "+lg.Reference.String)
 	assert.Equal(t, lg.ID, lg.ID, "Invalid ledger id")
 
 }
@@ -58,7 +57,6 @@ func (ls *LedgersSuite) TearDownSuite() {
 		t.Fatal("Error deleting Entries:", err)
 	}
 }
-
 
 func TestLedgersSuite(t *testing.T) {
 	suite.Run(t, new(LedgersSuite))

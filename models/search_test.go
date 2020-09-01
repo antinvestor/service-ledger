@@ -13,10 +13,10 @@ import (
 
 type SearchSuite struct {
 	suite.Suite
-	db    *sql.DB
+	db       *sql.DB
 	ledgerDB LedgerDB
-	accDB AccountDB
-	txnDB TransactionDB
+	accDB    AccountDB
+	txnDB    TransactionDB
 
 	ledger *Ledger
 }
@@ -37,7 +37,7 @@ func (ss *SearchSuite) SetupSuite() {
 	ss.txnDB = NewTransactionDB(db)
 	ss.ledgerDB = NewLedgerDB(db)
 
-	ss.ledger = &Ledger{Type: "ASSET",}
+	ss.ledger = &Ledger{Type: "ASSET"}
 	ss.ledger, err = ss.ledgerDB.CreateLedger(ss.ledger)
 	if err != nil {
 		ss.Errorf(err, "Unable to create ledger for search account")
@@ -46,8 +46,8 @@ func (ss *SearchSuite) SetupSuite() {
 	// Create test accounts
 	acc1 := &Account{
 		Reference: "acc1",
-		LedgerID: ss.ledger.ID,
-		Currency: "UGX",
+		LedgerID:  ss.ledger.ID,
+		Currency:  "UGX",
 		Data: map[string]interface{}{
 			"customer_id": "C1",
 			"status":      "active",
@@ -55,11 +55,11 @@ func (ss *SearchSuite) SetupSuite() {
 		},
 	}
 	acc1, err = ss.accDB.CreateAccount(acc1)
-	assert.Equal(t, nil, err, "Error creating test account with %s",err)
+	assert.Equal(t, nil, err, "Error creating test account with %s", err)
 	acc2 := &Account{
 		Reference: "acc2",
-		LedgerID: ss.ledger.ID,
-		Currency: "UGX",
+		LedgerID:  ss.ledger.ID,
+		Currency:  "UGX",
 		Data: map[string]interface{}{
 			"customer_id": "C2",
 			"status":      "inactive",
@@ -75,11 +75,11 @@ func (ss *SearchSuite) SetupSuite() {
 		Entries: []*TransactionEntry{
 			{
 				Account: "acc1",
-				Amount:    1000,
+				Amount:  1000,
 			},
 			{
 				Account: "acc2",
-				Amount:    -1000,
+				Amount:  -1000,
 			},
 		},
 		Data: map[string]interface{}{
@@ -90,17 +90,17 @@ func (ss *SearchSuite) SetupSuite() {
 	}
 	tx, err := ss.txnDB.Transact(txn1)
 	assert.Equal(t, nil, err, "Error creating test transaction")
-	assert.NotEqual(t,nil, tx, "Error creating test transaction")
+	assert.NotEqual(t, nil, tx, "Error creating test transaction")
 	txn2 := &Transaction{
 		Reference: "txn2",
 		Entries: []*TransactionEntry{
 			{
 				Account: "acc1",
-				Amount:    100,
+				Amount:  100,
 			},
 			{
 				Account: "acc2",
-				Amount:    -100,
+				Amount:  -100,
 			},
 		},
 		Data: map[string]interface{}{
@@ -116,11 +116,11 @@ func (ss *SearchSuite) SetupSuite() {
 		Entries: []*TransactionEntry{
 			{
 				Account: "acc1",
-				Amount:    400,
+				Amount:  400,
 			},
 			{
 				Account: "acc2",
-				Amount:    -400,
+				Amount:  -400,
 			},
 		},
 		Data: map[string]interface{}{
@@ -129,7 +129,7 @@ func (ss *SearchSuite) SetupSuite() {
 			"months": []string{"jul", "aug", "sep"},
 		},
 	}
-	tx,err = ss.txnDB.Transact(txn3)
+	tx, err = ss.txnDB.Transact(txn3)
 	assert.NotEqual(t, nil, tx, "Error creating test transaction")
 }
 
@@ -197,7 +197,7 @@ func (ss *SearchSuite) TestSearchTransactionsWithBothMustAndShould() {
 	if len(transactions) > 0 {
 		assert.Equal(t, "TXN1", transactions[0].Reference, "Transaction Reference doesn't match")
 	}
-	}
+}
 
 func (ss *SearchSuite) TearDownSuite() {
 	log.Println("Cleaning up the test database")

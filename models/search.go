@@ -25,9 +25,6 @@ type SearchEngine struct {
 	namespace string
 }
 
-
-
-
 // NewSearchEngine returns a new instance of `SearchEngine`
 func NewSearchEngine(db *sql.DB, namespace string) (*SearchEngine, ledger.ApplicationLedgerError) {
 	if namespace != SearchNamespaceAccounts && namespace != SearchNamespaceTransactions && namespace != SearchNamespaceLedgers {
@@ -67,7 +64,7 @@ func (engine *SearchEngine) Query(q string) (interface{}, ledger.ApplicationLedg
 		accounts := make([]*Account, 0)
 		for rows.Next() {
 			acc := &Account{}
-			if err := rows.Scan(&acc.ID, &acc.Reference, &acc.Ledger,  &acc.Balance, &acc.Data); err != nil {
+			if err := rows.Scan(&acc.ID, &acc.Reference, &acc.Ledger, &acc.Currency, &acc.Balance, &acc.Data); err != nil {
 				return nil, ledger.ErrorSystemFailure.Override(err)
 			}
 			accounts = append(accounts, acc)
@@ -79,7 +76,7 @@ func (engine *SearchEngine) Query(q string) (interface{}, ledger.ApplicationLedg
 		for rows.Next() {
 			txn := &Transaction{}
 			var rawAccounts, rawamount string
-			if err := rows.Scan(&txn.ID, &txn.Reference, &txn.TransactedAt, &txn.Data, &rawAccounts, &rawamount); err != nil {
+			if err := rows.Scan(&txn.ID, &txn.Reference, &txn.Currency, &txn.TransactedAt, &txn.Data, &rawAccounts, &rawamount); err != nil {
 				return nil, ledger.ErrorSystemFailure.Override(err)
 			}
 
@@ -89,9 +86,10 @@ func (engine *SearchEngine) Query(q string) (interface{}, ledger.ApplicationLedg
 			json.Unmarshal([]byte(rawamount), &amount)
 			var entries []*TransactionEntry
 			for i, acc := range accounts {
-				l := &TransactionEntry{}
-				l.Account = acc
-				l.Amount = amount[i]
+				l := &TransactionEntry{
+					Account: sql.NullString{String: acc, Valid: true},
+					Amount: sql.NullInt64{Int64: amount[i], Valid: true},
+				}
 				entries = append(entries, l)
 			}
 			txn.Entries = entries
@@ -105,8 +103,8 @@ func (engine *SearchEngine) Query(q string) (interface{}, ledger.ApplicationLedg
 
 // QueryContainer represents the format of query subsection inside `must` or `should`
 type QueryContainer struct {
-	Fields []map[string]map[string]interface{} `json:"fields"`
-	Terms      []map[string]interface{} `json:"terms"`
+	Fields     []map[string]map[string]interface{} `json:"fields"`
+	Terms      []map[string]interface{}            `json:"terms"`
 	RangeItems []map[string]map[string]interface{} `json:"ranges"`
 }
 
@@ -185,9 +183,9 @@ func (rawQuery *SearchRawQuery) ToSQLQuery(namespace string) *SearchSQLQuery {
 	case "ledgers":
 		q = "SELECT ledger_id, reference, ledger_type, parent_ledger_id, data FROM ledgers"
 	case "accounts":
-		q = "SELECT account_id, reference, ledger_id, balance, data FROM accounts LEFT JOIN  current_balances USING(account_id)"
+		q = "SELECT account_id, reference, ledger_id, currency, balance, data FROM accounts LEFT JOIN  current_balances USING(account_id)"
 	case "transactions":
-		q = `SELECT transaction_id, reference, transacted_at, data,
+		q = `SELECT transaction_id, reference, currency, transacted_at, data,
 					array_to_json(ARRAY(
 						SELECT accounts.reference FROM entries LEFT JOIN accounts USING(account_id)
 							WHERE transaction_id=transactions.transaction_id

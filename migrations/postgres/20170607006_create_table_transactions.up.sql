@@ -3,6 +3,7 @@ BEGIN;
 CREATE TABLE transactions (
     transaction_id SERIAL NOT NULL PRIMARY KEY,
     reference character varying NOT NULL,
+    currency character varying not null,
     transacted_at timestamp without time zone NOT NULL,
     data jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp default current_timestamp,

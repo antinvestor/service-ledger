@@ -17,8 +17,8 @@ func (ss *SearchSuite) TestSearchAccountsWithMustFields() {
         }
     }`
 	results, err := engine.Query(query)
-	if err != nil{
-		ss.Errorf(err,"Error querying must fields")
+	if err != nil {
+		ss.Errorf(err, "Error querying must fields")
 	}
 	assert.Equal(t, nil, err, "Error in building search query")
 	accounts, _ := results.([]*Account)
@@ -37,8 +37,8 @@ func (ss *SearchSuite) TestSearchAccountsWithMustFields() {
         }
     }`
 	results, err = engine.Query(query)
-	if err != nil{
-		ss.Errorf(err,"Error querying must fields")
+	if err != nil {
+		ss.Errorf(err, "Error querying must fields")
 	}
 	assert.Equal(t, nil, err, "Error in building search query")
 	accounts, _ = results.([]*Account)
@@ -102,7 +102,6 @@ func (ss *SearchSuite) TestSearchAccountsWithFieldOperators() {
 	if len(accounts) > 0 {
 		assert.Equal(t, "ACC1", accounts[0].Reference, "Account Reference doesn't match")
 	}
-
 
 	query = `{
         "query": {
