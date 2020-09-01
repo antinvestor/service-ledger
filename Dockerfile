@@ -9,9 +9,9 @@ WORKDIR /go/src/bitbucket.org/caricah/service-ledger
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o /ledger_service .
 
 FROM scratch
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=builder /ledger_service /ledger_service
 COPY --from=builder /go/src/bitbucket.org/caricah/service-ledger/migrations /migrations
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 WORKDIR /
 
 # Run the ledger command by default when the container starts.
