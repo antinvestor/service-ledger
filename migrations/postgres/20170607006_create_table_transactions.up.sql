@@ -16,7 +16,7 @@ CREATE TABLE transactions (
 );
 
 CREATE INDEX transactions_transacted_at_idx ON transactions USING brin (transacted_at);
-CREATE INDEX transactions_reference_idx ON accounts USING hash (reference);
+CREATE INDEX transactions_reference_idx ON transactions USING hash (reference);
 CREATE INDEX transactions_data_idx ON transactions USING GIN (data jsonb_path_ops);
 
 COMMIT;
