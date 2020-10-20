@@ -30,38 +30,45 @@ func main() {
 	}
 	log.Println("Successfully established connection to database.")
 
-	// Migrate DB changes
-	migrateDB(db)
+	stdArgs := os.Args[1:]
+	if len(stdArgs) > 0 && stdArgs[0] == "migrate" {
+		log.Println("Initiating migrations")
 
-	implementation := &controllers.LedgerServer{DB: db}
+		// Migrate DB changes
+		migrateDB(db)
 
-	grpcServer := grpc.NewServer(
-		grpc.UnaryInterceptor(middlewares.AuthInterceptor),
-	)
-	ledger.RegisterLedgerServiceServer(grpcServer, implementation)
+	} else {
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "7000"
-	}
+		implementation := &controllers.LedgerServer{DB: db}
 
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%v", port))
-	if err != nil {
-		log.Panicf("Could not start on supplied port %v %v ", port, err)
-	}
+		grpcServer := grpc.NewServer(
+			grpc.UnaryInterceptor(middlewares.AuthInterceptor),
+		)
+		ledger.RegisterLedgerServiceServer(grpcServer, implementation)
 
-	log.Println("Running server on port:", port)
-
-	// start the server
-	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %s", err)
-	}
-
-	defer func() {
-		if r := recover(); r != nil {
-			log.Println("Server exited!!!", r)
+		port := os.Getenv("PORT")
+		if port == "" {
+			port = "7000"
 		}
-	}()
+
+		lis, err := net.Listen("tcp", fmt.Sprintf(":%v", port))
+		if err != nil {
+			log.Panicf("Could not start on supplied port %v %v ", port, err)
+		}
+
+		log.Println("Running server on port:", port)
+
+		// start the server
+		if err := grpcServer.Serve(lis); err != nil {
+			log.Fatalf("failed to serve: %s", err)
+		}
+
+		defer func() {
+			if r := recover(); r != nil {
+				log.Println("Server exited!!!", r)
+			}
+		}()
+	}
 }
 
 func migrateDB(db *sql.DB) {
