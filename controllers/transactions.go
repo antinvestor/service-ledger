@@ -15,6 +15,7 @@ func transactionToApi(mTxn *models.Transaction) *ledger.Transaction {
 		mEntry.Currency = mTxn.Currency
 		mEntry.TransactionID = mTxn.ID
 		mEntry.Transaction = mTxn.Reference
+		mEntry.TransactedAt = mTxn.TransactedAt
 		apiEntries[index] = transactionEntryToApi(mEntry)
 	}
 	return &ledger.Transaction{Reference: mTxn.Reference.String,

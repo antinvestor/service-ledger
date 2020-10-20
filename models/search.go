@@ -106,9 +106,10 @@ func (engine *SearchEngine) Query(q string) (interface{}, ledger.ApplicationLedg
 		transactionEntries := make([]*TransactionEntry, 0)
 		for rows.Next() {
 			txnEntry := &TransactionEntry{}
-			if err := rows.Scan(&txnEntry.ID, &txnEntry.AccountID, &txnEntry.Account,
-				&txnEntry.TransactionID, &txnEntry.Transaction, &txnEntry.Amount,
-				&txnEntry.Credit, &txnEntry.Balance, &txnEntry.Currency); err != nil {
+			if err := rows.Scan(&txnEntry.ID, &txnEntry.AccountID,
+				&txnEntry.Account, &txnEntry.TransactionID, &txnEntry.Transaction,
+				&txnEntry.Amount, &txnEntry.Credit, &txnEntry.Balance,
+				&txnEntry.Currency, &txnEntry.TransactedAt); err != nil {
 				return nil, ledger.ErrorSystemFailure.Override(err)
 			}
 
@@ -224,7 +225,7 @@ func (rawQuery *SearchRawQuery) ToSQLQuery(namespace string) *SearchSQLQuery {
 		q= `SELECT 
 				entry_id, entries.account_id, accounts.reference, 
 				entries.transaction_id, transactions.reference, amount, 
-				credit, account_balance, transactions.currency   
+				credit, account_balance, transactions.currency, transactions.transacted_at  
 			FROM entries LEFT JOIN accounts USING(account_id) LEFT JOIN transactions USING(transaction_id)`
 		break
 	default:

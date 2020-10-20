@@ -37,6 +37,7 @@ type TransactionEntry struct {
 	Credit    bool           `json:"credit"`
 	Balance    sql.NullInt64  `json:"balance"`
 	Currency  sql.NullString `json:"currency"`
+	TransactedAt sql.NullString      `json:"transacted_at"`
 }
 
 func (t *TransactionEntry) Equal(ot TransactionEntry) bool {
