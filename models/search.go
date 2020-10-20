@@ -146,7 +146,7 @@ type SearchSQLQuery struct {
 }
 
 func hasValidKeys(items interface{}) bool {
-	var validKey = regexp.MustCompile(`^[a-z_A-Z]+$`)
+	var validKey = regexp.MustCompile(`^[a-z_A-Z.]+$`)
 	switch t := items.(type) {
 	case []map[string]interface{}:
 		for _, item := range t {
