@@ -3,7 +3,7 @@ package middlewares
 import (
 	"net/http"
 
-	ledgerContext "bitbucket.org/caricah/service-ledger/context"
+	ledgerContext "github.com/antinvestor/service-ledger/context"
 )
 
 // Handler is a custom HTTP handler that has an additional application context

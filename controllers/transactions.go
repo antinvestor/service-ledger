@@ -1,11 +1,10 @@
 package controllers
 
 import (
-	"bitbucket.org/caricah/service-ledger/ledger"
-	"bitbucket.org/caricah/service-ledger/models"
 	"context"
 	"database/sql"
-	"google.golang.org/genproto/googleapis/type/money"
+	"github.com/antinvestor/service-ledger/ledger"
+	"github.com/antinvestor/service-ledger/models"
 	"strings"
 )
 
@@ -13,11 +12,14 @@ func transactionToApi(mTxn *models.Transaction) *ledger.Transaction {
 
 	apiEntries := make([]*ledger.TransactionEntry, len(mTxn.Entries))
 	for index, mEntry := range mTxn.Entries {
-		units, nanos := toMoneyInt(mEntry.Amount.Int64)
-		entryAmount := money.Money{Units: units, Nanos: nanos, CurrencyCode: mTxn.Currency.String}
-		apiEntries[index] = &ledger.TransactionEntry{Account: mEntry.Account.String, Amount: &entryAmount}
+		mEntry.Currency = mTxn.Currency
+		mEntry.TransactionID = mTxn.ID
+		mEntry.Transaction = mTxn.Reference
+		apiEntries[index] = transactionEntryToApi(mEntry)
 	}
-	return &ledger.Transaction{Reference: mTxn.Reference.String, TransactedAt: mTxn.TransactedAt.String, Data: FromMap(mTxn.Data), Entries: apiEntries}
+	return &ledger.Transaction{Reference: mTxn.Reference.String,
+		TransactedAt: mTxn.TransactedAt.String,
+		Data: FromMap(mTxn.Data), Entries: apiEntries}
 }
 
 func transactionFromApi(aTxn *ledger.Transaction) *models.Transaction {
@@ -72,7 +74,7 @@ func (ledgerSrv *LedgerServer) SearchTransactions(request *ledger.SearchRequest,
 	}
 
 	for _, txn := range castTransactions {
-		server.Send(transactionToApi(txn))
+		_ = server.Send(transactionToApi(txn))
 	}
 
 	return nil

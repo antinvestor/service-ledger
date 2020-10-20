@@ -1,7 +1,7 @@
 package models
 
 import (
-	"bitbucket.org/caricah/service-ledger/ledger"
+	"github.com/antinvestor/service-ledger/ledger"
 	"database/sql"
 	"database/sql/driver"
 	"encoding/json"

@@ -36,6 +36,7 @@ message TransactionEntry {
   string account = 1;
   google.type.Money amount = 2;
   bool credit = 3;
+  google.type.Money acc_balance = 4;
 }
 
 message Transaction {
@@ -87,6 +88,11 @@ service LedgerService {
 
   // Updates a transaction's details
   rpc UpdateTransaction (Transaction) returns (Transaction) {
+  }
+
+  // Searches for entries matching the search details
+  rpc SearchTransactionEntries(SearchRequest) returns (stream TransactionEntry){
+
   }
 }
 

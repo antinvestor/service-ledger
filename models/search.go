@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"bitbucket.org/caricah/service-ledger/ledger"
+	"github.com/antinvestor/service-ledger/ledger"
 )
 
 var (
@@ -17,6 +17,8 @@ var (
 	SearchNamespaceAccounts = "accounts"
 	// SearchNamespaceTransactions holds search namespace of transactions
 	SearchNamespaceTransactions = "transactions"
+	// SearchNamespaceTransactionEntries holds search namespace of transaction entries
+	SearchNamespaceTransactionEntries = "transaction_entries"
 )
 
 // SearchEngine is the interface for all search operations
@@ -27,7 +29,10 @@ type SearchEngine struct {
 
 // NewSearchEngine returns a new instance of `SearchEngine`
 func NewSearchEngine(db *sql.DB, namespace string) (*SearchEngine, ledger.ApplicationLedgerError) {
-	if namespace != SearchNamespaceAccounts && namespace != SearchNamespaceTransactions && namespace != SearchNamespaceLedgers {
+	if namespace != SearchNamespaceAccounts &&
+		namespace != SearchNamespaceTransactions &&
+		namespace != SearchNamespaceLedgers &&
+		namespace != SearchNamespaceTransactionEntries{
 		return nil, ledger.ErrorSearchNamespaceUnknown
 	}
 
@@ -96,6 +101,21 @@ func (engine *SearchEngine) Query(q string) (interface{}, ledger.ApplicationLedg
 			transactions = append(transactions, txn)
 		}
 		return transactions, nil
+
+	case SearchNamespaceTransactionEntries:
+		transactionEntries := make([]*TransactionEntry, 0)
+		for rows.Next() {
+			txnEntry := &TransactionEntry{}
+			if err := rows.Scan(&txnEntry.ID, &txnEntry.AccountID, &txnEntry.Account,
+				&txnEntry.TransactionID, &txnEntry.Transaction, &txnEntry.Amount,
+				&txnEntry.Credit, &txnEntry.Balance, &txnEntry.Currency); err != nil {
+				return nil, ledger.ErrorSystemFailure.Override(err)
+			}
+
+			transactionEntries = append(transactionEntries, txnEntry)
+		}
+		return transactionEntries, nil
+
 	default:
 		return nil, ledger.ErrorSearchNamespaceUnknown
 	}
@@ -180,11 +200,13 @@ func (rawQuery *SearchRawQuery) ToSQLQuery(namespace string) *SearchSQLQuery {
 	var args []interface{}
 
 	switch namespace {
-	case "ledgers":
+	case SearchNamespaceLedgers:
 		q = "SELECT ledger_id, reference, ledger_type, parent_ledger_id, data FROM ledgers"
-	case "accounts":
+		break
+	case SearchNamespaceAccounts:
 		q = "SELECT account_id, reference, ledger_id, currency, balance, data FROM accounts LEFT JOIN  current_balances USING(account_id)"
-	case "transactions":
+		break
+	case SearchNamespaceTransactions:
 		q = `SELECT transaction_id, reference, currency, transacted_at, data,
 					array_to_json(ARRAY(
 						SELECT accounts.reference FROM entries LEFT JOIN accounts USING(account_id)
@@ -197,6 +219,14 @@ func (rawQuery *SearchRawQuery) ToSQLQuery(namespace string) *SearchSQLQuery {
 							ORDER BY entries.account_id
 					)) AS amount_array
 			FROM transactions`
+		break
+	case SearchNamespaceTransactionEntries:
+		q= `SELECT 
+				entry_id, entries.account_id, accounts.reference, 
+				entries.transaction_id, transactions.reference, amount, 
+				credit, account_balance, transactions.currency   
+			FROM entries LEFT JOIN accounts USING(account_id) LEFT JOIN transactions USING(transaction_id)`
+		break
 	default:
 		return nil
 	}

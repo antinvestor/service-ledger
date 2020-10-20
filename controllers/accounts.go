@@ -1,8 +1,8 @@
 package controllers
 
 import (
-	"bitbucket.org/caricah/service-ledger/ledger"
-	"bitbucket.org/caricah/service-ledger/models"
+	"github.com/antinvestor/service-ledger/ledger"
+	"github.com/antinvestor/service-ledger/models"
 	"context"
 	"database/sql"
 	"google.golang.org/genproto/googleapis/type/money"

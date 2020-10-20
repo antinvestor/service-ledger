@@ -1,4 +1,4 @@
-module bitbucket.org/caricah/service-ledger
+module github.com/antinvestor/service-ledger
 
 go 1.14
 

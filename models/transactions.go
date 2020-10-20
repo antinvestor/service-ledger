@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"bitbucket.org/caricah/service-ledger/ledger"
+	"github.com/antinvestor/service-ledger/ledger"
 	"fmt"
 	"github.com/pkg/errors"
 	"strings"
@@ -31,8 +31,12 @@ type TransactionEntry struct {
 	ID        sql.NullInt64
 	AccountID sql.NullInt64
 	Account   sql.NullString `json:"account"`
+	TransactionID sql.NullInt64
+	Transaction   sql.NullString `json:"transaction"`
 	Amount    sql.NullInt64  `json:"amount"`
 	Credit    bool           `json:"credit"`
+	Balance    sql.NullInt64  `json:"balance"`
+	Currency  sql.NullString `json:"currency"`
 }
 
 func (t *TransactionEntry) Equal(ot TransactionEntry) bool {
@@ -152,7 +156,7 @@ func (t *TransactionDB) IsExists(reference string) (bool, ledger.ApplicationLedg
 // IsConflict says whether a transaction conflicts with an existing transaction
 func (t *TransactionDB) IsConflict(transaction *Transaction) (bool, ledger.ApplicationLedgerError) {
 	// Read existing Entries
-	rows, err := t.db.Query("SELECT e.entry_id, a.account_id, a.reference, e.amount FROM entries e LEFT JOIN accounts a USING(account_id) LEFT JOIN transactions t USING(transaction_id) WHERE t.reference=$1", transaction.Reference.String)
+	rows, err := t.db.Query("SELECT e.entry_id, a.account_id, a.reference, e.amount, e.account_balance  FROM entries e LEFT JOIN accounts a USING(account_id) LEFT JOIN transactions t USING(transaction_id) WHERE t.reference=$1", transaction.Reference.String)
 	switch {
 
 	case err == sql.ErrNoRows:
@@ -165,7 +169,7 @@ func (t *TransactionDB) IsConflict(transaction *Transaction) (bool, ledger.Appli
 	var existingentries []*TransactionEntry
 	for rows.Next() {
 		entry := &TransactionEntry{}
-		if err := rows.Scan(&entry.ID, &entry.AccountID, &entry.Account, &entry.Amount); err != nil {
+		if err := rows.Scan(&entry.ID, &entry.AccountID, &entry.Account, &entry.Amount, &entry.Balance); err != nil {
 			return false, ledger.ErrorSystemFailure.Override(err)
 		}
 		existingentries = append(existingentries, entry)

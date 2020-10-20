@@ -5,10 +5,10 @@ import (
 	"log"
 	"os"
 
-	"bitbucket.org/caricah/service-ledger/controllers"
-	"bitbucket.org/caricah/service-ledger/ledger"
-	"bitbucket.org/caricah/service-ledger/middlewares"
 	"fmt"
+	"github.com/antinvestor/service-ledger/controllers"
+	"github.com/antinvestor/service-ledger/ledger"
+	"github.com/antinvestor/service-ledger/middlewares"
 	"github.com/golang-migrate/migrate"
 	"github.com/golang-migrate/migrate/database"
 	"github.com/golang-migrate/migrate/database/postgres"
