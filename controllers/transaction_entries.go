@@ -18,7 +18,12 @@ func transactionEntryToApi(mEntry *models.TransactionEntry ) *ledger.Transaction
 
 		return &ledger.TransactionEntry{
 			Account: mEntry.Account.String,
-			Amount: &entryAmount, AccBalance: &balanceAmount}
+			Transaction: mEntry.Transaction.String,
+			TransactedAt: mEntry.TransactedAt.String,
+			Amount: &entryAmount,
+			Credit: mEntry.Credit,
+			AccBalance: &balanceAmount,
+		}
 	}
 
 
