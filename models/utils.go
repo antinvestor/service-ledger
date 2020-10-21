@@ -8,6 +8,11 @@ import (
 	"strings"
 )
 
+func Abs(n int64) int64 {
+	y := n >> 63
+	return (n ^ y) - y
+}
+
 // Orderedentries implements sort.Interface for []*TransactionEntry based on
 // the AccountID and Amount fields.
 type Orderedentries []*TransactionEntry

@@ -1,10 +1,10 @@
 package controllers
 
 import (
-	"github.com/antinvestor/service-ledger/ledger"
-	"github.com/antinvestor/service-ledger/models"
 	"context"
 	"database/sql"
+	"github.com/antinvestor/service-ledger/ledger"
+	"github.com/antinvestor/service-ledger/models"
 	"google.golang.org/genproto/googleapis/type/money"
 	"strings"
 )
@@ -12,7 +12,9 @@ import (
 const NanoAmountDivisor = 1000000000
 const DefaultAmountDivisor = 10000
 
+
 func toMoneyInt(naive int64) (unit int64, nanos int32) {
+	naive = models.Abs(naive)
 	unit = naive / DefaultAmountDivisor
 	nanos = int32(naive-unit) * NanoAmountDivisor / DefaultAmountDivisor
 	return
