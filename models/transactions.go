@@ -209,11 +209,7 @@ func (t *TransactionDB) Transact(txn *Transaction) (*Transaction, ledger.Applica
 			}
 			// Otherwise the transaction is just a duplicate
 			// The exactly duplicate transactions are ignored
-			transaction, err1 := t.getByRef(txn.Reference.String)
-			if err1 != nil {
-				return nil, err1
-			}
-			return transaction, ledger.ErrorTransactionAlreadyExists
+			return t.getByRef(txn.Reference.String)
 		}
 	}
 	accountsMap, err1 := t.Validate(txn)
