@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/rs/xid"
-	"sort"
 	"strings"
 )
 
@@ -27,20 +26,24 @@ func (entries Orderedentries) Less(i, j int) bool {
 }
 
 func containsSameElements(l1 []*TransactionEntry, l2 []*TransactionEntry) bool {
-	lc1 := make([]*TransactionEntry, len(l1))
-	copy(lc1, l1)
-	lc2 := make([]*TransactionEntry, len(l2))
-	copy(lc2, l2)
-	sort.Sort(Orderedentries(lc1))
-	sort.Sort(Orderedentries(lc2))
 
-	if len(lc1) != len(lc2) {
+	l1Map := make(map[string]*TransactionEntry)
+
+	if len(l1) != len(l2) {
 		return false
 	}
 
-	for i, entry := range lc1 {
+	for _, entry := range l1 {
+		l1Account := strings.ToUpper(entry.Account.String)
+		l1Map[l1Account] = entry
+	}
 
-		if strings.ToUpper(entry.Account.String) != strings.ToUpper(lc2[i].Account.String) || entry.Amount.Int64 != lc2[i].Amount.Int64 {
+	for _, entry2 := range l2 {
+		l2Account := strings.ToUpper(entry2.Account.String)
+		entry := l1Map[l2Account]
+
+		if entry == nil ||
+			Abs(entry.Amount.Int64) != Abs(entry2.Amount.Int64) {
 			return false
 		}
 
