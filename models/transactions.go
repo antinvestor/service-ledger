@@ -318,13 +318,13 @@ func (t *TransactionDB) getByRef(reference string) (*Transaction, ledger.Applica
 	defer rows.Close()
 
 	for rows.Next() {
-		entry := TransactionEntry{}
+		entry := new(TransactionEntry)
 		if err := rows.Scan(&entry.ID, &entry.Account, &entry.AccountID, &entry.Amount,
 			&entry.Balance, &entry.Credit, &entry.Currency, &entry.TransactedAt, &entry.TransactionID); err != nil {
 			return nil, ledger.ErrorSystemFailure.Override(err)
 		}
 
-		entries = append(entries, &entry)
+		entries = append(entries, entry)
 	}
 
 	transaction.Entries = entries
