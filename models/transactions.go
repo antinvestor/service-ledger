@@ -5,8 +5,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/antinvestor/service-ledger/ledger"
 	"fmt"
+	"github.com/antinvestor/service-ledger/ledger"
 	"github.com/pkg/errors"
 	"strings"
 )
@@ -28,16 +28,16 @@ type Transaction struct {
 
 // TransactionEntry represents a transaction line in a ledger
 type TransactionEntry struct {
-	ID        sql.NullInt64
-	AccountID sql.NullInt64
-	Account   sql.NullString `json:"account"`
+	ID            sql.NullInt64
+	AccountID     sql.NullInt64
+	Account       sql.NullString `json:"account"`
 	TransactionID sql.NullInt64
 	Transaction   sql.NullString `json:"transaction"`
-	Amount    sql.NullInt64  `json:"amount"`
-	Credit    bool           `json:"credit"`
-	Balance    sql.NullInt64  `json:"balance"`
-	Currency  sql.NullString `json:"currency"`
-	TransactedAt sql.NullString      `json:"transacted_at"`
+	Amount        sql.NullInt64  `json:"amount"`
+	Credit        bool           `json:"credit"`
+	Balance       sql.NullInt64  `json:"balance"`
+	Currency      sql.NullString `json:"currency"`
+	TransactedAt  sql.NullString `json:"transacted_at"`
 }
 
 func (t *TransactionEntry) Equal(ot TransactionEntry) bool {
@@ -50,7 +50,7 @@ func (t *Transaction) IsValid() bool {
 	for _, entry := range t.Entries {
 		if entry.Credit {
 			sum += entry.Amount.Int64
-		}	else{
+		} else {
 			sum -= entry.Amount.Int64
 		}
 
@@ -302,6 +302,32 @@ func (t *TransactionDB) getByRef(reference string) (*Transaction, ledger.Applica
 	case err != nil:
 		return nil, ledger.ErrorSystemFailure.Override(err)
 	}
+
+	var entries []*TransactionEntry
+	rows, err := t.db.Query(
+		"SELECT e.entry_id, a.reference, a.account_id, e.amount, e.account_balance, e.credit, a.currency, t.transacted_at, t.transaction_id FROM entries e JOIN transactions t USING(transaction_id)  LEFT JOIN accounts a USING(account_id) WHERE t.reference=$1 ORDER BY e.account_id", &reference)
+
+	switch {
+
+	case err == sql.ErrNoRows:
+		return nil, ledger.ErrorAccountsNotFound
+	case err != nil:
+		return nil, ledger.ErrorSystemFailure.Override(err)
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		entry := TransactionEntry{}
+		if err := rows.Scan(&entry.ID, &entry.Account, &entry.AccountID, &entry.Amount,
+			&entry.Balance, &entry.Credit, &entry.Currency, &entry.TransactedAt, &entry.TransactionID); err != nil {
+			return nil, ledger.ErrorSystemFailure.Override(err)
+		}
+
+		entries = append(entries, &entry)
+	}
+
+	transaction.Entries = entries
 
 	return transaction, nil
 }
