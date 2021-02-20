@@ -328,10 +328,10 @@ func (t *TransactionDB) UpdateTransaction(txn *Transaction) (*Transaction, ledge
 }
 
 // Reverse creates a reversal  of the input transaction by creating a new transaction
-func (t *TransactionDB) Reverse(txn *Transaction) (*Transaction, ledger.ApplicationLedgerError) {
+func (t *TransactionDB) Reverse(reference string) (*Transaction, ledger.ApplicationLedgerError) {
 
 	// Check if a transaction with same Reference already exists
-	reversalTxn, err1 := t.getByRef(txn.Reference.String)
+	reversalTxn, err1 := t.getByRef(reference)
 	if err1 != nil {
 		return nil, err1
 	}

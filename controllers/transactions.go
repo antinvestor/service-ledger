@@ -101,7 +101,7 @@ func (ledgerSrv *LedgerServer) ReverseTransaction(ctx context.Context, txn *ledg
 	transactionsDB := models.NewTransactionDB(ledgerSrv.DB)
 
 	// Otherwise, do transaction
-	mTxn, err := transactionsDB.Reverse(transactionFromApi(txn))
+	mTxn, err := transactionsDB.Reverse(txn.Reference)
 	if err != nil {
 		return nil, err
 	}
