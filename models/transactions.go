@@ -364,8 +364,9 @@ func (t *TransactionDB) Reverse(reference string) (*Transaction, ledger.Applicat
 
 	for _, entry := range reversalTxn.Entries {
 		entry.Credit = !entry.Credit
+		entry.Amount.Int64 = Abs(entry.Amount.Int64)
 	}
 
-	reversalTxn.Reference.String = fmt.Sprintf("REVERSAL_%s", reversalTxn.Reference.String)
+	reversalTxn.Reference = sql.NullString{String:  fmt.Sprintf("REVERSAL_%s", reversalTxn.Reference.String), Valid: true}
 	return t.Transact(reversalTxn)
 }
