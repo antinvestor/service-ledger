@@ -292,8 +292,8 @@ func (t *TransactionDB) getByRef(reference string) (*Transaction, ledger.Applica
 
 	transaction := new(Transaction)
 	err := t.db.QueryRow(
-		"SELECT  t.transaction_id, t.reference, t.transacted_at, t.data FROM transactions t WHERE t.reference=$1", &reference).Scan(
-		&transaction.ID, &transaction.Reference, &transaction.TransactedAt, &transaction.Data)
+		"SELECT  t.transaction_id, t.reference, t.currency, t.transacted_at, t.data FROM transactions t WHERE t.reference=$1", &reference).Scan(
+		&transaction.ID, &transaction.Reference, &transaction.Currency, &transaction.TransactedAt, &transaction.Data)
 
 	switch {
 
