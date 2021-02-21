@@ -12,7 +12,6 @@ import (
 const NanoAmountDivisor = 1000000000
 const DefaultAmountDivisor = 10000
 
-
 func toMoneyInt(naive int64) (unit int64, nanos int32) {
 	naive = models.Abs(naive)
 	unit = naive / DefaultAmountDivisor
@@ -38,12 +37,12 @@ func accountFromApi(account *ledger.Account) *models.Account {
 	naive := fromMoney(account.Balance)
 
 	return &models.Account{
-		ID: sql.NullInt64{},
+		ID:        sql.NullInt64{},
 		Reference: sql.NullString{String: account.Reference, Valid: account.Reference != ""},
-		Ledger: sql.NullString{String: account.Ledger, Valid: account.Ledger != ""},
-		Currency: sql.NullString{String: account.Balance.CurrencyCode, Valid: account.Balance.CurrencyCode != ""},
-		Balance: sql.NullInt64{Int64: naive, Valid: true},
-		Data: ToMap(account.Data)}
+		Ledger:    sql.NullString{String: account.Ledger, Valid: account.Ledger != ""},
+		Currency:  sql.NullString{String: account.Balance.CurrencyCode, Valid: account.Balance.CurrencyCode != ""},
+		Balance:   sql.NullInt64{Int64: naive, Valid: true},
+		Data:      ToMap(account.Data)}
 }
 
 func (ledgerSrv *LedgerServer) SearchAccounts(
@@ -94,7 +93,7 @@ func (ledgerSrv *LedgerServer) UpdateAccount(context context.Context, aAcc *ledg
 	accountsDB := models.NewAccountDB(ledgerSrv.DB)
 
 	// Otherwise, add account
-	mAcc, aerr := accountsDB.UpdateAccount(accountFromApi(aAcc))
+	mAcc, aerr := accountsDB.UpdateAccount(aAcc.Reference, aAcc.Data)
 	if aerr != nil {
 		return nil, aerr
 	}

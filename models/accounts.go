@@ -1,8 +1,8 @@
 package models
 
 import (
-	"github.com/antinvestor/service-ledger/ledger"
 	"database/sql"
+	"github.com/antinvestor/service-ledger/ledger"
 	"golang.org/x/text/currency"
 	"strings"
 )
@@ -145,24 +145,24 @@ func (a *AccountDB) CreateAccount(account *Account) (*Account, ledger.Applicatio
 }
 
 // UpdateAccount updates the account with new data
-func (a *AccountDB) UpdateAccount(account *Account) (*Account, ledger.ApplicationLedgerError) {
+func (a *AccountDB) UpdateAccount(reference string, dataMap DataMap) (*Account, ledger.ApplicationLedgerError) {
 
-	existingAccount, err := a.GetByRef(account.Reference.String)
+	existingAccount, err := a.GetByRef(reference)
 	if err != nil {
 		return nil, err
 	}
 
-	for key, value := range account.Data {
+	for key, value := range dataMap {
 		if value != "" && value != existingAccount.Data[key] {
 			existingAccount.Data[key] = value
 		}
 	}
 
 	q := "UPDATE accounts SET data = $1 WHERE account_id = $2"
-	_, err1 := a.db.Exec(q, existingAccount.Data, account.ID)
+	_, err1 := a.db.Exec(q, existingAccount.Data, existingAccount.ID)
 	if err1 != nil {
 		return nil, ledger.ErrorSystemFailure.Override(err1)
 	}
 
-	return a.GetByRef(account.Reference.String)
+	return a.GetByRef(reference)
 }
