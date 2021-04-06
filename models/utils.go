@@ -42,11 +42,16 @@ func containsSameElements(l1 []*TransactionEntry, l2 []*TransactionEntry) bool {
 		l2Account := strings.ToUpper(entry2.Account.String)
 		entry := l1Map[l2Account]
 
-		if entry == nil ||
-			Abs(entry.Amount.Int64) != Abs(entry2.Amount.Int64) {
+		if entry == nil{
 			return false
 		}
 
+		// Fix to tolerate floating point errors from elsewhere
+		amount1 := Abs(entry.Amount.Int64)
+		amount2 := Abs(entry2.Amount.Int64)
+		if amount1 > amount2 && (amount1 - amount2) > 1 || amount2 > amount1 && (amount2 - amount1) > 1 {
+			return false
+		}
 	}
 	return true
 }
