@@ -49,7 +49,7 @@ func containsSameElements(l1 []*TransactionEntry, l2 []*TransactionEntry) bool {
 		// Fix to tolerate floating point errors from elsewhere
 		amount1 := Abs(entry.Amount.Int64)
 		amount2 := Abs(entry2.Amount.Int64)
-		if amount1 > amount2 && (amount1 - amount2) > 1 || amount2 > amount1 && (amount2 - amount1) > 1 {
+		if Abs(amount1 - amount2) > 1  {
 			return false
 		}
 	}
