@@ -204,6 +204,7 @@ func (t *TransactionDB) Transact(txn *Transaction) (*Transaction, ledger.Applica
 				return nil, err1
 			}
 			if isConflict {
+				log.Printf(" Transaction %s has conflicts", txn.Reference.String)
 				// The conflicting transactions are denied
 				return nil, ledger.ErrorTransactionIsConfilicting
 			}

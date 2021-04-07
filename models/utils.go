@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/rs/xid"
+	"log"
 	"strings"
 )
 
@@ -30,6 +31,7 @@ func containsSameElements(l1 []*TransactionEntry, l2 []*TransactionEntry) bool {
 	l1Map := make(map[string]*TransactionEntry)
 
 	if len(l1) != len(l2) {
+		log.Printf(" Transactions have different lengths of %d and %d", len(l1),  len(l2))
 		return false
 	}
 
@@ -43,6 +45,7 @@ func containsSameElements(l1 []*TransactionEntry, l2 []*TransactionEntry) bool {
 		entry := l1Map[l2Account]
 
 		if entry == nil{
+			log.Printf(" Transaction account entry matching %s is missing", l2Account)
 			return false
 		}
 
@@ -50,6 +53,7 @@ func containsSameElements(l1 []*TransactionEntry, l2 []*TransactionEntry) bool {
 		amount1 := Abs(entry.Amount.Int64)
 		amount2 := Abs(entry2.Amount.Int64)
 		if Abs(amount1 - amount2) > 1  {
+			log.Printf(" Transacting account %s has mismatching amounts of %d and %d", l2Account, amount1, amount2)
 			return false
 		}
 	}
