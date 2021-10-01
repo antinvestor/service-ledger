@@ -1,10 +1,10 @@
 package controllers
 
 import (
-	"github.com/antinvestor/service-ledger/ledger"
-	"github.com/antinvestor/service-ledger/models"
 	"context"
 	"database/sql"
+	"github.com/antinvestor/service-ledger/ledger"
+	"github.com/antinvestor/service-ledger/models"
 )
 
 type LedgerServer struct {
@@ -13,7 +13,7 @@ type LedgerServer struct {
 
 func ToMap(raw map[string]string) models.DataMap {
 
-	dataMap := make(models.DataMap, 0)
+	dataMap := make(models.DataMap)
 	for key, val := range raw {
 		dataMap[key] = val
 	}
@@ -21,7 +21,7 @@ func ToMap(raw map[string]string) models.DataMap {
 }
 
 func FromMap(model models.DataMap) map[string]string {
-	return make(map[string]string, 0)
+	return model
 }
 
 func fromLedgerType(raw ledger.LedgerType) string {
