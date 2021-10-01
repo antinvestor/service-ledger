@@ -20,12 +20,12 @@ jobs:
         run: |
           go version
           go get -u golang.org/x/lint/golint
-
-      - name: Test partition service
-        run: go test  ./...
-
-      - name: Run Vet & Lint
-        run: |
-          go vet .
-          golint -set_exit_status=1 .
+#
+#      - name: Test ledger service
+#        run: go test  ./...
+#
+#      - name: Run Vet & Lint
+#        run: |
+#          go vet .
+#          golint -set_exit_status=1 .
 
