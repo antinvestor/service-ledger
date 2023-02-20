@@ -1,8 +1,11 @@
-package models
+package repositories
 
 import (
-	"database/sql"
+	"context"
 	"encoding/json"
+	"github.com/antinvestor/service-ledger/models"
+	"github.com/pitabwire/frame"
+	"math/big"
 	"regexp"
 	"strconv"
 	"strings"
@@ -11,7 +14,7 @@ import (
 )
 
 var (
-	// SearchNamespaceAccounts holds search namespace of accounts
+	// SearchNamespaceLedgers holds search namespace of ledgers
 	SearchNamespaceLedgers = "ledgers"
 	// SearchNamespaceAccounts holds search namespace of accounts
 	SearchNamespaceAccounts = "accounts"
@@ -23,31 +26,31 @@ var (
 
 // SearchEngine is the interface for all search operations
 type SearchEngine struct {
-	db        *sql.DB
+	service   *frame.Service
 	namespace string
 }
 
 // NewSearchEngine returns a new instance of `SearchEngine`
-func NewSearchEngine(db *sql.DB, namespace string) (*SearchEngine, ledger.ApplicationLedgerError) {
+func NewSearchEngine(service *frame.Service, namespace string) (*SearchEngine, ledger.ApplicationLedgerError) {
 	if namespace != SearchNamespaceAccounts &&
 		namespace != SearchNamespaceTransactions &&
 		namespace != SearchNamespaceLedgers &&
-		namespace != SearchNamespaceTransactionEntries{
+		namespace != SearchNamespaceTransactionEntries {
 		return nil, ledger.ErrorSearchNamespaceUnknown
 	}
 
-	return &SearchEngine{db: db, namespace: namespace}, nil
+	return &SearchEngine{service: service, namespace: namespace}, nil
 }
 
 // Query returns the results of a searc query
-func (engine *SearchEngine) Query(q string) (interface{}, ledger.ApplicationLedgerError) {
+func (engine *SearchEngine) Query(ctx context.Context, q string) (interface{}, ledger.ApplicationLedgerError) {
 	rawQuery, aerr := NewSearchRawQuery(q)
 	if aerr != nil {
 		return nil, aerr
 	}
 
 	sqlQuery := rawQuery.ToSQLQuery(engine.namespace)
-	rows, err := engine.db.Query(sqlQuery.sql, sqlQuery.args...)
+	rows, err := engine.service.DB(ctx, true).Raw(sqlQuery.sql, sqlQuery.args...).Rows()
 	if err != nil {
 		return nil, ledger.ErrorSystemFailure.Override(err)
 	}
@@ -55,10 +58,10 @@ func (engine *SearchEngine) Query(q string) (interface{}, ledger.ApplicationLedg
 
 	switch engine.namespace {
 	case SearchNamespaceLedgers:
-		ledgers := make([]*Ledger, 0)
+		ledgers := make([]*models.Ledger, 0)
 		for rows.Next() {
-			lg := &Ledger{}
-			if err := rows.Scan(&lg.ID, &lg.Reference, &lg.Type, &lg.Parent, &lg.Data); err != nil {
+			lg := &models.Ledger{}
+			if err := rows.Scan(&lg.ID, &lg.Type, &lg.ParentID, &lg.Data); err != nil {
 				return nil, ledger.ErrorSystemFailure.Override(err)
 			}
 			ledgers = append(ledgers, lg)
@@ -66,10 +69,10 @@ func (engine *SearchEngine) Query(q string) (interface{}, ledger.ApplicationLedg
 		return ledgers, nil
 
 	case SearchNamespaceAccounts:
-		accounts := make([]*Account, 0)
+		accounts := make([]*models.Account, 0)
 		for rows.Next() {
-			acc := &Account{}
-			if err := rows.Scan(&acc.ID, &acc.Reference, &acc.Ledger, &acc.Currency, &acc.Balance, &acc.Data); err != nil {
+			acc := &models.Account{}
+			if err := rows.Scan(&acc.ID, &acc.LedgerID, &acc.Currency, &acc.Balance, &acc.Data); err != nil {
 				return nil, ledger.ErrorSystemFailure.Override(err)
 			}
 			accounts = append(accounts, acc)
@@ -77,11 +80,11 @@ func (engine *SearchEngine) Query(q string) (interface{}, ledger.ApplicationLedg
 		return accounts, nil
 
 	case SearchNamespaceTransactions:
-		transactions := make([]*Transaction, 0)
+		transactions := make([]*models.Transaction, 0)
 		for rows.Next() {
-			txn := &Transaction{}
+			txn := &models.Transaction{}
 			var rawAccounts, rawamount string
-			if err := rows.Scan(&txn.ID, &txn.Reference, &txn.Currency, &txn.TransactedAt, &txn.Data, &rawAccounts, &rawamount); err != nil {
+			if err := rows.Scan(&txn.ID, &txn.Currency, &txn.TransactedAt, &txn.Data, &rawAccounts, &rawamount); err != nil {
 				return nil, ledger.ErrorSystemFailure.Override(err)
 			}
 
@@ -89,11 +92,11 @@ func (engine *SearchEngine) Query(q string) (interface{}, ledger.ApplicationLedg
 			var amount []int64
 			json.Unmarshal([]byte(rawAccounts), &accounts)
 			json.Unmarshal([]byte(rawamount), &amount)
-			var entries []*TransactionEntry
+			var entries []*models.TransactionEntry
 			for i, acc := range accounts {
-				l := &TransactionEntry{
-					Account: sql.NullString{String: acc, Valid: true},
-					Amount: sql.NullInt64{Int64: amount[i], Valid: true},
+				l := &models.TransactionEntry{
+					AccountID: acc,
+					Amount:    big.NewInt(amount[i]),
 				}
 				entries = append(entries, l)
 			}
@@ -103,11 +106,11 @@ func (engine *SearchEngine) Query(q string) (interface{}, ledger.ApplicationLedg
 		return transactions, nil
 
 	case SearchNamespaceTransactionEntries:
-		transactionEntries := make([]*TransactionEntry, 0)
+		transactionEntries := make([]*models.TransactionEntry, 0)
 		for rows.Next() {
-			txnEntry := &TransactionEntry{}
+			txnEntry := &models.TransactionEntry{}
 			if err := rows.Scan(&txnEntry.ID, &txnEntry.AccountID,
-				&txnEntry.Account, &txnEntry.TransactionID, &txnEntry.Transaction,
+				&txnEntry.AccountID, &txnEntry.TransactionID,
 				&txnEntry.Amount, &txnEntry.Credit, &txnEntry.Balance,
 				&txnEntry.Currency, &txnEntry.TransactedAt); err != nil {
 				return nil, ledger.ErrorSystemFailure.Override(err)
@@ -202,15 +205,15 @@ func (rawQuery *SearchRawQuery) ToSQLQuery(namespace string) *SearchSQLQuery {
 
 	switch namespace {
 	case SearchNamespaceLedgers:
-		q = "SELECT ledger_id, reference, ledger_type, parent_ledger_id, data FROM ledgers"
+		q = "SELECT id, ledger_type, parent_ledger_id, data FROM ledgers"
 		break
 	case SearchNamespaceAccounts:
-		q = "SELECT account_id, reference, ledger_id, currency, balance, data FROM accounts LEFT JOIN  current_balances USING(account_id)"
+		q = "SELECT id, ledger_id, currency, balance, data FROM accounts LEFT JOIN  current_balances USING(account_id)"
 		break
 	case SearchNamespaceTransactions:
-		q = `SELECT transaction_id, reference, currency, transacted_at, data,
+		q = `SELECT id, currency, transacted_at, data,
 					array_to_json(ARRAY(
-						SELECT accounts.reference FROM entries LEFT JOIN accounts USING(account_id)
+						SELECT accounts.id FROM entries LEFT JOIN accounts USING(account_id)
 							WHERE transaction_id=transactions.transaction_id
 							ORDER BY entries.account_id
 					)) AS account_array,
@@ -222,9 +225,9 @@ func (rawQuery *SearchRawQuery) ToSQLQuery(namespace string) *SearchSQLQuery {
 			FROM transactions`
 		break
 	case SearchNamespaceTransactionEntries:
-		q= `SELECT 
-				entry_id, entries.account_id, accounts.reference, 
-				entries.transaction_id, transactions.reference, amount, 
+		q = `SELECT 
+				id, entries.account_id, 
+				entries.transaction_id, amount, 
 				credit, account_balance, transactions.currency, transactions.transacted_at  
 			FROM entries LEFT JOIN accounts USING(account_id) LEFT JOIN transactions USING(transaction_id)`
 		break

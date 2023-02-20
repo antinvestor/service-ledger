@@ -2,11 +2,11 @@ package controllers
 
 import (
 	"github.com/antinvestor/service-ledger/ledger"
-	"github.com/antinvestor/service-ledger/models"
+	"github.com/antinvestor/service-ledger/repositories"
 	"google.golang.org/genproto/googleapis/type/money"
 )
 
-func transactionEntryToApi(mEntry *models.TransactionEntry ) *ledger.TransactionEntry {
+func transactionEntryToApi(mEntry *repositories.TransactionEntry) *ledger.TransactionEntry {
 
 		units, nanos := toMoneyInt(mEntry.Amount.Int64)
 		entryAmount := money.Money{Units: units,
@@ -31,7 +31,7 @@ func transactionEntryToApi(mEntry *models.TransactionEntry ) *ledger.Transaction
 // Searches for transactions based on details of the query json
 func (ledgerSrv *LedgerServer) SearchTransactionEntries(request *ledger.SearchRequest, server ledger.LedgerService_SearchTransactionEntriesServer) error {
 
-	engine, aerr := models.NewSearchEngine(ledgerSrv.DB, models.SearchNamespaceTransactionEntries)
+	engine, aerr := repositories.NewSearchEngine(ledgerSrv.DB, repositories.SearchNamespaceTransactionEntries)
 	if aerr != nil {
 		return aerr
 	}
@@ -41,7 +41,7 @@ func (ledgerSrv *LedgerServer) SearchTransactionEntries(request *ledger.SearchRe
 		return aerr
 	}
 
-	castTransactionEntries, ok := results.([]*models.TransactionEntry)
+	castTransactionEntries, ok := results.([]*repositories.TransactionEntry)
 	if !ok {
 		return ledger.ErrorSearchQueryResultsNotCasting
 	}

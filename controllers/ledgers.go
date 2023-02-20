@@ -4,23 +4,26 @@ import (
 	"context"
 	"database/sql"
 	"github.com/antinvestor/service-ledger/ledger"
-	"github.com/antinvestor/service-ledger/models"
+	"github.com/antinvestor/service-ledger/repositories"
+	"github.com/pitabwire/frame"
 )
 
 type LedgerServer struct {
+	Service *frame.Service
+
 	DB *sql.DB
 }
 
-func ToMap(raw map[string]string) models.DataMap {
+func ToMap(raw map[string]string) repositories.DataMap {
 
-	dataMap := make(models.DataMap)
+	dataMap := make(repositories.DataMap)
 	for key, val := range raw {
 		dataMap[key] = val
 	}
 	return dataMap
 }
 
-func FromMap(model models.DataMap) map[string]string {
+func FromMap(model repositories.DataMap) map[string]string {
 	return model
 }
 
@@ -33,25 +36,25 @@ func toLedgerType(model string) ledger.LedgerType {
 	return ledger.LedgerType(ledgerType)
 }
 
-func ledgerToApi(mLg *models.Ledger) *ledger.Ledger {
+func ledgerToApi(mLg *repositories.Ledger) *ledger.Ledger {
 	return &ledger.Ledger{Reference: mLg.Reference.String, Type: toLedgerType(mLg.Type.String),
 		Parent: mLg.Parent.String, Data: FromMap(mLg.Data)}
 }
 
-func ledgerFromApi(aLg *ledger.Ledger) *models.Ledger {
-	return &models.Ledger{
+func ledgerFromApi(aLg *ledger.Ledger) *repositories.Ledger {
+	return &repositories.Ledger{
 		Reference: sql.NullString{String: aLg.Reference, Valid: aLg.Reference != ""},
-		Type: sql.NullString{String:fromLedgerType(aLg.Type), Valid: true},
-		Parent: sql.NullString{String:aLg.Parent, Valid: aLg.Parent != ""},
-		ParentID: sql.NullInt64{Valid: false},
-		Data: ToMap(aLg.Data)}
+		Type:      sql.NullString{String: fromLedgerType(aLg.Type), Valid: true},
+		Parent:    sql.NullString{String: aLg.Parent, Valid: aLg.Parent != ""},
+		ParentID:  sql.NullInt64{Valid: false},
+		Data:      ToMap(aLg.Data)}
 
 }
 
 // Searches for an ledger based on search request json query
 func (ledgerSrv *LedgerServer) SearchLedgers(request *ledger.SearchRequest, server ledger.LedgerService_SearchLedgersServer) error {
 
-	engine, aerr := models.NewSearchEngine(ledgerSrv.DB, models.SearchNamespaceLedgers)
+	engine, aerr := repositories.NewSearchEngine(ledgerSrv.DB, repositories.SearchNamespaceLedgers)
 	if aerr != nil {
 		return aerr
 	}
@@ -61,7 +64,7 @@ func (ledgerSrv *LedgerServer) SearchLedgers(request *ledger.SearchRequest, serv
 		return aerr
 	}
 
-	castLedgers, ok := results.([]*models.Ledger)
+	castLedgers, ok := results.([]*repositories.Ledger)
 	if !ok {
 		return ledger.ErrorSearchQueryResultsNotCasting
 	}
@@ -76,7 +79,7 @@ func (ledgerSrv *LedgerServer) SearchLedgers(request *ledger.SearchRequest, serv
 // Creates a new account based on supplied data
 func (ledgerSrv *LedgerServer) CreateLedger(context context.Context, lg *ledger.Ledger) (*ledger.Ledger, error) {
 
-	accountsDB := models.NewLedgerDB(ledgerSrv.DB)
+	accountsDB := repositories.NewLedgerRepository(ledgerSrv.DB)
 
 	// Otherwise, add lg
 	mAcc, aerr := accountsDB.CreateLedger(ledgerFromApi(lg))
@@ -91,7 +94,7 @@ func (ledgerSrv *LedgerServer) CreateLedger(context context.Context, lg *ledger.
 // Updates the data component of the account.
 func (ledgerSrv *LedgerServer) UpdateLedger(context context.Context, aLg *ledger.Ledger) (*ledger.Ledger, error) {
 
-	ledgerDB := models.NewLedgerDB(ledgerSrv.DB)
+	ledgerDB := repositories.NewLedgerRepository(ledgerSrv.DB)
 
 	// Otherwise, add account
 	mLg, aerr := ledgerDB.UpdateLedger(ledgerFromApi(aLg))

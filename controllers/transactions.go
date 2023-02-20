@@ -4,11 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"github.com/antinvestor/service-ledger/ledger"
-	"github.com/antinvestor/service-ledger/models"
+	"github.com/antinvestor/service-ledger/repositories"
 	"strings"
 )
 
-func transactionToApi(mTxn *models.Transaction) *ledger.Transaction {
+func transactionToApi(mTxn *repositories.Transaction) *ledger.Transaction {
 
 	apiEntries := make([]*ledger.TransactionEntry, len(mTxn.Entries))
 	for index, mEntry := range mTxn.Entries {
@@ -20,21 +20,21 @@ func transactionToApi(mTxn *models.Transaction) *ledger.Transaction {
 	}
 	return &ledger.Transaction{Reference: mTxn.Reference.String,
 		TransactedAt: mTxn.TransactedAt.String,
-		Data: FromMap(mTxn.Data), Entries: apiEntries}
+		Data:         FromMap(mTxn.Data), Entries: apiEntries}
 }
 
-func transactionFromApi(aTxn *ledger.Transaction) *models.Transaction {
-	modelEntries := make([]*models.TransactionEntry, len(aTxn.Entries))
+func transactionFromApi(aTxn *ledger.Transaction) *repositories.Transaction {
+	modelEntries := make([]*repositories.TransactionEntry, len(aTxn.Entries))
 	for index, mEntry := range aTxn.Entries {
 		amount := fromMoney(mEntry.Amount)
-		modelEntries[index] = &models.TransactionEntry{
+		modelEntries[index] = &repositories.TransactionEntry{
 			Credit:  mEntry.Credit,
 			Account: sql.NullString{String: strings.ToUpper(mEntry.GetAccount()), Valid: true},
 			Amount:  sql.NullInt64{Int64: amount, Valid: true}}
 	}
-	return &models.Transaction{
+	return &repositories.Transaction{
 		Reference:    sql.NullString{String: strings.ToUpper(aTxn.Reference), Valid: aTxn.Reference != ""},
- 		Currency:     sql.NullString{String: aTxn.Currency, Valid: aTxn.Currency != ""},
+		Currency:     sql.NullString{String: aTxn.Currency, Valid: aTxn.Currency != ""},
 		TransactedAt: sql.NullString{String: aTxn.TransactedAt, Valid: aTxn.TransactedAt != ""},
 		Data:         ToMap(aTxn.Data),
 		Entries:      modelEntries}
@@ -43,7 +43,7 @@ func transactionFromApi(aTxn *ledger.Transaction) *models.Transaction {
 // Creates a new transaction
 func (ledgerSrv *LedgerServer) CreateTransaction(ctx context.Context, txn *ledger.Transaction) (*ledger.Transaction, error) {
 
-	transactionsDB := models.NewTransactionDB(ledgerSrv.DB)
+	transactionsDB := repositories.NewTransactionRepository(ledgerSrv.DB)
 
 	apiTransaction := transactionFromApi(txn)
 
@@ -59,7 +59,7 @@ func (ledgerSrv *LedgerServer) CreateTransaction(ctx context.Context, txn *ledge
 // Searches for transactions based on details of the query json
 func (ledgerSrv *LedgerServer) SearchTransactions(request *ledger.SearchRequest, server ledger.LedgerService_SearchTransactionsServer) error {
 
-	engine, aerr := models.NewSearchEngine(ledgerSrv.DB, models.SearchNamespaceTransactions)
+	engine, aerr := repositories.NewSearchEngine(ledgerSrv.DB, repositories.SearchNamespaceTransactions)
 	if aerr != nil {
 		return aerr
 	}
@@ -69,7 +69,7 @@ func (ledgerSrv *LedgerServer) SearchTransactions(request *ledger.SearchRequest,
 		return aerr
 	}
 
-	castTransactions, ok := results.([]*models.Transaction)
+	castTransactions, ok := results.([]*repositories.Transaction)
 	if !ok {
 		return ledger.ErrorSearchQueryResultsNotCasting
 	}
@@ -85,7 +85,7 @@ func (ledgerSrv *LedgerServer) SearchTransactions(request *ledger.SearchRequest,
 // Updates a transaction's details
 func (ledgerSrv *LedgerServer) UpdateTransaction(ctx context.Context, txn *ledger.Transaction) (*ledger.Transaction, error) {
 
-	transactionDB := models.NewTransactionDB(ledgerSrv.DB)
+	transactionDB := repositories.NewTransactionRepository(ledgerSrv.DB)
 
 	// Otherwise, update transaction
 	mTxn, terr := transactionDB.UpdateTransaction(transactionFromApi(txn))
@@ -98,7 +98,7 @@ func (ledgerSrv *LedgerServer) UpdateTransaction(ctx context.Context, txn *ledge
 // Reverses a transaction by creating a new one with inverted entries
 func (ledgerSrv *LedgerServer) ReverseTransaction(ctx context.Context, txn *ledger.Transaction) (*ledger.Transaction, error) {
 
-	transactionsDB := models.NewTransactionDB(ledgerSrv.DB)
+	transactionsDB := repositories.NewTransactionRepository(ledgerSrv.DB)
 
 	// Otherwise, do transaction
 	mTxn, err := transactionsDB.Reverse(txn.Reference)

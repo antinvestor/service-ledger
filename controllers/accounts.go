@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"github.com/antinvestor/service-ledger/ledger"
 	"github.com/antinvestor/service-ledger/models"
+	"github.com/antinvestor/service-ledger/repositories"
 	"google.golang.org/genproto/googleapis/type/money"
 	"strings"
 )
@@ -13,7 +14,7 @@ const NanoAmountDivisor = 1000000000
 const DefaultAmountDivisor = 10000
 
 func toMoneyInt(naive int64) (unit int64, nanos int32) {
-	naive = models.Abs(naive)
+	naive = repositories.Abs(naive)
 	unit = naive / DefaultAmountDivisor
 	nanos = int32(naive-unit) * NanoAmountDivisor / DefaultAmountDivisor
 	return
@@ -32,7 +33,7 @@ func accountToApi(mAcc *models.Account) *ledger.Account {
 		Ledger: mAcc.Ledger.String, Balance: &balance, Data: FromMap(mAcc.Data)}
 }
 
-func accountFromApi(account *ledger.Account) *models.Account {
+func accountFromApi(account *ledger.Account) *repositories.Account {
 
 	naive := fromMoney(account.Balance)
 
@@ -48,7 +49,7 @@ func accountFromApi(account *ledger.Account) *models.Account {
 func (ledgerSrv *LedgerServer) SearchAccounts(
 	request *ledger.SearchRequest, server ledger.LedgerService_SearchAccountsServer) error {
 
-	engine, aerr := models.NewSearchEngine(ledgerSrv.DB, models.SearchNamespaceAccounts)
+	engine, aerr := repositories.NewSearchEngine(ledgerSrv.DB, repositories.SearchNamespaceAccounts)
 	if aerr != nil {
 		return aerr
 	}
@@ -75,7 +76,7 @@ func (ledgerSrv *LedgerServer) SearchAccounts(
 // Creates a new account based on supplied data
 func (ledgerSrv *LedgerServer) CreateAccount(context context.Context, aAcc *ledger.Account) (*ledger.Account, error) {
 
-	accountsDB := models.NewAccountDB(ledgerSrv.DB)
+	accountsDB := repositories.NewAccountRepository(ledgerSrv.DB)
 
 	// Otherwise, add account
 	mAcc, aerr := accountsDB.CreateAccount(accountFromApi(aAcc))
@@ -90,7 +91,7 @@ func (ledgerSrv *LedgerServer) CreateAccount(context context.Context, aAcc *ledg
 // Updates the data component of the account.
 func (ledgerSrv *LedgerServer) UpdateAccount(context context.Context, aAcc *ledger.Account) (*ledger.Account, error) {
 
-	accountsDB := models.NewAccountDB(ledgerSrv.DB)
+	accountsDB := repositories.NewAccountRepository(ledgerSrv.DB)
 
 	// Otherwise, add account
 	mAcc, aerr := accountsDB.UpdateAccount(aAcc.Reference, aAcc.Data)
