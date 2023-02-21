@@ -1,0 +1,31 @@
+version: '3'
+
+services:
+  ledger_db:
+    image: postgres:15.1
+    environment:
+      - POSTGRES_USER=ant
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_DB=service_ledger
+    ports:
+      - "5437:5432"
+
+  ledger_migration:
+    build: ./
+    depends_on:
+      - ledger_db
+    environment:
+      - LOG_LEVEL=debug
+      - DO_MIGRATION=true
+      - DATABASE_URL=postgres://ant:secret@ledger_db:5432/service_ledger?sslmode=disable
+    restart: on-failure
+
+  ledger_service:
+    build: ./
+    depends_on:
+      - ledger_db
+    environment:
+      - LOG_LEVEL=debug
+      - DATABASE_URL=postgres://ant:secret@ledger_db:5432/service_ledger?sslmode=disable
+      - OAUTH2_SERVICE_ADMIN_URI=http://service-hydra.core.svc.cluster.local:4445
+    restart: unless-stopped

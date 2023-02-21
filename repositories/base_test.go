@@ -19,8 +19,8 @@ func (bs *BaseTestSuite) Setup() {
 	configLedger := config.LedgerConfig{
 		ConfigurationDefault: frame.ConfigurationDefault{
 			ServerPort:         "",
-			DatabasePrimaryURL: "postgres://ant:secret@localhost:5434/service_profile?sslmode=disable",
-			DatabaseReplicaURL: "postgres://ant:secret@localhost:5434/service_profile?sslmode=disable",
+			DatabasePrimaryURL: "postgres://ant:secret@localhost:5437/service_ledger?sslmode=disable",
+			DatabaseReplicaURL: "postgres://ant:secret@localhost:5437/service_ledger?sslmode=disable",
 		},
 		PartitionServiceURI: "",
 	}

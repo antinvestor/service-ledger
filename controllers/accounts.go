@@ -2,61 +2,64 @@ package controllers
 
 import (
 	"context"
-	"database/sql"
 	"github.com/antinvestor/service-ledger/ledger"
 	"github.com/antinvestor/service-ledger/models"
 	"github.com/antinvestor/service-ledger/repositories"
+	"github.com/pitabwire/frame"
 	"google.golang.org/genproto/googleapis/type/money"
-	"strings"
+	"math/big"
 )
 
 const NanoAmountDivisor = 1000000000
 const DefaultAmountDivisor = 10000
 
-func toMoneyInt(naive int64) (unit int64, nanos int32) {
-	naive = repositories.Abs(naive)
-	unit = naive / DefaultAmountDivisor
-	nanos = int32(naive-unit) * NanoAmountDivisor / DefaultAmountDivisor
-	return
+func toMoneyInt(currency string, naive *big.Int) money.Money {
+	naive = big.NewInt(0).Abs(naive)
+	unitBig := big.NewInt(0).Div(naive, big.NewInt(DefaultAmountDivisor))
+	nanosBig := big.NewInt(0).Sub(naive, unitBig)
+	nanosBig = big.NewInt(0).Mul(nanosBig, big.NewInt(NanoAmountDivisor))
+	nanosBig = big.NewInt(0).Div(nanosBig, big.NewInt(DefaultAmountDivisor))
+
+	return money.Money{CurrencyCode: currency, Units: unitBig.Int64(), Nanos: int32(nanosBig.Int64())}
 }
 
-func fromMoney(m *money.Money) (naive int64) {
-	return m.Units*DefaultAmountDivisor + int64(m.Nanos)*DefaultAmountDivisor/NanoAmountDivisor
+func fromMoney(m *money.Money) (naive *big.Int) {
+
+	unitsBig := big.NewInt(0).Mul(big.NewInt(m.Units), big.NewInt(DefaultAmountDivisor))
+	nanosBig := big.NewInt(0).Mul(big.NewInt(int64(m.Nanos)), big.NewInt(DefaultAmountDivisor/NanoAmountDivisor))
+
+	return big.NewInt(0).Add(unitsBig, nanosBig)
 }
 
 func accountToApi(mAcc *models.Account) *ledger.Account {
 
-	units, nanos := toMoneyInt(mAcc.Balance.Int64)
-	balance := money.Money{CurrencyCode: mAcc.Currency.String, Units: units, Nanos: nanos}
+	balance := toMoneyInt(mAcc.Currency, mAcc.Balance)
 
-	return &ledger.Account{Reference: strings.ToUpper(mAcc.Reference.String),
-		Ledger: mAcc.Ledger.String, Balance: &balance, Data: FromMap(mAcc.Data)}
+	return &ledger.Account{Reference: mAcc.ID,
+		Ledger: mAcc.LedgerID, Balance: &balance, Data: frame.DBPropertiesToMap(mAcc.Data)}
 }
 
-func accountFromApi(account *ledger.Account) *repositories.Account {
-
-	naive := fromMoney(account.Balance)
+func accountFromApi(account *ledger.Account) *models.Account {
 
 	return &models.Account{
-		ID:        sql.NullInt64{},
-		Reference: sql.NullString{String: account.Reference, Valid: account.Reference != ""},
-		Ledger:    sql.NullString{String: account.Ledger, Valid: account.Ledger != ""},
-		Currency:  sql.NullString{String: account.Balance.CurrencyCode, Valid: account.Balance.CurrencyCode != ""},
-		Balance:   sql.NullInt64{Int64: naive, Valid: true},
-		Data:      ToMap(account.Data)}
+		BaseModel: frame.BaseModel{ID: account.GetReference()},
+		LedgerID:  account.GetLedger(),
+		Currency:  account.GetBalance().CurrencyCode,
+		Balance:   fromMoney(account.GetBalance()),
+		Data:      frame.DBPropertiesFromMap(account.Data)}
 }
 
 func (ledgerSrv *LedgerServer) SearchAccounts(
 	request *ledger.SearchRequest, server ledger.LedgerService_SearchAccountsServer) error {
 
-	engine, aerr := repositories.NewSearchEngine(ledgerSrv.DB, repositories.SearchNamespaceAccounts)
+	ctx := server.Context()
+
+	engine, aerr := repositories.NewSearchEngine(ledgerSrv.Service, repositories.SearchNamespaceAccounts)
 	if aerr != nil {
 		return aerr
 	}
 
-	request.GetQuery()
-
-	results, aerr := engine.Query(request.GetQuery())
+	results, aerr := engine.Query(ctx, request.GetQuery())
 	if aerr != nil {
 		return aerr
 	}
@@ -73,13 +76,13 @@ func (ledgerSrv *LedgerServer) SearchAccounts(
 	return nil
 }
 
-// Creates a new account based on supplied data
-func (ledgerSrv *LedgerServer) CreateAccount(context context.Context, aAcc *ledger.Account) (*ledger.Account, error) {
+// CreateAccount a new account based on supplied data
+func (ledgerSrv *LedgerServer) CreateAccount(ctx context.Context, aAcc *ledger.Account) (*ledger.Account, error) {
 
-	accountsDB := repositories.NewAccountRepository(ledgerSrv.DB)
+	accountsRepo := repositories.NewAccountRepository(ledgerSrv.Service)
 
 	// Otherwise, add account
-	mAcc, aerr := accountsDB.CreateAccount(accountFromApi(aAcc))
+	mAcc, aerr := accountsRepo.Create(ctx, accountFromApi(aAcc))
 	if aerr != nil {
 		return nil, aerr
 	}
@@ -88,13 +91,13 @@ func (ledgerSrv *LedgerServer) CreateAccount(context context.Context, aAcc *ledg
 
 }
 
-// Updates the data component of the account.
-func (ledgerSrv *LedgerServer) UpdateAccount(context context.Context, aAcc *ledger.Account) (*ledger.Account, error) {
+// UpdateAccount the data component of the account.
+func (ledgerSrv *LedgerServer) UpdateAccount(ctx context.Context, aAcc *ledger.Account) (*ledger.Account, error) {
 
-	accountsDB := repositories.NewAccountRepository(ledgerSrv.DB)
+	accountsRepo := repositories.NewAccountRepository(ledgerSrv.Service)
 
 	// Otherwise, add account
-	mAcc, aerr := accountsDB.UpdateAccount(aAcc.Reference, aAcc.Data)
+	mAcc, aerr := accountsRepo.Update(ctx, aAcc.Reference, aAcc.Data)
 	if aerr != nil {
 		return nil, aerr
 	}

@@ -2,29 +2,14 @@ package controllers
 
 import (
 	"context"
-	"database/sql"
 	"github.com/antinvestor/service-ledger/ledger"
+	"github.com/antinvestor/service-ledger/models"
 	"github.com/antinvestor/service-ledger/repositories"
 	"github.com/pitabwire/frame"
 )
 
 type LedgerServer struct {
 	Service *frame.Service
-
-	DB *sql.DB
-}
-
-func ToMap(raw map[string]string) repositories.DataMap {
-
-	dataMap := make(repositories.DataMap)
-	for key, val := range raw {
-		dataMap[key] = val
-	}
-	return dataMap
-}
-
-func FromMap(model repositories.DataMap) map[string]string {
-	return model
 }
 
 func fromLedgerType(raw ledger.LedgerType) string {
@@ -36,35 +21,35 @@ func toLedgerType(model string) ledger.LedgerType {
 	return ledger.LedgerType(ledgerType)
 }
 
-func ledgerToApi(mLg *repositories.Ledger) *ledger.Ledger {
-	return &ledger.Ledger{Reference: mLg.Reference.String, Type: toLedgerType(mLg.Type.String),
-		Parent: mLg.Parent.String, Data: FromMap(mLg.Data)}
+func ledgerToApi(mLg *models.Ledger) *ledger.Ledger {
+	return &ledger.Ledger{Reference: mLg.ID, Type: toLedgerType(mLg.Type),
+		Parent: mLg.ParentID, Data: frame.DBPropertiesToMap(mLg.Data)}
 }
 
-func ledgerFromApi(aLg *ledger.Ledger) *repositories.Ledger {
-	return &repositories.Ledger{
-		Reference: sql.NullString{String: aLg.Reference, Valid: aLg.Reference != ""},
-		Type:      sql.NullString{String: fromLedgerType(aLg.Type), Valid: true},
-		Parent:    sql.NullString{String: aLg.Parent, Valid: aLg.Parent != ""},
-		ParentID:  sql.NullInt64{Valid: false},
-		Data:      ToMap(aLg.Data)}
+func ledgerFromApi(aLg *ledger.Ledger) *models.Ledger {
+	return &models.Ledger{
+		BaseModel: frame.BaseModel{ID: aLg.GetReference()},
+		Type:      fromLedgerType(aLg.GetType()),
+		ParentID:  aLg.GetParent(),
+		Data:      frame.DBPropertiesFromMap(aLg.GetData())}
 
 }
 
-// Searches for an ledger based on search request json query
+// SearchLedgers for an ledger based on search request json query
 func (ledgerSrv *LedgerServer) SearchLedgers(request *ledger.SearchRequest, server ledger.LedgerService_SearchLedgersServer) error {
 
-	engine, aerr := repositories.NewSearchEngine(ledgerSrv.DB, repositories.SearchNamespaceLedgers)
+	ctx := server.Context()
+	engine, aerr := repositories.NewSearchEngine(ledgerSrv.Service, repositories.SearchNamespaceLedgers)
 	if aerr != nil {
 		return aerr
 	}
 
-	results, aerr := engine.Query(request.GetQuery())
+	results, aerr := engine.Query(ctx, request.GetQuery())
 	if aerr != nil {
 		return aerr
 	}
 
-	castLedgers, ok := results.([]*repositories.Ledger)
+	castLedgers, ok := results.([]*models.Ledger)
 	if !ok {
 		return ledger.ErrorSearchQueryResultsNotCasting
 	}
@@ -76,13 +61,13 @@ func (ledgerSrv *LedgerServer) SearchLedgers(request *ledger.SearchRequest, serv
 	return nil
 }
 
-// Creates a new account based on supplied data
-func (ledgerSrv *LedgerServer) CreateLedger(context context.Context, lg *ledger.Ledger) (*ledger.Ledger, error) {
+// CreateLedger a new account based on supplied data
+func (ledgerSrv *LedgerServer) CreateLedger(ctx context.Context, lg *ledger.Ledger) (*ledger.Ledger, error) {
 
-	accountsDB := repositories.NewLedgerRepository(ledgerSrv.DB)
+	accountsDB := repositories.NewLedgerRepository(ledgerSrv.Service)
 
 	// Otherwise, add lg
-	mAcc, aerr := accountsDB.CreateLedger(ledgerFromApi(lg))
+	mAcc, aerr := accountsDB.Create(ctx, ledgerFromApi(lg))
 	if aerr != nil {
 		return nil, aerr
 	}
@@ -91,13 +76,13 @@ func (ledgerSrv *LedgerServer) CreateLedger(context context.Context, lg *ledger.
 
 }
 
-// Updates the data component of the account.
+// UpdateLedger the data component of the account.
 func (ledgerSrv *LedgerServer) UpdateLedger(context context.Context, aLg *ledger.Ledger) (*ledger.Ledger, error) {
 
-	ledgerDB := repositories.NewLedgerRepository(ledgerSrv.DB)
+	ledgerDB := repositories.NewLedgerRepository(ledgerSrv.Service)
 
 	// Otherwise, add account
-	mLg, aerr := ledgerDB.UpdateLedger(ledgerFromApi(aLg))
+	mLg, aerr := ledgerDB.Update(context, ledgerFromApi(aLg))
 	if aerr != nil {
 		return nil, aerr
 	}

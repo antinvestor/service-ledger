@@ -24,6 +24,7 @@ type TransactionRepository interface {
 	IsConflict(ctx context.Context, transaction2 *models.Transaction) (bool, ledger.ApplicationLedgerError)
 	Transact(ctx context.Context, transaction *models.Transaction) (*models.Transaction, ledger.ApplicationLedgerError)
 	Update(ctx context.Context, transaction *models.Transaction) (*models.Transaction, ledger.ApplicationLedgerError)
+	Reverse(ctx context.Context, id string) (*models.Transaction, ledger.ApplicationLedgerError)
 }
 
 // transactionRepository is the interface to all transaction operations

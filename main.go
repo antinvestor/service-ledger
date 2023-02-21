@@ -76,7 +76,7 @@ func main() {
 
 	serverPort := ledgerConfig.ServerPort
 
-	log.Info(" Initiating server operations on : %s", serverPort)
+	log.Infof(" Initiating server operations on : %s", serverPort)
 	err = service.Run(ctx, fmt.Sprintf(":%v", serverPort))
 	if err != nil {
 		log.Printf("main -- Could not run Server : %v", err)

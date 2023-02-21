@@ -14,7 +14,7 @@ type AccountRepository interface {
 	GetByID(ctx context.Context, id string) (*models.Account, ledger.ApplicationLedgerError)
 	ListByID(ctx context.Context, ids ...string) (map[string]*models.Account, ledger.ApplicationLedgerError)
 	Create(ctx context.Context, ledger *models.Account) (*models.Account, ledger.ApplicationLedgerError)
-	Update(ctx context.Context, ledger *models.Account) (*models.Account, ledger.ApplicationLedgerError)
+	Update(ctx context.Context, id string, data map[string]string) (*models.Account, ledger.ApplicationLedgerError)
 }
 
 // accountRepository provides all functions related to ledger account
@@ -105,14 +105,14 @@ func (a *accountRepository) ListByID(ctx context.Context, ids ...string) (map[st
 }
 
 // Update persists an existing account in the ledger if it is existent
-func (a *accountRepository) Update(ctx context.Context, account *models.Account) (*models.Account, ledger.ApplicationLedgerError) {
+func (a *accountRepository) Update(ctx context.Context, id string, data map[string]string) (*models.Account, ledger.ApplicationLedgerError) {
 
-	existingAccount, errAcc := a.GetByID(ctx, account.ID)
+	existingAccount, errAcc := a.GetByID(ctx, id)
 	if errAcc != nil {
 		return nil, errAcc
 	}
 
-	for key, value := range account.Data {
+	for key, value := range data {
 		if value != "" && value != existingAccount.Data[key] {
 			existingAccount.Data[key] = value
 		}
