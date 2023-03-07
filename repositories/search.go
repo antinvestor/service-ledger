@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"github.com/antinvestor/service-ledger/models"
 	"github.com/pitabwire/frame"
-	"math/big"
 	"regexp"
 	"strconv"
 	"strings"
@@ -44,7 +43,7 @@ func NewSearchEngine(service *frame.Service, namespace string) (*SearchEngine, l
 
 // Query returns the results of a searc query
 func (engine *SearchEngine) Query(ctx context.Context, q string) (interface{}, ledger.ApplicationLedgerError) {
-	rawQuery, aerr := NewSearchRawQuery(q)
+	rawQuery, aerr := NewSearchRawQuery(ctx, q)
 	if aerr != nil {
 		return nil, aerr
 	}
@@ -89,14 +88,14 @@ func (engine *SearchEngine) Query(ctx context.Context, q string) (interface{}, l
 			}
 
 			var accounts []string
-			var amount []int64
+			var amount []*models.Int
 			json.Unmarshal([]byte(rawAccounts), &accounts)
 			json.Unmarshal([]byte(rawamount), &amount)
 			var entries []*models.TransactionEntry
 			for i, acc := range accounts {
 				l := &models.TransactionEntry{
 					AccountID: acc,
-					Amount:    big.NewInt(amount[i]),
+					Amount:    amount[i],
 				}
 				entries = append(entries, l)
 			}
@@ -175,7 +174,7 @@ func hasValidKeys(items interface{}) bool {
 }
 
 // NewSearchRawQuery returns a new instance of `SearchRawQuery`
-func NewSearchRawQuery(q string) (*SearchRawQuery, ledger.ApplicationLedgerError) {
+func NewSearchRawQuery(ctx context.Context, q string) (*SearchRawQuery, ledger.ApplicationLedgerError) {
 	var rawQuery *SearchRawQuery
 	err := json.Unmarshal([]byte(q), &rawQuery)
 	if err != nil {
@@ -205,31 +204,31 @@ func (rawQuery *SearchRawQuery) ToSQLQuery(namespace string) *SearchSQLQuery {
 
 	switch namespace {
 	case SearchNamespaceLedgers:
-		q = "SELECT id, ledger_type, parent_ledger_id, data FROM ledgers"
+		q = "SELECT id, type, parent_id, data FROM ledgers"
 		break
 	case SearchNamespaceAccounts:
-		q = "SELECT id, ledger_id, currency, balance, data FROM accounts LEFT JOIN  current_balances USING(account_id)"
+		q = "SELECT a.id, a.ledger_id, a.currency, cb.balance, a.data FROM accounts a LEFT JOIN  current_balances cb ON a.id=cb.account_id"
 		break
 	case SearchNamespaceTransactions:
-		q = `SELECT id, currency, transacted_at, data,
+		q = `SELECT t.id, t.currency, t.transacted_at, t.data,
 					array_to_json(ARRAY(
-						SELECT accounts.id FROM entries LEFT JOIN accounts USING(account_id)
-							WHERE transaction_id=transactions.transaction_id
-							ORDER BY entries.account_id
+						SELECT a.id FROM transaction_entries e LEFT JOIN accounts a ON a.id = e.account_id
+							WHERE e.transaction_id=t.id
+							ORDER BY e.account_id
 					)) AS account_array,
 					array_to_json(ARRAY(
-						SELECT entries.amount FROM entries
-							WHERE transaction_id=transactions.transaction_id
-							ORDER BY entries.account_id
+						SELECT e.amount FROM transaction_entries e
+							WHERE e.transaction_id=t.id
+							ORDER BY e.account_id
 					)) AS amount_array
-			FROM transactions`
+			FROM transactions t`
 		break
 	case SearchNamespaceTransactionEntries:
 		q = `SELECT 
-				id, entries.account_id, 
-				entries.transaction_id, amount, 
-				credit, account_balance, transactions.currency, transactions.transacted_at  
-			FROM entries LEFT JOIN accounts USING(account_id) LEFT JOIN transactions USING(transaction_id)`
+				e.id, e.account_id, 
+				e.transaction_id, e.amount, 
+				e.credit, e.account_balance, t.currency, t.transacted_at  
+			FROM transaction_entries e LEFT JOIN accounts a ON a.id=e.account_id LEFT JOIN transactions t ON e.transaction_id=t.id`
 		break
 	default:
 		return nil
@@ -295,6 +294,5 @@ func (rawQuery *SearchRawQuery) ToSQLQuery(namespace string) *SearchSQLQuery {
 		q = q + " LIMIT " + strconv.Itoa(limit)
 	}
 
-	q = enumerateSQLPlacholder(q)
 	return &SearchSQLQuery{sql: q, args: args}
 }

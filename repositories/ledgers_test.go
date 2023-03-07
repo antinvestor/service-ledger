@@ -16,8 +16,8 @@ type LedgersSuite struct {
 	ledger *models.Ledger
 }
 
-func (ls *LedgersSuite) SetupTest() {
-	ls.Setup()
+func (ls *LedgersSuite) SetupSuite() {
+	ls.BaseTestSuite.SetupSuite()
 
 	//Create test ledger.
 	ledgersDB := repositories.NewLedgerRepository(ls.service)

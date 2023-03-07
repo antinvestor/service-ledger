@@ -19,12 +19,13 @@ type AccountRepository interface {
 
 // accountRepository provides all functions related to ledger account
 type accountRepository struct {
-	service *frame.Service
+	service          *frame.Service
+	ledgerRepository LedgerRepository
 }
 
 // NewAccountRepository provides instance of `accountRepository`
 func NewAccountRepository(service *frame.Service) AccountRepository {
-	return &accountRepository{service: service}
+	return &accountRepository{service: service, ledgerRepository: NewLedgerRepository(service)}
 }
 
 // GetByID returns an acccount with the given Reference
@@ -34,22 +35,12 @@ func (a *accountRepository) GetByID(ctx context.Context, id string) (*models.Acc
 		return nil, ledger.ErrorUnspecifiedID
 	}
 
-	account := new(models.Account)
-
-	err := a.service.DB(ctx, true).Raw(
-		`SELECT 
-				id, reference, currency, data, balance, ledger_id,
-				created_at, modified_at, version, tenant_id, partition_id, access_id, deleted_at 
-				FROM account LEFT JOIN current_balances WHERE account_id=$1`,
-		&id).Scan(&account).Error
+	accList, err := a.ListByID(ctx, id)
 	if err != nil {
-		if frame.DBErrorIsRecordNotFound(err) {
-			return nil, ledger.ErrorLedgerNotFound
-		}
-		return nil, ledger.ErrorSystemFailure.Override(err)
+		return nil, err
 	}
 
-	return account, nil
+	return accList[id], nil
 }
 
 // ListByID returns a list of acccounts with the given list of ids
@@ -79,9 +70,9 @@ func (a *accountRepository) ListByID(ctx context.Context, ids ...string) (map[st
 
 	rows, err := a.service.DB(ctx, true).Raw(
 		fmt.Sprintf(`SELECT 
-				id, reference, currency, data, balance, ledger_id,
+				id, currency, data, balance, ledger_id,
 				created_at, modified_at, version, tenant_id, partition_id, access_id, deleted_at 
-				FROM account LEFT JOIN current_balances WHERE account_id IN (%s)`, placeholderString),
+				FROM accounts a LEFT JOIN current_balances cb ON a.id = cb.account_id WHERE a.id IN (%s)`, placeholderString),
 		params...).Rows()
 	if err != nil {
 		if frame.DBErrorIsRecordNotFound(err) {
@@ -93,12 +84,13 @@ func (a *accountRepository) ListByID(ctx context.Context, ids ...string) (map[st
 	defer rows.Close()
 
 	for rows.Next() {
-		account := models.Account{}
-		if err := rows.Scan(&account); err != nil {
+		acc := models.Account{}
+		if err := rows.Scan(&acc.ID, &acc.Currency, &acc.Data, &acc.Balance, &acc.LedgerID,
+			&acc.CreatedAt, &acc.ModifiedAt, &acc.Version, &acc.TenantID, &acc.PartitionID, &acc.AccessID, &acc.DeletedAt); err != nil {
 			return nil, ledger.ErrorSystemFailure.Override(err)
 		}
 
-		accountsMap[account.ID] = &account
+		accountsMap[acc.ID] = &acc
 	}
 
 	return accountsMap, nil
@@ -132,7 +124,7 @@ func (a *accountRepository) Create(ctx context.Context, account *models.Account)
 
 	if account.LedgerID != "" {
 
-		lg, err := a.GetByID(ctx, account.LedgerID)
+		lg, err := a.ledgerRepository.GetByID(ctx, account.LedgerID)
 		if err != nil {
 			return nil, ledger.ErrorSystemFailure.Override(err)
 		}

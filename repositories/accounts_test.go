@@ -16,9 +16,9 @@ type AccountsSuite struct {
 	ledger *models.Ledger
 }
 
-func (as *AccountsSuite) SetupTest() {
+func (as *AccountsSuite) SetupSuite() {
 
-	as.Setup()
+	as.BaseTestSuite.SetupSuite()
 
 	//Create test accounts.
 	ledgersDB := repositories.NewLedgerRepository(as.service)
@@ -38,6 +38,7 @@ func (as *AccountsSuite) SetupTest() {
 }
 
 func (as *AccountsSuite) TestAccountsInfoAPI() {
+
 	t := as.T()
 
 	accountsDB := repositories.NewAccountRepository(as.service)
@@ -47,7 +48,7 @@ func (as *AccountsSuite) TestAccountsInfoAPI() {
 	} else {
 		assert.Equal(t, nil, err, "Error while getting acccount")
 		assert.Equal(t, "100", account.ID, "Invalid account Reference")
-		assert.Equal(t, 0, account.Balance, "Invalid account balance")
+		assert.Equal(t, models.New(0), account.Balance, "Invalid account balance")
 	}
 }
 

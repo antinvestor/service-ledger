@@ -14,8 +14,8 @@ func (ss *SearchSuite) TestSearchAccountsWithShouldFields() {
         "query": {
             "should": {
                 "fields": [
-                    {"reference": {"eq": "acc1"}},
-                    {"reference": {"eq": "acc2"}}
+                    {"id": {"eq": "acc1"}},
+                    {"id": {"eq": "acc2"}}
                 ]
             }
         }
@@ -29,8 +29,8 @@ func (ss *SearchSuite) TestSearchAccountsWithShouldFields() {
         "query": {
             "should": {
                 "fields": [
-                    {"reference": {"eq": "acc3"}},
-                    {"reference": {"eq": "acc4"}}
+                    {"id": {"eq": "acc3"}},
+                    {"id": {"eq": "acc4"}}
                 ]
             }
         }
@@ -49,9 +49,9 @@ func (ss *SearchSuite) TestSearchTransactionsWithShouldFields() {
         "query": {
             "should": {
                 "fields": [
-                    {"reference": {"eq": "txn1"}},
-                    {"reference": {"eq": "txn2"}},
-                    {"reference": {"eq": "txn3"}}
+                    {"id": {"eq": "txn1"}},
+                    {"id": {"eq": "txn2"}},
+                    {"id": {"eq": "txn3"}}
                 ]
             }
         }
@@ -65,8 +65,8 @@ func (ss *SearchSuite) TestSearchTransactionsWithShouldFields() {
         "query": {
             "should": {
                 "fields": [
-                    {"reference": {"eq": "txn4"}},
-                    {"reference": {"eq": "txn5"}}
+                    {"id": {"eq": "txn4"}},
+                    {"id": {"eq": "txn5"}}
                 ]
             }
         }

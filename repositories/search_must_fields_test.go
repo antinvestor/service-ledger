@@ -14,7 +14,7 @@ func (ss *SearchSuite) TestSearchAccountsWithMustFields() {
         "query": {
             "must": {
                 "fields": [
-                    {"reference": {"eq": "acc1"}},
+                    {"id": {"eq": "acc1"}},
                     {"balance": {"gt": 0}}
                 ]
             }
@@ -28,13 +28,13 @@ func (ss *SearchSuite) TestSearchAccountsWithMustFields() {
 	accounts, _ := results.([]*models.Account)
 	assert.Equal(t, 1, len(accounts), "Accounts count doesn't match")
 	if len(accounts) > 0 {
-		assert.Equal(t, "ACC1", accounts[0].ID, "Account Reference doesn't match")
+		assert.Equal(t, "acc1", accounts[0].ID, "Account Reference doesn't match")
 	}
 	query = `{
         "query": {
             "must": {
                 "fields": [
-                    {"reference": {"eq": "acc2"}},
+                    {"id": {"eq": "acc2"}},
                     {"balance": {"gt": 0}}
                 ]
             }
@@ -57,7 +57,7 @@ func (ss *SearchSuite) TestSearchTransactionsWithMustFields() {
         "query": {
             "must": {
                 "fields": [
-                    {"reference": {"eq": "txn1"}},
+                    {"id": {"eq": "txn1"}},
                     {"transacted_at": {"gte": "2017-08-08"}}
                 ]
             }
@@ -68,13 +68,13 @@ func (ss *SearchSuite) TestSearchTransactionsWithMustFields() {
 	transactions, _ := results.([]*models.Transaction)
 	assert.Equal(t, 1, len(transactions), "Transactions count doesn't match")
 	if len(transactions) > 0 {
-		assert.Equal(t, "TXN1", transactions[0].ID, "Transaction Reference doesn't match")
+		assert.Equal(t, "txn1", transactions[0].ID, "Transaction Reference doesn't match")
 	}
 	query = `{
         "query": {
             "must": {
                 "fields": [
-                    {"reference": {"eq": "txn2"}},
+                    {"id": {"eq": "txn2"}},
                     {"transacted_at": {"lt": "2017-08-08"}}
                 ]
             }
@@ -94,7 +94,7 @@ func (ss *SearchSuite) TestSearchAccountsWithFieldOperators() {
         "query": {
             "must": {
                 "fields": [
-                    {"reference": {"eq": "acc1"}}
+                    {"id": {"eq": "acc1"}}
                 ]
             }
         }
@@ -104,14 +104,14 @@ func (ss *SearchSuite) TestSearchAccountsWithFieldOperators() {
 	accounts, _ := results.([]*models.Account)
 	assert.Equal(t, 1, len(accounts), "Accounts count doesn't match")
 	if len(accounts) > 0 {
-		assert.Equal(t, "ACC1", accounts[0].ID, "Account Reference doesn't match")
+		assert.Equal(t, "acc1", accounts[0].ID, "Account Reference doesn't match")
 	}
 
 	query = `{
         "query": {
             "must": {
                 "fields": [
-                    {"reference": {"ne": "acc1"}}
+                    {"id": {"ne": "acc1"}}
                 ]
             }
         }
@@ -120,13 +120,13 @@ func (ss *SearchSuite) TestSearchAccountsWithFieldOperators() {
 	assert.Equal(t, nil, err, "Error in building search query")
 	accounts, _ = results.([]*models.Account)
 	assert.Equal(t, 1, len(accounts), "Accounts count doesn't match")
-	assert.Equal(t, "ACC2", accounts[0].ID, "Account Reference doesn't match")
+	assert.Equal(t, "acc2", accounts[0].ID, "Account Reference doesn't match")
 
 	query = `{
         "query": {
             "must": {
                 "fields": [
-                    {"reference": {"like": "%c1"}}
+                    {"id": {"like": "%c1"}}
                 ]
             }
         }
@@ -135,13 +135,13 @@ func (ss *SearchSuite) TestSearchAccountsWithFieldOperators() {
 	assert.Equal(t, nil, err, "Error in building search query")
 	accounts, _ = results.([]*models.Account)
 	assert.Equal(t, 1, len(accounts), "Accounts count doesn't match")
-	assert.Equal(t, "ACC1", accounts[0].ID, "Account Reference doesn't match")
+	assert.Equal(t, "acc1", accounts[0].ID, "Account Reference doesn't match")
 
 	query = `{
         "query": {
             "must": {
                 "fields": [
-                    {"reference": {"notlike": "%c1"}}
+                    {"id": {"notlike": "%c1"}}
                 ]
             }
         }
@@ -150,5 +150,5 @@ func (ss *SearchSuite) TestSearchAccountsWithFieldOperators() {
 	assert.Equal(t, nil, err, "Error in building search query")
 	accounts, _ = results.([]*models.Account)
 	assert.Equal(t, 1, len(accounts), "Accounts count doesn't match")
-	assert.Equal(t, "ACC2", accounts[0].ID, "Account Reference doesn't match")
+	assert.Equal(t, "acc2", accounts[0].ID, "Account Reference doesn't match")
 }

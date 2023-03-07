@@ -47,7 +47,8 @@ func transactionFromApi(aTxn *ledger.Transaction) *models.Transaction {
 // CreateTransaction a new transaction
 func (ledgerSrv *LedgerServer) CreateTransaction(ctx context.Context, txn *ledger.Transaction) (*ledger.Transaction, error) {
 
-	transactionsDB := repositories.NewTransactionRepository(ledgerSrv.Service)
+	accountsRepo := repositories.NewAccountRepository(ledgerSrv.Service)
+	transactionsDB := repositories.NewTransactionRepository(ledgerSrv.Service, accountsRepo)
 
 	apiTransaction := transactionFromApi(txn)
 
@@ -90,7 +91,8 @@ func (ledgerSrv *LedgerServer) SearchTransactions(request *ledger.SearchRequest,
 // Updates a transaction's details
 func (ledgerSrv *LedgerServer) UpdateTransaction(ctx context.Context, txn *ledger.Transaction) (*ledger.Transaction, error) {
 
-	transactionDB := repositories.NewTransactionRepository(ledgerSrv.Service)
+	accountsRepo := repositories.NewAccountRepository(ledgerSrv.Service)
+	transactionDB := repositories.NewTransactionRepository(ledgerSrv.Service, accountsRepo)
 
 	// Otherwise, update transaction
 	mTxn, terr := transactionDB.Update(ctx, transactionFromApi(txn))
@@ -103,7 +105,8 @@ func (ledgerSrv *LedgerServer) UpdateTransaction(ctx context.Context, txn *ledge
 // ReverseTransaction a transaction by creating a new one with inverted entries
 func (ledgerSrv *LedgerServer) ReverseTransaction(ctx context.Context, txn *ledger.Transaction) (*ledger.Transaction, error) {
 
-	transactionRepository := repositories.NewTransactionRepository(ledgerSrv.Service)
+	accountsRepo := repositories.NewAccountRepository(ledgerSrv.Service)
+	transactionRepository := repositories.NewTransactionRepository(ledgerSrv.Service, accountsRepo)
 
 	// Otherwise, do transaction
 	mTxn, err := transactionRepository.Reverse(ctx, txn.Reference)

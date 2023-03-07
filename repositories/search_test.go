@@ -5,7 +5,6 @@ import (
 	"github.com/antinvestor/service-ledger/repositories"
 	"github.com/pitabwire/frame"
 	"log"
-	"math/big"
 	"testing"
 
 	_ "github.com/lib/pq"
@@ -24,12 +23,12 @@ type SearchSuite struct {
 
 func (ss *SearchSuite) SetupSuite() {
 
-	ss.Setup()
+	ss.BaseTestSuite.SetupSuite()
 	t := ss.T()
 
 	log.Println("Successfully established connection to database.")
 	ss.accDB = repositories.NewAccountRepository(ss.service)
-	ss.txnDB = repositories.NewTransactionRepository(ss.service)
+	ss.txnDB = repositories.NewTransactionRepository(ss.service, ss.accDB)
 	ss.ledgerDB = repositories.NewLedgerRepository(ss.service)
 
 	lg, err := ss.ledgerDB.Create(ss.ctx, &models.Ledger{Type: models.LEDGER_TYPE_ASSET})
@@ -67,14 +66,15 @@ func (ss *SearchSuite) SetupSuite() {
 	// Create test transactions
 	txn1 := &models.Transaction{
 		BaseModel: frame.BaseModel{ID: "txn1"},
+		Currency:  "UGX",
 		Entries: []*models.TransactionEntry{
 			{
 				AccountID: "acc1",
-				Amount:    big.NewInt(1000),
+				Amount:    models.New(1000),
 			},
 			{
 				AccountID: "acc2",
-				Amount:    big.NewInt(-1000),
+				Amount:    models.New(-1000),
 			},
 		},
 		Data: map[string]interface{}{
@@ -88,14 +88,15 @@ func (ss *SearchSuite) SetupSuite() {
 	assert.NotEqual(t, nil, tx, "Error creating test transaction")
 	txn2 := &models.Transaction{
 		BaseModel: frame.BaseModel{ID: "txn2"},
+		Currency:  "UGX",
 		Entries: []*models.TransactionEntry{
 			{
 				AccountID: "acc1",
-				Amount:    big.NewInt(100),
+				Amount:    models.New(100),
 			},
 			{
 				AccountID: "acc2",
-				Amount:    big.NewInt(-100),
+				Amount:    models.New(-100),
 			},
 		},
 		Data: map[string]interface{}{
@@ -108,14 +109,15 @@ func (ss *SearchSuite) SetupSuite() {
 	assert.NotEqual(t, nil, tx, "Error creating test transaction")
 	txn3 := &models.Transaction{
 		BaseModel: frame.BaseModel{ID: "txn3"},
+		Currency:  "UGX",
 		Entries: []*models.TransactionEntry{
 			{
 				AccountID: "acc1",
-				Amount:    big.NewInt(400),
+				Amount:    models.New(400),
 			},
 			{
 				AccountID: "acc2",
-				Amount:    big.NewInt(-400),
+				Amount:    models.New(-400),
 			},
 		},
 		Data: map[string]interface{}{
@@ -136,7 +138,7 @@ func (ss *SearchSuite) TestSearchAccountsWithBothMustAndShould() {
         "query": {
             "must": {
                 "fields": [
-                    {"reference": {"eq": "acc1"}}
+                    {"id": {"eq": "acc1"}}
                 ],
                 "terms": [
                     {"status": "active"}
@@ -156,7 +158,7 @@ func (ss *SearchSuite) TestSearchAccountsWithBothMustAndShould() {
 	assert.Equal(t, nil, err, "Error in building search query")
 	accounts, _ := results.([]*models.Account)
 	assert.Equal(t, 1, len(accounts), "Account count doesn't match")
-	assert.Equal(t, "ACC1", accounts[0].ID, "Account Reference doesn't match")
+	assert.Equal(t, "acc1", accounts[0].ID, "Account Reference doesn't match")
 }
 
 func (ss *SearchSuite) TestSearchTransactionsWithBothMustAndShould() {
@@ -167,7 +169,7 @@ func (ss *SearchSuite) TestSearchTransactionsWithBothMustAndShould() {
         "query": {
             "must": {
                 "fields": [
-                    {"reference": {"eq": "txn1"}}
+                    {"id": {"eq": "txn1"}}
                 ],
                 "terms": [
                     {"action": "setcredit"}
@@ -190,7 +192,7 @@ func (ss *SearchSuite) TestSearchTransactionsWithBothMustAndShould() {
 	transactions, _ := results.([]*models.Transaction)
 	assert.Equal(t, 1, len(transactions), "Transaction count doesn't match")
 	if len(transactions) > 0 {
-		assert.Equal(t, "TXN1", transactions[0].ID, "Transaction Reference doesn't match")
+		assert.Equal(t, "txn1", transactions[0].ID, "Transaction Reference doesn't match")
 	}
 }
 
@@ -198,16 +200,16 @@ func (ss *SearchSuite) TearDownSuite() {
 	log.Println("Cleaning up the test database")
 
 	t := ss.T()
-	err := ss.service.DB(ss.ctx, false).Exec(`DELETE FROM entries WHERE transaction_id IN (
-					SELECT transaction_id FROM transactions WHERE ID IN($1, $2, $3))`, "TXN1", "TXN2", "TXN3").Error
+	err := ss.service.DB(ss.ctx, false).Exec(`DELETE FROM transaction_entries WHERE transaction_id IN (
+					SELECT transaction_id FROM transactions WHERE ID IN($1, $2, $3))`, "txn1", "TXN2", "TXN3").Error
 	if err != nil {
 		t.Fatal("Error deleting Entries:", err)
 	}
-	err = ss.service.DB(ss.ctx, false).Exec(`DELETE FROM transactions WHERE ID IN($1, $2, $3)`, "TXN1", "TXN2", "TXN3").Error
+	err = ss.service.DB(ss.ctx, false).Exec(`DELETE FROM transactions WHERE ID IN($1, $2, $3)`, "txn1", "TXN2", "TXN3").Error
 	if err != nil {
 		t.Fatal("Error deleting transactions:", err)
 	}
-	err = ss.service.DB(ss.ctx, false).Exec(`DELETE FROM accounts WHERE ID IN($1, $2)`, "ACC1", "ACC2").Error
+	err = ss.service.DB(ss.ctx, false).Exec(`DELETE FROM accounts WHERE ID IN($1, $2)`, "acc1", "acc2").Error
 	if err != nil {
 		t.Fatal("Error deleting accounts:", err)
 	}

@@ -3,7 +3,6 @@ package repositories
 import (
 	"github.com/antinvestor/service-ledger/models"
 	"log"
-	"math/big"
 	"strings"
 )
 
@@ -15,7 +14,7 @@ func (entries Orderedentries) Len() int      { return len(entries) }
 func (entries Orderedentries) Swap(i, j int) { entries[i], entries[j] = entries[j], entries[i] }
 func (entries Orderedentries) Less(i, j int) bool {
 	if entries[i].AccountID == entries[j].AccountID {
-		return entries[i].Amount.Cmp(entries[j].Amount) == -1
+		return entries[i].Amount.Cmp(entries[j].Amount.ToInt()) == -1
 	}
 	return entries[i].AccountID < entries[j].AccountID
 }
@@ -44,9 +43,9 @@ func containsSameElements(l1 []*models.TransactionEntry, l2 []*models.Transactio
 		}
 
 		// Fix to tolerate floating point errors from elsewhere
-		amount1 := big.NewInt(0).Abs(entry.Amount)
-		amount2 := big.NewInt(0).Abs(entry2.Amount)
-		if amount1.CmpAbs(amount2) != 0 {
+		amount1 := entry.Amount.ToAbs()
+		amount2 := entry2.Amount.ToAbs()
+		if amount1.CmpAbs(amount2.ToInt()) != 0 {
 			log.Printf(" Transacting account %s has mismatching amounts of %d and %d", l2Account, amount1, amount2)
 			return false
 		}

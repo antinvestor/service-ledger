@@ -6,6 +6,7 @@ import (
 	"github.com/pitabwire/frame"
 	"log"
 	"math/big"
+	"strings"
 	"time"
 
 	"fmt"
@@ -34,8 +35,11 @@ type transactionRepository struct {
 }
 
 // NewTransactionRepository returns a new instance of `transactionRepository`
-func NewTransactionRepository(service *frame.Service) TransactionRepository {
-	return &transactionRepository{service: service}
+func NewTransactionRepository(service *frame.Service, accountRepo AccountRepository) TransactionRepository {
+	return &transactionRepository{
+		service:     service,
+		accountRepo: accountRepo,
+	}
 }
 
 // Validate checks all issues around transaction are satisfied
@@ -64,7 +68,7 @@ func (t *transactionRepository) Validate(ctx context.Context, txn *models.Transa
 
 	for _, entry := range txn.Entries {
 
-		if big.NewInt(0).Cmp(entry.Amount) == 0 {
+		if big.NewInt(0).Cmp(entry.Amount.ToInt()) == 0 {
 			return nil, ledger.ErrorTransactionEntryHasZeroAmount.Extend(fmt.Sprintf("A transaction entry for account : %s has a zero amount", entry.AccountID))
 		}
 
@@ -74,7 +78,7 @@ func (t *transactionRepository) Validate(ctx context.Context, txn *models.Transa
 			return nil, ledger.ErrorAccountNotFound.Extend(fmt.Sprintf("Account %s was not found in the system", entry.AccountID))
 		}
 
-		if txn.Currency != account.Currency {
+		if !strings.EqualFold(txn.Currency, account.Currency) {
 			log.Println(fmt.Sprintf("Account %s has differing currency of %s to transaction currency of %s", entry.AccountID, account.Currency, txn.Currency))
 			return nil, ledger.ErrorTransactionAccountsDifferCurrency.Extend(fmt.Sprintf("Account %s has differing currency of %s to transaction currency of %s", entry.AccountID, account.Currency, txn.Currency))
 		}
@@ -126,7 +130,7 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 		return nil, err1
 	}
 
-	if transaction.TransactedAt != "" {
+	if transaction.TransactedAt == "" {
 		transaction.TransactedAt = time.Now().UTC().Format(LedgerTimestampLayout)
 	}
 
@@ -138,11 +142,11 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 		// Decide the signage of entry based on : https://en.wikipedia.org/wiki/Double-entry_bookkeeping :DEADCLIC
 		if line.Credit && (account.LedgerType == models.LEDGER_TYPE_ASSET || account.LedgerType == models.LEDGER_TYPE_EXPENSE) ||
 			!line.Credit && (account.LedgerType == models.LEDGER_TYPE_LIABILITY || account.LedgerType == models.LEDGER_TYPE_INCOME || account.LedgerType == models.LEDGER_TYPE_CAPITAL) {
-			line.Amount = big.NewInt(0).Neg(entryAmount)
+			line.Amount = entryAmount.ToNeg()
 		}
 	}
 
-	err := t.service.DB(ctx, false).Save(transaction).Error
+	err := t.service.DB(ctx, false).Create(transaction).Error
 	if err != nil {
 		return nil, ledger.ErrorSystemFailure.Override(err)
 	}
@@ -158,10 +162,10 @@ func (t *transactionRepository) GetByID(ctx context.Context, id string) (*models
 	}
 
 	transaction := new(models.Transaction)
-	var entries []*models.TransactionEntry
 
-	err := t.service.DB(ctx, true).Model(&transaction).
-		Where("id=$1", &id).Association("Entries").Find(&entries)
+	err := t.service.DB(ctx, true).Debug().
+		Preload("Entries").
+		First(&transaction, &id).Error
 
 	if err != nil {
 		if frame.DBErrorIsRecordNotFound(err) {
@@ -206,7 +210,7 @@ func (t *transactionRepository) Reverse(ctx context.Context, id string) (*models
 
 	for _, entry := range reversalTxn.Entries {
 		entry.Credit = !entry.Credit
-		entry.Amount = big.NewInt(0).Abs(entry.Amount)
+		entry.Amount = entry.Amount.ToAbs()
 	}
 
 	reversalTxn.ID = fmt.Sprintf("REVERSAL_%s", reversalTxn.ID)

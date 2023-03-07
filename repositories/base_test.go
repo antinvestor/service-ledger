@@ -13,7 +13,7 @@ type BaseTestSuite struct {
 	ctx     context.Context
 }
 
-func (bs *BaseTestSuite) Setup() {
+func (bs *BaseTestSuite) SetupSuite() {
 
 	bs.ctx = context.Background()
 	configLedger := config.LedgerConfig{
@@ -25,6 +25,9 @@ func (bs *BaseTestSuite) Setup() {
 		PartitionServiceURI: "",
 	}
 
-	bs.service = frame.NewService("ledger tests", frame.Config(&configLedger), frame.NoopDriver())
+	bs.service = frame.NewService("ledger tests",
+		frame.Config(&configLedger),
+		frame.Datastore(bs.ctx),
+		frame.NoopDriver())
 	_ = bs.service.Run(bs.ctx, "")
 }

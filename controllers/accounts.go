@@ -13,22 +13,23 @@ import (
 const NanoAmountDivisor = 1000000000
 const DefaultAmountDivisor = 10000
 
-func toMoneyInt(currency string, naive *big.Int) money.Money {
-	naive = big.NewInt(0).Abs(naive)
-	unitBig := big.NewInt(0).Div(naive, big.NewInt(DefaultAmountDivisor))
-	nanosBig := big.NewInt(0).Sub(naive, unitBig)
+func toMoneyInt(currency string, naive *models.Int) money.Money {
+	naive = naive.ToAbs()
+	unitBig := big.NewInt(0).Div(naive.ToInt(), big.NewInt(DefaultAmountDivisor))
+	nanosBig := big.NewInt(0).Sub(naive.ToInt(), unitBig)
 	nanosBig = big.NewInt(0).Mul(nanosBig, big.NewInt(NanoAmountDivisor))
 	nanosBig = big.NewInt(0).Div(nanosBig, big.NewInt(DefaultAmountDivisor))
 
 	return money.Money{CurrencyCode: currency, Units: unitBig.Int64(), Nanos: int32(nanosBig.Int64())}
 }
 
-func fromMoney(m *money.Money) (naive *big.Int) {
+func fromMoney(m *money.Money) (naive *models.Int) {
 
 	unitsBig := big.NewInt(0).Mul(big.NewInt(m.Units), big.NewInt(DefaultAmountDivisor))
 	nanosBig := big.NewInt(0).Mul(big.NewInt(int64(m.Nanos)), big.NewInt(DefaultAmountDivisor/NanoAmountDivisor))
 
-	return big.NewInt(0).Add(unitsBig, nanosBig)
+	total := big.NewInt(0).Add(unitsBig, nanosBig)
+	return models.FromBigInt(total)
 }
 
 func accountToApi(mAcc *models.Account) *ledger.Account {
