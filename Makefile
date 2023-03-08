@@ -1,3 +1,4 @@
+
 ENV_LOCAL_TEST=\
   TEST_DATABASE_URL=postgres://ant:secret@localhost:5437/service_ledger?sslmode=disable \
   POSTGRES_PASSWORD=secret \
@@ -52,5 +53,5 @@ tests: ## runs all system tests
     fi;
 
 
-build: clean fmt vet tests ## run all preliminary steps and tests the setup
+build: clean fmt vet docker-setup tests docker-stop ## run all preliminary steps and tests the setup
 
