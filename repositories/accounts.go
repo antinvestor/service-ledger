@@ -10,9 +10,15 @@ import (
 	"strings"
 )
 
+const constAccountQuery = `SELECT 
+				id, currency, data, balance, ledger_id,
+				created_at, modified_at, version, tenant_id, partition_id, access_id, deleted_at 
+				FROM accounts a LEFT JOIN current_balances cb ON a.id = cb.account_id`
+
 type AccountRepository interface {
 	GetByID(ctx context.Context, id string) (*models.Account, ledger.ApplicationLedgerError)
 	ListByID(ctx context.Context, ids ...string) (map[string]*models.Account, ledger.ApplicationLedgerError)
+	Search(ctx context.Context, query string) ([]*models.Account, ledger.ApplicationLedgerError)
 	Create(ctx context.Context, ledger *models.Account) (*models.Account, ledger.ApplicationLedgerError)
 	Update(ctx context.Context, id string, data map[string]string) (*models.Account, ledger.ApplicationLedgerError)
 }
@@ -69,10 +75,7 @@ func (a *accountRepository) ListByID(ctx context.Context, ids ...string) (map[st
 	accountsMap := map[string]*models.Account{}
 
 	rows, err := a.service.DB(ctx, true).Raw(
-		fmt.Sprintf(`SELECT 
-				id, currency, data, balance, ledger_id,
-				created_at, modified_at, version, tenant_id, partition_id, access_id, deleted_at 
-				FROM accounts a LEFT JOIN current_balances cb ON a.id = cb.account_id WHERE a.id IN (%s)`, placeholderString),
+		fmt.Sprintf(`%s WHERE a.id IN (%s)`, constAccountQuery, placeholderString),
 		params...).Rows()
 	if err != nil {
 		if frame.DBErrorIsRecordNotFound(err) {
@@ -86,7 +89,8 @@ func (a *accountRepository) ListByID(ctx context.Context, ids ...string) (map[st
 	for rows.Next() {
 		acc := models.Account{}
 		if err := rows.Scan(&acc.ID, &acc.Currency, &acc.Data, &acc.Balance, &acc.LedgerID,
-			&acc.CreatedAt, &acc.ModifiedAt, &acc.Version, &acc.TenantID, &acc.PartitionID, &acc.AccessID, &acc.DeletedAt); err != nil {
+			&acc.CreatedAt, &acc.ModifiedAt, &acc.Version, &acc.TenantID, &acc.PartitionID,
+			&acc.AccessID, &acc.DeletedAt); err != nil {
 			return nil, ledger.ErrorSystemFailure.Override(err)
 		}
 
@@ -94,6 +98,41 @@ func (a *accountRepository) ListByID(ctx context.Context, ids ...string) (map[st
 	}
 
 	return accountsMap, nil
+}
+
+func (a *accountRepository) Search(ctx context.Context, query string) ([]*models.Account, ledger.ApplicationLedgerError) {
+
+	rawQuery, aerr := NewSearchRawQuery(ctx, query)
+	if aerr != nil {
+		return nil, aerr
+	}
+
+	sqlQuery := rawQuery.ToQueryConditions()
+
+	rows, err := a.service.DB(ctx, true).Raw(
+		fmt.Sprintf(`%s WHERE %s`, constAccountQuery, sqlQuery.sql), sqlQuery.args...).Rows()
+	if err != nil {
+		if frame.DBErrorIsRecordNotFound(err) {
+			return nil, ledger.ErrorLedgerNotFound
+		}
+		return nil, ledger.ErrorSystemFailure.Override(err)
+	}
+
+	defer rows.Close()
+
+	var accountsList []*models.Account
+	for rows.Next() {
+		acc := models.Account{}
+		if err := rows.Scan(&acc.ID, &acc.Currency, &acc.Data, &acc.Balance, &acc.LedgerID,
+			&acc.CreatedAt, &acc.ModifiedAt, &acc.Version, &acc.TenantID, &acc.PartitionID,
+			&acc.AccessID, &acc.DeletedAt); err != nil {
+			return nil, ledger.ErrorSystemFailure.Override(err)
+		}
+
+		accountsList = append(accountsList, &acc)
+	}
+
+	return accountsList, nil
 }
 
 // Update persists an existing account in the ledger if it is existent

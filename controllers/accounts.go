@@ -55,19 +55,11 @@ func (ledgerSrv *LedgerServer) SearchAccounts(
 
 	ctx := server.Context()
 
-	engine, aerr := repositories.NewSearchEngine(ledgerSrv.Service, repositories.SearchNamespaceAccounts)
+	accountsRepo := repositories.NewAccountRepository(ledgerSrv.Service)
+
+	castAccounts, aerr := accountsRepo.Search(ctx, request.GetQuery())
 	if aerr != nil {
 		return aerr
-	}
-
-	results, aerr := engine.Query(ctx, request.GetQuery())
-	if aerr != nil {
-		return aerr
-	}
-
-	castAccounts, ok := results.([]*models.Account)
-	if !ok {
-		return ledger.ErrorSearchQueryResultsNotCasting
 	}
 
 	for _, account := range castAccounts {

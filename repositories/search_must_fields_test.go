@@ -1,14 +1,12 @@
 package repositories_test
 
 import (
-	"github.com/antinvestor/service-ledger/models"
-	"github.com/antinvestor/service-ledger/repositories"
 	"github.com/stretchr/testify/assert"
 )
 
 func (ss *SearchSuite) TestSearchAccountsWithMustFields() {
 	t := ss.T()
-	engine, _ := repositories.NewSearchEngine(ss.service, "accounts")
+	ctx := ss.ctx
 
 	query := `{
         "query": {
@@ -20,12 +18,11 @@ func (ss *SearchSuite) TestSearchAccountsWithMustFields() {
             }
         }
     }`
-	results, err := engine.Query(ss.ctx, query)
+	accounts, err := ss.accDB.Search(ctx, query)
 	if err != nil {
 		ss.Errorf(err, "Error querying must fields")
 	}
 	assert.Equal(t, nil, err, "Error in building search query")
-	accounts, _ := results.([]*models.Account)
 	assert.Equal(t, 1, len(accounts), "Accounts count doesn't match")
 	if len(accounts) > 0 {
 		assert.Equal(t, "acc1", accounts[0].ID, "Account Reference doesn't match")
@@ -40,18 +37,17 @@ func (ss *SearchSuite) TestSearchAccountsWithMustFields() {
             }
         }
     }`
-	results, err = engine.Query(ss.ctx, query)
+	accounts, err = ss.accDB.Search(ctx, query)
 	if err != nil {
 		ss.Errorf(err, "Error querying must fields")
 	}
 	assert.Equal(t, nil, err, "Error in building search query")
-	accounts, _ = results.([]*models.Account)
 	assert.Equal(t, 0, len(accounts), "No account should exist for given query")
 }
 
 func (ss *SearchSuite) TestSearchTransactionsWithMustFields() {
 	t := ss.T()
-	engine, _ := repositories.NewSearchEngine(ss.service, "transactions")
+	ctx := ss.ctx
 
 	query := `{
         "query": {
@@ -63,9 +59,8 @@ func (ss *SearchSuite) TestSearchTransactionsWithMustFields() {
             }
         }
     }`
-	results, err := engine.Query(ss.ctx, query)
+	transactions, err := ss.txnDB.Search(ctx, query)
 	assert.Equal(t, nil, err, "Error in building search query")
-	transactions, _ := results.([]*models.Transaction)
 	assert.Equal(t, 1, len(transactions), "Transactions count doesn't match")
 	if len(transactions) > 0 {
 		assert.Equal(t, "txn1", transactions[0].ID, "Transaction Reference doesn't match")
@@ -80,15 +75,14 @@ func (ss *SearchSuite) TestSearchTransactionsWithMustFields() {
             }
         }
     }`
-	results, err = engine.Query(ss.ctx, query)
+	transactions, err = ss.txnDB.Search(ctx, query)
 	assert.Equal(t, nil, err, "Error in building search query")
-	transactions, _ = results.([]*models.Transaction)
 	assert.Equal(t, 0, len(transactions), "No transaction should exist for given query")
 }
 
 func (ss *SearchSuite) TestSearchAccountsWithFieldOperators() {
 	t := ss.T()
-	engine, _ := repositories.NewSearchEngine(ss.service, "accounts")
+	ctx := ss.ctx
 
 	query := `{
         "query": {
@@ -99,9 +93,8 @@ func (ss *SearchSuite) TestSearchAccountsWithFieldOperators() {
             }
         }
     }`
-	results, err := engine.Query(ss.ctx, query)
+	accounts, err := ss.accDB.Search(ctx, query)
 	assert.Equal(t, nil, err, "Error in building search query")
-	accounts, _ := results.([]*models.Account)
 	assert.Equal(t, 1, len(accounts), "Accounts count doesn't match")
 	if len(accounts) > 0 {
 		assert.Equal(t, "acc1", accounts[0].ID, "Account Reference doesn't match")
@@ -116,9 +109,8 @@ func (ss *SearchSuite) TestSearchAccountsWithFieldOperators() {
             }
         }
     }`
-	results, err = engine.Query(ss.ctx, query)
+	accounts, err = ss.accDB.Search(ctx, query)
 	assert.Equal(t, nil, err, "Error in building search query")
-	accounts, _ = results.([]*models.Account)
 	assert.Equal(t, 1, len(accounts), "Accounts count doesn't match")
 	assert.Equal(t, "acc2", accounts[0].ID, "Account Reference doesn't match")
 
@@ -131,9 +123,8 @@ func (ss *SearchSuite) TestSearchAccountsWithFieldOperators() {
             }
         }
     }`
-	results, err = engine.Query(ss.ctx, query)
+	accounts, err = ss.accDB.Search(ctx, query)
 	assert.Equal(t, nil, err, "Error in building search query")
-	accounts, _ = results.([]*models.Account)
 	assert.Equal(t, 1, len(accounts), "Accounts count doesn't match")
 	assert.Equal(t, "acc1", accounts[0].ID, "Account Reference doesn't match")
 
@@ -146,9 +137,8 @@ func (ss *SearchSuite) TestSearchAccountsWithFieldOperators() {
             }
         }
     }`
-	results, err = engine.Query(ss.ctx, query)
+	accounts, err = ss.accDB.Search(ctx, query)
 	assert.Equal(t, nil, err, "Error in building search query")
-	accounts, _ = results.([]*models.Account)
 	assert.Equal(t, 1, len(accounts), "Accounts count doesn't match")
 	assert.Equal(t, "acc2", accounts[0].ID, "Account Reference doesn't match")
 }

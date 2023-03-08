@@ -65,19 +65,13 @@ func (ledgerSrv *LedgerServer) CreateTransaction(ctx context.Context, txn *ledge
 func (ledgerSrv *LedgerServer) SearchTransactions(request *ledger.SearchRequest, server ledger.LedgerService_SearchTransactionsServer) error {
 
 	ctx := server.Context()
-	engine, aerr := repositories.NewSearchEngine(ledgerSrv.Service, repositories.SearchNamespaceTransactions)
+
+	accountRepository := repositories.NewAccountRepository(ledgerSrv.Service)
+	transactionRepository := repositories.NewTransactionRepository(ledgerSrv.Service, accountRepository)
+
+	castTransactions, aerr := transactionRepository.Search(ctx, request.GetQuery())
 	if aerr != nil {
 		return aerr
-	}
-
-	results, aerr := engine.Query(ctx, request.GetQuery())
-	if aerr != nil {
-		return aerr
-	}
-
-	castTransactions, ok := results.([]*models.Transaction)
-	if !ok {
-		return ledger.ErrorSearchQueryResultsNotCasting
 	}
 
 	for _, txn := range castTransactions {
@@ -88,14 +82,14 @@ func (ledgerSrv *LedgerServer) SearchTransactions(request *ledger.SearchRequest,
 
 }
 
-// Updates a transaction's details
+// UpdateTransaction a transaction's details
 func (ledgerSrv *LedgerServer) UpdateTransaction(ctx context.Context, txn *ledger.Transaction) (*ledger.Transaction, error) {
 
-	accountsRepo := repositories.NewAccountRepository(ledgerSrv.Service)
-	transactionDB := repositories.NewTransactionRepository(ledgerSrv.Service, accountsRepo)
+	accountRepository := repositories.NewAccountRepository(ledgerSrv.Service)
+	transactionRepository := repositories.NewTransactionRepository(ledgerSrv.Service, accountRepository)
 
 	// Otherwise, update transaction
-	mTxn, terr := transactionDB.Update(ctx, transactionFromApi(txn))
+	mTxn, terr := transactionRepository.Update(ctx, transactionFromApi(txn))
 	if terr != nil {
 		return nil, terr
 	}

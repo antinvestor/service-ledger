@@ -39,19 +39,11 @@ func ledgerFromApi(aLg *ledger.Ledger) *models.Ledger {
 func (ledgerSrv *LedgerServer) SearchLedgers(request *ledger.SearchRequest, server ledger.LedgerService_SearchLedgersServer) error {
 
 	ctx := server.Context()
-	engine, aerr := repositories.NewSearchEngine(ledgerSrv.Service, repositories.SearchNamespaceLedgers)
+	ledgerRepository := repositories.NewLedgerRepository(ledgerSrv.Service)
+
+	castLedgers, aerr := ledgerRepository.Search(ctx, request.GetQuery())
 	if aerr != nil {
 		return aerr
-	}
-
-	results, aerr := engine.Query(ctx, request.GetQuery())
-	if aerr != nil {
-		return aerr
-	}
-
-	castLedgers, ok := results.([]*models.Ledger)
-	if !ok {
-		return ledger.ErrorSearchQueryResultsNotCasting
 	}
 
 	for _, lg := range castLedgers {
@@ -64,10 +56,10 @@ func (ledgerSrv *LedgerServer) SearchLedgers(request *ledger.SearchRequest, serv
 // CreateLedger a new account based on supplied data
 func (ledgerSrv *LedgerServer) CreateLedger(ctx context.Context, lg *ledger.Ledger) (*ledger.Ledger, error) {
 
-	accountsDB := repositories.NewLedgerRepository(ledgerSrv.Service)
+	ledgerRepository := repositories.NewLedgerRepository(ledgerSrv.Service)
 
 	// Otherwise, add lg
-	mAcc, aerr := accountsDB.Create(ctx, ledgerFromApi(lg))
+	mAcc, aerr := ledgerRepository.Create(ctx, ledgerFromApi(lg))
 	if aerr != nil {
 		return nil, aerr
 	}

@@ -21,6 +21,8 @@ const (
 
 type TransactionRepository interface {
 	GetByID(ctx context.Context, id string) (*models.Transaction, ledger.ApplicationLedgerError)
+	Search(ctx context.Context, query string) ([]*models.Transaction, ledger.ApplicationLedgerError)
+	SearchEntries(ctx context.Context, query string) ([]*models.TransactionEntry, ledger.ApplicationLedgerError)
 	Validate(ctx context.Context, transaction *models.Transaction) (map[string]*models.Account, ledger.ApplicationLedgerError)
 	IsConflict(ctx context.Context, transaction2 *models.Transaction) (bool, ledger.ApplicationLedgerError)
 	Transact(ctx context.Context, transaction *models.Transaction) (*models.Transaction, ledger.ApplicationLedgerError)
@@ -40,6 +42,53 @@ func NewTransactionRepository(service *frame.Service, accountRepo AccountReposit
 		service:     service,
 		accountRepo: accountRepo,
 	}
+}
+
+func (t *transactionRepository) Search(ctx context.Context, query string) ([]*models.Transaction, ledger.ApplicationLedgerError) {
+
+	rawQuery, aerr := NewSearchRawQuery(ctx, query)
+	if aerr != nil {
+		return nil, aerr
+	}
+
+	sqlQuery := rawQuery.ToQueryConditions()
+	var transactionsList []*models.Transaction
+
+	conditions := append([]interface{}{sqlQuery.sql}, sqlQuery.args...)
+
+	err := t.service.DB(ctx, true).Preload("Entries").
+		Find(&transactionsList, conditions...).Offset(sqlQuery.offset).Limit(sqlQuery.limit).Error
+	if err != nil {
+		if frame.DBErrorIsRecordNotFound(err) {
+			return nil, ledger.ErrorLedgerNotFound
+		}
+		return nil, ledger.ErrorSystemFailure.Override(err)
+	}
+
+	return transactionsList, nil
+}
+
+func (t *transactionRepository) SearchEntries(ctx context.Context, query string) ([]*models.TransactionEntry, ledger.ApplicationLedgerError) {
+
+	rawQuery, aerr := NewSearchRawQuery(ctx, query)
+	if aerr != nil {
+		return nil, aerr
+	}
+
+	sqlQuery := rawQuery.ToQueryConditions()
+	var entriesList []*models.TransactionEntry
+
+	conditions := append([]interface{}{sqlQuery.sql}, sqlQuery.args...)
+
+	err := t.service.DB(ctx, true).Find(&entriesList, conditions).Error
+	if err != nil {
+		if frame.DBErrorIsRecordNotFound(err) {
+			return nil, ledger.ErrorLedgerNotFound
+		}
+		return nil, ledger.ErrorSystemFailure.Override(err)
+	}
+
+	return entriesList, nil
 }
 
 // Validate checks all issues around transaction are satisfied
@@ -164,7 +213,7 @@ func (t *transactionRepository) GetByID(ctx context.Context, id string) (*models
 
 	var transaction models.Transaction
 
-	err := t.service.DB(ctx, true).Debug().
+	err := t.service.DB(ctx, true).
 		Preload("Entries").
 		First(&transaction, "id = ?", id).
 		Error

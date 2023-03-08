@@ -2,14 +2,19 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 	"github.com/antinvestor/service-ledger/ledger"
 	"github.com/antinvestor/service-ledger/models"
 	"github.com/pitabwire/frame"
 )
 
+const constLedgerQuery = `SELECT 
+    id, parent_id, data, type, created_at, modified_at, 
+       version, tenant_id, partition_id, access_id, deleted_at FROM ledgers`
+
 type LedgerRepository interface {
 	GetByID(ctx context.Context, id string) (*models.Ledger, ledger.ApplicationLedgerError)
-	GetByReference(ctx context.Context, reference string) (*models.Ledger, ledger.ApplicationLedgerError)
+	Search(ctx context.Context, query string) ([]*models.Ledger, ledger.ApplicationLedgerError)
 	Create(ctx context.Context, ledger *models.Ledger) (*models.Ledger, ledger.ApplicationLedgerError)
 	Update(ctx context.Context, ledger *models.Ledger) (*models.Ledger, ledger.ApplicationLedgerError)
 }
@@ -45,17 +50,17 @@ func (l *ledgerRepository) GetByID(ctx context.Context, id string) (*models.Ledg
 	return lg, nil
 }
 
-// GetByReference returns an acccount with the given Reference
-func (l *ledgerRepository) GetByReference(ctx context.Context, reference string) (*models.Ledger, ledger.ApplicationLedgerError) {
+func (l *ledgerRepository) Search(ctx context.Context, query string) ([]*models.Ledger, ledger.ApplicationLedgerError) {
 
-	if reference == "" {
-		return nil, ledger.ErrorUnspecifiedReference
+	rawQuery, aerr := NewSearchRawQuery(ctx, query)
+	if aerr != nil {
+		return nil, aerr
 	}
 
-	lg := new(models.Ledger)
+	sqlQuery := rawQuery.ToQueryConditions()
 
-	err := l.service.DB(ctx, true).First(lg, "reference = ?", reference).Error
-
+	rows, err := l.service.DB(ctx, true).Raw(
+		fmt.Sprintf(`%s %s`, constLedgerQuery, sqlQuery.sql), sqlQuery.args...).Rows()
 	if err != nil {
 		if frame.DBErrorIsRecordNotFound(err) {
 			return nil, ledger.ErrorLedgerNotFound
@@ -63,7 +68,21 @@ func (l *ledgerRepository) GetByReference(ctx context.Context, reference string)
 		return nil, ledger.ErrorSystemFailure.Override(err)
 	}
 
-	return lg, nil
+	defer rows.Close()
+
+	var ledgerList []*models.Ledger
+	for rows.Next() {
+		l := models.Ledger{}
+		if err := rows.Scan(&l.ID, &l.ParentID, &l.Data, &l.Type,
+			&l.CreatedAt, &l.ModifiedAt, &l.Version, &l.TenantID, &l.PartitionID,
+			&l.AccessID, &l.DeletedAt); err != nil {
+			return nil, ledger.ErrorSystemFailure.Override(err)
+		}
+
+		ledgerList = append(ledgerList, &l)
+	}
+
+	return ledgerList, nil
 }
 
 // Update persists an existing ledger in the database if it exists and only updates the data component

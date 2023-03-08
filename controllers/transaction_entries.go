@@ -26,23 +26,17 @@ func transactionEntryToApi(mEntry *models.TransactionEntry) *ledger.TransactionE
 func (ledgerSrv *LedgerServer) SearchTransactionEntries(request *ledger.SearchRequest, server ledger.LedgerService_SearchTransactionEntriesServer) error {
 
 	ctx := server.Context()
-	engine, aerr := repositories.NewSearchEngine(ledgerSrv.Service, repositories.SearchNamespaceTransactionEntries)
+
+	accountRepository := repositories.NewAccountRepository(ledgerSrv.Service)
+	transactionRepository := repositories.NewTransactionRepository(ledgerSrv.Service, accountRepository)
+
+	castTransactionEntries, aerr := transactionRepository.SearchEntries(ctx, request.GetQuery())
 	if aerr != nil {
 		return aerr
 	}
 
-	results, aerr := engine.Query(ctx, request.GetQuery())
-	if aerr != nil {
-		return aerr
-	}
-
-	castTransactionEntries, ok := results.([]models.TransactionEntry)
-	if !ok {
-		return ledger.ErrorSearchQueryResultsNotCasting
-	}
-
-	for _, txn := range castTransactionEntries {
-		_ = server.Send(transactionEntryToApi(&txn))
+	for _, entry := range castTransactionEntries {
+		_ = server.Send(transactionEntryToApi(entry))
 	}
 
 	return nil
