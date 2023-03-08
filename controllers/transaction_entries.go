@@ -3,54 +3,42 @@ package controllers
 import (
 	"github.com/antinvestor/service-ledger/ledger"
 	"github.com/antinvestor/service-ledger/models"
-	"google.golang.org/genproto/googleapis/type/money"
+	"github.com/antinvestor/service-ledger/repositories"
 )
 
-func transactionEntryToApi(mEntry *models.TransactionEntry ) *ledger.TransactionEntry {
+func transactionEntryToApi(mEntry *models.TransactionEntry) *ledger.TransactionEntry {
 
-		units, nanos := toMoneyInt(mEntry.Amount.Int64)
-		entryAmount := money.Money{Units: units,
-			Nanos: nanos, CurrencyCode: mEntry.Currency.String}
+	entryAmount := toMoneyInt(mEntry.Currency, mEntry.Amount)
 
-		balUnits, balNanos := toMoneyInt(mEntry.Balance.Int64)
-		balanceAmount := money.Money{Units: balUnits,
-			Nanos: balNanos, CurrencyCode: mEntry.Currency.String}
+	balanceAmount := toMoneyInt(mEntry.Currency, mEntry.Balance)
 
-		return &ledger.TransactionEntry{
-			Account: mEntry.Account.String,
-			Transaction: mEntry.Transaction.String,
-			TransactedAt: mEntry.TransactedAt.String,
-			Amount: &entryAmount,
-			Credit: mEntry.Credit,
-			AccBalance: &balanceAmount,
-		}
+	return &ledger.TransactionEntry{
+		Account:      mEntry.AccountID,
+		Transaction:  mEntry.TransactionID,
+		TransactedAt: mEntry.TransactedAt,
+		Amount:       &entryAmount,
+		Credit:       mEntry.Credit,
+		AccBalance:   &balanceAmount,
 	}
+}
 
-
-
-// Searches for transactions based on details of the query json
+// SearchTransactionEntries for transactions based on details of the query json
 func (ledgerSrv *LedgerServer) SearchTransactionEntries(request *ledger.SearchRequest, server ledger.LedgerService_SearchTransactionEntriesServer) error {
 
-	engine, aerr := models.NewSearchEngine(ledgerSrv.DB, models.SearchNamespaceTransactionEntries)
+	ctx := server.Context()
+
+	accountRepository := repositories.NewAccountRepository(ledgerSrv.Service)
+	transactionRepository := repositories.NewTransactionRepository(ledgerSrv.Service, accountRepository)
+
+	castTransactionEntries, aerr := transactionRepository.SearchEntries(ctx, request.GetQuery())
 	if aerr != nil {
 		return aerr
 	}
 
-	results, aerr := engine.Query(request.GetQuery())
-	if aerr != nil {
-		return aerr
-	}
-
-	castTransactionEntries, ok := results.([]*models.TransactionEntry)
-	if !ok {
-		return ledger.ErrorSearchQueryResultsNotCasting
-	}
-
-	for _, txn := range castTransactionEntries {
-		_ = server.Send(transactionEntryToApi(txn))
+	for _, entry := range castTransactionEntries {
+		_ = server.Send(transactionEntryToApi(entry))
 	}
 
 	return nil
 
 }
-

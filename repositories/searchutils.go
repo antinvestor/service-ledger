@@ -1,23 +1,10 @@
-package models
+package repositories
 
 import (
 	"encoding/json"
 	"fmt"
 	"strings"
 )
-
-// replaces ? to corresponding placeholder index ($1, $2,...)
-func enumerateSQLPlacholder(msql string) (psql string) {
-	splitItems := strings.Split(msql, "?")
-	for i, item := range splitItems {
-		if i != len(splitItems)-1 {
-			psql = psql + item + fmt.Sprintf("$%d", i+1)
-		} else {
-			psql = psql + item
-		}
-	}
-	return
-}
 
 func jsonify(input interface{}) string {
 	j, _ := json.Marshal(input)
@@ -179,12 +166,7 @@ func convertFieldsToSQL(fields []map[string]map[string]interface{}) (where []str
 			for op, value := range comparison {
 				condn := fmt.Sprintf("%s %s ?", key, sqlComparisonOp(op))
 				conditions = append(conditions, condn)
-
-				if key == "reference" {
-					args = append(args, strings.ToUpper(fmt.Sprintf("%v", value)))
-				} else {
-					args = append(args, value)
-				}
+				args = append(args, value)
 			}
 		}
 		where = append(where, "("+strings.Join(conditions, " AND ")+")")

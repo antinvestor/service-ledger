@@ -594,7 +594,7 @@ var file_ledger_proto_depIdxs = []int32{
 	8,  // 6: ledger.Transaction.data:type_name -> ledger.Transaction.DataEntry
 	4,  // 7: ledger.Transaction.entries:type_name -> ledger.TransactionEntry
 	1,  // 8: ledger.LedgerService.SearchLedgers:input_type -> ledger.SearchRequest
-	2,  // 9: ledger.LedgerService.CreateLedger:input_type -> ledger.Ledger
+	2,  // 9: ledger.LedgerService.Save:input_type -> ledger.Ledger
 	2,  // 10: ledger.LedgerService.UpdateLedger:input_type -> ledger.Ledger
 	1,  // 11: ledger.LedgerService.SearchAccounts:input_type -> ledger.SearchRequest
 	3,  // 12: ledger.LedgerService.CreateAccount:input_type -> ledger.Account
@@ -602,10 +602,10 @@ var file_ledger_proto_depIdxs = []int32{
 	1,  // 14: ledger.LedgerService.SearchTransactions:input_type -> ledger.SearchRequest
 	5,  // 15: ledger.LedgerService.CreateTransaction:input_type -> ledger.Transaction
 	5,  // 16: ledger.LedgerService.ReverseTransaction:input_type -> ledger.Transaction
-	5,  // 17: ledger.LedgerService.UpdateTransaction:input_type -> ledger.Transaction
+	5,  // 17: ledger.LedgerService.Update:input_type -> ledger.Transaction
 	1,  // 18: ledger.LedgerService.SearchTransactionEntries:input_type -> ledger.SearchRequest
 	2,  // 19: ledger.LedgerService.SearchLedgers:output_type -> ledger.Ledger
-	2,  // 20: ledger.LedgerService.CreateLedger:output_type -> ledger.Ledger
+	2,  // 20: ledger.LedgerService.Save:output_type -> ledger.Ledger
 	2,  // 21: ledger.LedgerService.UpdateLedger:output_type -> ledger.Ledger
 	3,  // 22: ledger.LedgerService.SearchAccounts:output_type -> ledger.Account
 	3,  // 23: ledger.LedgerService.CreateAccount:output_type -> ledger.Account
@@ -613,7 +613,7 @@ var file_ledger_proto_depIdxs = []int32{
 	5,  // 25: ledger.LedgerService.SearchTransactions:output_type -> ledger.Transaction
 	5,  // 26: ledger.LedgerService.CreateTransaction:output_type -> ledger.Transaction
 	5,  // 27: ledger.LedgerService.ReverseTransaction:output_type -> ledger.Transaction
-	5,  // 28: ledger.LedgerService.UpdateTransaction:output_type -> ledger.Transaction
+	5,  // 28: ledger.LedgerService.Update:output_type -> ledger.Transaction
 	4,  // 29: ledger.LedgerService.SearchTransactionEntries:output_type -> ledger.TransactionEntry
 	19, // [19:30] is the sub-list for method output_type
 	8,  // [8:19] is the sub-list for method input_type
@@ -788,7 +788,7 @@ func (x *ledgerServiceSearchLedgersClient) Recv() (*Ledger, error) {
 
 func (c *ledgerServiceClient) CreateLedger(ctx context.Context, in *Ledger, opts ...grpc.CallOption) (*Ledger, error) {
 	out := new(Ledger)
-	err := c.cc.Invoke(ctx, "/ledger.LedgerService/CreateLedger", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/ledger.LedgerService/Save", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -906,7 +906,7 @@ func (c *ledgerServiceClient) ReverseTransaction(ctx context.Context, in *Transa
 
 func (c *ledgerServiceClient) UpdateTransaction(ctx context.Context, in *Transaction, opts ...grpc.CallOption) (*Transaction, error) {
 	out := new(Transaction)
-	err := c.cc.Invoke(ctx, "/ledger.LedgerService/UpdateTransaction", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/ledger.LedgerService/Update", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -979,7 +979,7 @@ func (*UnimplementedLedgerServiceServer) SearchLedgers(*SearchRequest, LedgerSer
 	return status.Errorf(codes.Unimplemented, "method SearchLedgers not implemented")
 }
 func (*UnimplementedLedgerServiceServer) CreateLedger(context.Context, *Ledger) (*Ledger, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CreateLedger not implemented")
+	return nil, status.Errorf(codes.Unimplemented, "method Save not implemented")
 }
 func (*UnimplementedLedgerServiceServer) UpdateLedger(context.Context, *Ledger) (*Ledger, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateLedger not implemented")
@@ -1003,7 +1003,7 @@ func (*UnimplementedLedgerServiceServer) ReverseTransaction(context.Context, *Tr
 	return nil, status.Errorf(codes.Unimplemented, "method ReverseTransaction not implemented")
 }
 func (*UnimplementedLedgerServiceServer) UpdateTransaction(context.Context, *Transaction) (*Transaction, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateTransaction not implemented")
+	return nil, status.Errorf(codes.Unimplemented, "method Update not implemented")
 }
 func (*UnimplementedLedgerServiceServer) SearchTransactionEntries(*SearchRequest, LedgerService_SearchTransactionEntriesServer) error {
 	return status.Errorf(codes.Unimplemented, "method SearchTransactionEntries not implemented")
@@ -1044,7 +1044,7 @@ func _LedgerService_CreateLedger_Handler(srv interface{}, ctx context.Context, d
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/ledger.LedgerService/CreateLedger",
+		FullMethod: "/ledger.LedgerService/Save",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(LedgerServiceServer).CreateLedger(ctx, req.(*Ledger))
@@ -1194,7 +1194,7 @@ func _LedgerService_UpdateTransaction_Handler(srv interface{}, ctx context.Conte
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/ledger.LedgerService/UpdateTransaction",
+		FullMethod: "/ledger.LedgerService/Update",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(LedgerServiceServer).UpdateTransaction(ctx, req.(*Transaction))
@@ -1228,7 +1228,7 @@ var _LedgerService_serviceDesc = grpc.ServiceDesc{
 	HandlerType: (*LedgerServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "CreateLedger",
+			MethodName: "Save",
 			Handler:    _LedgerService_CreateLedger_Handler,
 		},
 		{
@@ -1252,7 +1252,7 @@ var _LedgerService_serviceDesc = grpc.ServiceDesc{
 			Handler:    _LedgerService_ReverseTransaction_Handler,
 		},
 		{
-			MethodName: "UpdateTransaction",
+			MethodName: "Update",
 			Handler:    _LedgerService_UpdateTransaction_Handler,
 		},
 	},

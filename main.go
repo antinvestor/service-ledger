@@ -1,113 +1,84 @@
 package main
 
 import (
-	"database/sql"
-	"log"
-	"os"
-
+	"context"
 	"fmt"
+	"github.com/antinvestor/service-ledger/config"
 	"github.com/antinvestor/service-ledger/controllers"
 	"github.com/antinvestor/service-ledger/ledger"
-	"github.com/antinvestor/service-ledger/middlewares"
-	"github.com/golang-migrate/migrate"
-	"github.com/golang-migrate/migrate/database"
-	"github.com/golang-migrate/migrate/database/postgres"
+	"github.com/antinvestor/service-ledger/models"
 	_ "github.com/golang-migrate/migrate/source/file"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpcrecovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
+	grpcctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
+	"github.com/pitabwire/frame"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
-	"net"
 )
 
 func main() {
-	// Assert authentication
-	authToken, ok := os.LookupEnv("LEDGER_AUTH_TOKEN")
-	if !ok || authToken == "" {
-		log.Println("Cannot start the server. Authentication token is not set!!")
-	}
 
-	db, err := sql.Open("postgres", os.Getenv("DATABASE_URL"))
+	serviceName := "service_ledger"
+	ctx := context.Background()
+
+	var ledgerConfig config.LedgerConfig
+	err := frame.ConfigProcess("", &ledgerConfig)
 	if err != nil {
-		log.Panic("Unable to connect to Database:", err)
+		logrus.WithError(err).Fatal("could not process configs")
+		return
 	}
-	log.Println("Successfully established connection to database.")
 
-	stdArgs := os.Args[1:]
-	if len(stdArgs) > 0 && stdArgs[0] == "migrate" {
-		log.Println("Initiating migrations")
+	service := frame.NewService(serviceName, frame.Config(&ledgerConfig), frame.Datastore(ctx))
+	log := service.L()
 
-		// Migrate DB changes
-		migrateDB(db)
+	var serviceOptions []frame.Option
+	if ledgerConfig.DoDatabaseMigrate() {
+		service.Init(serviceOptions...)
 
-	} else {
+		err := service.MigrateDatastore(ctx,
+			ledgerConfig.GetDatabaseMigrationPath(),
+			&models.Ledger{}, &models.Account{},
+			&models.Transaction{}, &models.TransactionEntry{})
 
-		implementation := &controllers.LedgerServer{DB: db}
-
-		grpcServer := grpc.NewServer(
-			grpc.UnaryInterceptor(middlewares.AuthInterceptor),
-		)
-		ledger.RegisterLedgerServiceServer(grpcServer, implementation)
-
-		port := os.Getenv("PORT")
-		if port == "" {
-			port = "7000"
-		}
-
-		lis, err := net.Listen("tcp", fmt.Sprintf(":%v", port))
 		if err != nil {
-			log.Panicf("Could not start on supplied port %v %v ", port, err)
+			log.Fatalf("main -- Could not migrate successfully because : %+v", err)
 		}
-
-		log.Println("Running server on port:", port)
-
-		// start the server
-		if err := grpcServer.Serve(lis); err != nil {
-			log.Fatalf("failed to serve: %s", err)
-		}
-
-		defer func() {
-			if r := recover(); r != nil {
-				log.Println("Server exited!!!", r)
-			}
-		}()
+		return
 	}
-}
 
-func migrateDB(db *sql.DB) {
-	log.Println("Starting db schema migration...")
-	driver, err := postgres.WithInstance(db, &postgres.Config{})
+	serviceTranslations := frame.Translations("en")
+	serviceOptions = append(serviceOptions, serviceTranslations)
+
+	jwtAudience := ledgerConfig.Oauth2JwtVerifyAudience
+	if jwtAudience == "" {
+		jwtAudience = serviceName
+	}
+
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
+			grpcctxtags.UnaryServerInterceptor(),
+			grpcrecovery.UnaryServerInterceptor(),
+			service.UnaryAuthInterceptor(jwtAudience, ledgerConfig.Oauth2JwtVerifyIssuer),
+		)),
+		grpc.StreamInterceptor(service.StreamAuthInterceptor(jwtAudience, ledgerConfig.Oauth2JwtVerifyIssuer)),
+	)
+
+	implementation := &controllers.LedgerServer{
+		Service: service,
+	}
+
+	ledger.RegisterLedgerServiceServer(grpcServer, implementation)
+
+	grpcServerOpt := frame.GrpcServer(grpcServer)
+	serviceOptions = append(serviceOptions, grpcServerOpt)
+
+	service.Init(serviceOptions...)
+
+	serverPort := ledgerConfig.ServerPort
+
+	log.Infof(" Initiating server operations on : %s", serverPort)
+	err = service.Run(ctx, fmt.Sprintf(":%v", serverPort))
 	if err != nil {
-		log.Panic("Unable to create database instance for migration:", err)
+		log.Printf("main -- Could not run Server : %v", err)
 	}
-
-	migrationFilesPath := os.Getenv("MIGRATION_FILES_PATH")
-	if migrationFilesPath == "" {
-		migrationFilesPath = "file://migrations/postgres"
-	}
-	m, err := migrate.NewWithDatabaseInstance(
-		migrationFilesPath,
-		"postgres", driver)
-	if err != nil {
-		log.Panic("Unable to create Migrate instance for database:", err)
-	}
-
-	version, dirty, err := m.Version()
-	if err != nil && err != migrate.ErrNilVersion {
-		log.Panic("Unable to get existing migration version for database:", dirty, err)
-	}
-	log.Println("Current schema version:", version)
-	err = m.Up()
-	if err != nil {
-		switch err {
-		case migrate.ErrNoChange:
-			log.Println("No changes to migrate")
-		case migrate.ErrLocked, database.ErrLocked:
-			log.Println("Database locked. Skipping migration assuming another instance working on it")
-		default:
-			log.Panic("Error while migration:", err)
-		}
-	}
-	version, dirty, err = m.Version()
-	if err != nil {
-		log.Panic("Unable to get new migration version for database:", dirty, err)
-	}
-	log.Println("Migrated schema version:", version)
 }

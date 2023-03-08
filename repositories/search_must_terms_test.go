@@ -1,10 +1,12 @@
-package models
+package repositories_test
 
-import "github.com/stretchr/testify/assert"
+import (
+	"github.com/stretchr/testify/assert"
+)
 
 func (ss *SearchSuite) TestSearchAccountsWithMustTerms() {
 	t := ss.T()
-	engine, _ := NewSearchEngine(ss.db, "accounts")
+	ctx := ss.ctx
 
 	query := `{
         "query": {
@@ -16,11 +18,10 @@ func (ss *SearchSuite) TestSearchAccountsWithMustTerms() {
             }
         }
     }`
-	results, err := engine.Query(query)
+	accounts, err := ss.accDB.Search(ctx, query)
 	assert.Equal(t, nil, err, "Error in building search query")
-	accounts, _ := results.([]*Account)
 	assert.Equal(t, 1, len(accounts), "Accounts count doesn't match")
-	assert.Equal(t, "ACC1", accounts[0].Reference, "Account Reference doesn't match")
+	assert.Equal(t, "acc1", accounts[0].ID, "Account Reference doesn't match")
 
 	query = `{
         "query": {
@@ -32,15 +33,14 @@ func (ss *SearchSuite) TestSearchAccountsWithMustTerms() {
             }
         }
     }`
-	results, err = engine.Query(query)
+	accounts, err = ss.accDB.Search(ctx, query)
 	assert.Equal(t, nil, err, "Error in building search query")
-	accounts, _ = results.([]*Account)
 	assert.Equal(t, 0, len(accounts), "No account should exist for given query")
 }
 
 func (ss *SearchSuite) TestSearchTransactionsWithMustTerms() {
 	t := ss.T()
-	engine, _ := NewSearchEngine(ss.db, "transactions")
+	ctx := ss.ctx
 
 	query := `{
         "query": {
@@ -52,12 +52,11 @@ func (ss *SearchSuite) TestSearchTransactionsWithMustTerms() {
             }
         }
     }`
-	results, err := engine.Query(query)
+	transactions, err := ss.txnDB.Search(ctx, query)
 	assert.Equal(t, nil, err, "Error in building search query")
-	transactions, _ := results.([]*Transaction)
 	assert.Equal(t, 1, len(transactions), "Transactions count doesn't match")
 	if len(transactions) > 0 {
-		assert.Equal(t, "TXN1", transactions[0].Reference, "Transaction Reference doesn't match")
+		assert.Equal(t, "txn1", transactions[0].ID, "Transaction Reference doesn't match")
 	}
 	query = `{
         "query": {
@@ -69,8 +68,7 @@ func (ss *SearchSuite) TestSearchTransactionsWithMustTerms() {
             }
         }
     }`
-	results, err = engine.Query(query)
+	transactions, err = ss.txnDB.Search(ctx, query)
 	assert.Equal(t, nil, err, "Error in building search query")
-	transactions, _ = results.([]*Transaction)
 	assert.Equal(t, 0, len(transactions), "No transaction should exist for given query")
 }
