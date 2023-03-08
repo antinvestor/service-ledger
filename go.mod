@@ -9,7 +9,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rs/xid v1.2.1
 	github.com/stretchr/testify v1.7.0
-	golang.org/x/text v0.3.4
+	golang.org/x/text v0.3.8
 	google.golang.org/genproto v0.0.0-20201110150050-8816d57aaa9a
 	google.golang.org/grpc v1.33.2
 	google.golang.org/protobuf v1.27.1
