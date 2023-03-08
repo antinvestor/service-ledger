@@ -6,7 +6,7 @@ import (
 	"math/big"
 )
 
-// Ledger represents the hierachy for organizing ledgers with information such as type, and JSON data
+// Ledger represents the hierarchy for organizing ledgers with information such as type, and JSON data
 type Ledger struct {
 	frame.BaseModel
 	Type     string            `gorm:"type:varchar(50)" json:"type"`
@@ -27,10 +27,10 @@ type Account struct {
 // Transaction represents a transaction in a ledger
 type Transaction struct {
 	frame.BaseModel
-	Currency     string              `gorm:"type:varchar(10)" json:"currency"`
-	Data         datatypes.JSONMap   `json:"data"`
-	TransactedAt string              `gorm:"type:varchar(50)" json:"transacted_at"`
-	Entries      []*TransactionEntry `json:"entries"`
+	Currency     string             `gorm:"type:varchar(10)" json:"currency"`
+	Data         datatypes.JSONMap  `json:"data"`
+	TransactedAt string             `gorm:"type:varchar(50)" json:"transacted_at"`
+	Entries      []TransactionEntry `json:"entries"`
 }
 
 // TransactionEntry represents a transaction line in a ledger

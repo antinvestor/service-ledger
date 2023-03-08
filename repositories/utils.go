@@ -2,13 +2,11 @@ package repositories
 
 import (
 	"github.com/antinvestor/service-ledger/models"
-	"log"
-	"strings"
 )
 
 // Orderedentries implements sort.Interface for []*TransactionEntry based on
 // the AccountID and Amount fields.
-type Orderedentries []*models.TransactionEntry
+type Orderedentries []models.TransactionEntry
 
 func (entries Orderedentries) Len() int      { return len(entries) }
 func (entries Orderedentries) Swap(i, j int) { entries[i], entries[j] = entries[j], entries[i] }
@@ -19,26 +17,22 @@ func (entries Orderedentries) Less(i, j int) bool {
 	return entries[i].AccountID < entries[j].AccountID
 }
 
-func containsSameElements(l1 []*models.TransactionEntry, l2 []*models.TransactionEntry) bool {
+func containsSameElements(l1 []models.TransactionEntry, l2 []models.TransactionEntry) bool {
 
-	l1Map := make(map[string]*models.TransactionEntry)
+	l1Map := make(map[string]models.TransactionEntry)
 
 	if len(l1) != len(l2) {
-		log.Printf(" Transactions have different lengths of %d and %d", len(l1), len(l2))
 		return false
 	}
 
 	for _, entry := range l1 {
-		l1Account := strings.ToUpper(entry.AccountID)
-		l1Map[l1Account] = entry
+		l1Map[entry.AccountID] = entry
 	}
 
 	for _, entry2 := range l2 {
-		l2Account := strings.ToUpper(entry2.AccountID)
-		entry := l1Map[l2Account]
+		entry, ok := l1Map[entry2.AccountID]
 
-		if entry == nil {
-			log.Printf(" Transaction account entry matching %s is missing", l2Account)
+		if !ok {
 			return false
 		}
 
@@ -46,7 +40,6 @@ func containsSameElements(l1 []*models.TransactionEntry, l2 []*models.Transactio
 		amount1 := entry.Amount.ToAbs()
 		amount2 := entry2.Amount.ToAbs()
 		if amount1.CmpAbs(amount2.ToInt()) != 0 {
-			log.Printf(" Transacting account %s has mismatching amounts of %d and %d", l2Account, amount1, amount2)
 			return false
 		}
 	}

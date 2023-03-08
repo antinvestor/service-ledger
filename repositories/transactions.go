@@ -137,6 +137,7 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 	// Add transaction Entries in one go to succeed or fail all
 	for _, line := range transaction.Entries {
 		account := accountsMap[line.AccountID]
+		line.Currency = account.Currency
 
 		entryAmount := line.Amount
 		// Decide the signage of entry based on : https://en.wikipedia.org/wiki/Double-entry_bookkeeping :DEADCLIC
@@ -146,7 +147,7 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 		}
 	}
 
-	err := t.service.DB(ctx, false).Create(transaction).Error
+	err := t.service.DB(ctx, false).Debug().Create(&transaction).Error
 	if err != nil {
 		return nil, ledger.ErrorSystemFailure.Override(err)
 	}
@@ -161,11 +162,12 @@ func (t *transactionRepository) GetByID(ctx context.Context, id string) (*models
 		return nil, ledger.ErrorUnspecifiedReference
 	}
 
-	transaction := new(models.Transaction)
+	var transaction models.Transaction
 
 	err := t.service.DB(ctx, true).Debug().
 		Preload("Entries").
-		First(&transaction, &id).Error
+		First(&transaction, "id = ?", id).
+		Error
 
 	if err != nil {
 		if frame.DBErrorIsRecordNotFound(err) {
@@ -174,7 +176,7 @@ func (t *transactionRepository) GetByID(ctx context.Context, id string) (*models
 		return nil, ledger.ErrorSystemFailure.Override(err)
 	}
 
-	return transaction, nil
+	return &transaction, nil
 }
 
 // Update updates data of the given transaction

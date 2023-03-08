@@ -15,7 +15,7 @@ func transactionToApi(mTxn *models.Transaction) *ledger.Transaction {
 		mEntry.Currency = mTxn.Currency
 		mEntry.TransactionID = mTxn.ID
 		mEntry.TransactedAt = mTxn.TransactedAt
-		apiEntries[index] = transactionEntryToApi(mEntry)
+		apiEntries[index] = transactionEntryToApi(&mEntry)
 	}
 	return &ledger.Transaction{
 		Reference:    mTxn.ID,
@@ -25,9 +25,9 @@ func transactionToApi(mTxn *models.Transaction) *ledger.Transaction {
 }
 
 func transactionFromApi(aTxn *ledger.Transaction) *models.Transaction {
-	modelEntries := make([]*models.TransactionEntry, len(aTxn.Entries))
+	modelEntries := make([]models.TransactionEntry, len(aTxn.Entries))
 	for index, mEntry := range aTxn.Entries {
-		modelEntries[index] = &models.TransactionEntry{
+		modelEntries[index] = models.TransactionEntry{
 			Credit:    mEntry.Credit,
 			AccountID: mEntry.GetAccount(),
 			Amount:    fromMoney(mEntry.Amount),

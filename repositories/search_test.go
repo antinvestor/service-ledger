@@ -67,7 +67,7 @@ func (ss *SearchSuite) SetupSuite() {
 	txn1 := &models.Transaction{
 		BaseModel: frame.BaseModel{ID: "txn1"},
 		Currency:  "UGX",
-		Entries: []*models.TransactionEntry{
+		Entries: []models.TransactionEntry{
 			{
 				AccountID: "acc1",
 				Amount:    models.New(1000),
@@ -89,7 +89,7 @@ func (ss *SearchSuite) SetupSuite() {
 	txn2 := &models.Transaction{
 		BaseModel: frame.BaseModel{ID: "txn2"},
 		Currency:  "UGX",
-		Entries: []*models.TransactionEntry{
+		Entries: []models.TransactionEntry{
 			{
 				AccountID: "acc1",
 				Amount:    models.New(100),
@@ -110,7 +110,7 @@ func (ss *SearchSuite) SetupSuite() {
 	txn3 := &models.Transaction{
 		BaseModel: frame.BaseModel{ID: "txn3"},
 		Currency:  "UGX",
-		Entries: []*models.TransactionEntry{
+		Entries: []models.TransactionEntry{
 			{
 				AccountID: "acc1",
 				Amount:    models.New(400),

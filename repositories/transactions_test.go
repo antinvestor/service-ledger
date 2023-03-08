@@ -66,7 +66,7 @@ func (ts *TransactionsModelSuite) TestIsValid() {
 	transaction := &models.Transaction{
 		BaseModel: frame.BaseModel{ID: "t001"},
 		Currency:  "UGX",
-		Entries: []*models.TransactionEntry{
+		Entries: []models.TransactionEntry{
 			{
 				AccountID: "a1",
 				Amount:    models.New(100),
@@ -92,9 +92,9 @@ func (ts *TransactionsModelSuite) TestIsConflict() {
 
 	transactionRepository := repositories.NewTransactionRepository(ts.service, accountRepo)
 	transaction := &models.Transaction{
-		BaseModel: frame.BaseModel{ID: "t002"},
+		BaseModel: frame.BaseModel{ID: "t0015"},
 		Currency:  "UGX",
-		Entries: []*models.TransactionEntry{
+		Entries: []models.TransactionEntry{
 			{
 				AccountID: "a1",
 				Amount:    models.New(100),
@@ -113,9 +113,9 @@ func (ts *TransactionsModelSuite) TestIsConflict() {
 	assert.Equal(t, false, conflicts, "Transaction should not conflict")
 
 	transaction = &models.Transaction{
-		BaseModel: frame.BaseModel{ID: "t002"},
+		BaseModel: frame.BaseModel{ID: "t0015"},
 		Currency:  "UGX",
-		Entries: []*models.TransactionEntry{
+		Entries: []models.TransactionEntry{
 			{
 				AccountID: "a1",
 				Amount:    models.New(50),
@@ -132,9 +132,9 @@ func (ts *TransactionsModelSuite) TestIsConflict() {
 	assert.Equal(t, true, conflicts, "Transaction should conflict since amounts are different from first received")
 
 	transaction = &models.Transaction{
-		BaseModel: frame.BaseModel{ID: "t002"},
+		BaseModel: frame.BaseModel{ID: "t0015"},
 		Currency:  "UGX",
-		Entries: []*models.TransactionEntry{
+		Entries: []models.TransactionEntry{
 			{
 				AccountID: "b1",
 				Amount:    models.New(100),
@@ -159,7 +159,7 @@ func (ts *TransactionsModelSuite) TestTransact() {
 	transaction := &models.Transaction{
 		BaseModel: frame.BaseModel{ID: "t003"},
 		Currency:  "UGX",
-		Entries: []*models.TransactionEntry{
+		Entries: []models.TransactionEntry{
 			{
 				AccountID: "a1",
 				Amount:    models.New(100),
@@ -190,7 +190,7 @@ func (ts *TransactionsModelSuite) TestDuplicateTransactions() {
 	transaction := &models.Transaction{
 		BaseModel: frame.BaseModel{ID: "t005"},
 		Currency:  "UGX",
-		Entries: []*models.TransactionEntry{
+		Entries: []models.TransactionEntry{
 			{
 				AccountID: "a1",
 				Amount:    models.New(100),
@@ -230,7 +230,7 @@ func (ts *TransactionsModelSuite) TestTransactWithBoundaryValues() {
 	transaction := &models.Transaction{
 		BaseModel: frame.BaseModel{ID: "t004"},
 		Currency:  "UGX",
-		Entries: []*models.TransactionEntry{
+		Entries: []models.TransactionEntry{
 			{
 				AccountID: "a3",
 				Amount:    models.New(boundaryValue),
@@ -262,15 +262,15 @@ func (ts *TransactionsModelSuite) TearDownSuite() {
 
 	t := ts.T()
 	err := ts.service.DB(ts.ctx, false).Exec(`DELETE FROM transaction_entries WHERE transaction_id 
-		IN (SELECT transaction_id FROM transactions WHERE id IN($1, $2, $3, $4,$5 ))`, "T001", "T002", "T003", "T004", "T005").Error
+		IN (SELECT transaction_id FROM transactions WHERE id IN($1, $2, $3, $4,$5, $6 ))`, "t001", "t002", "t003", "t004", "t005", "t0015").Error
 	if err != nil {
 		t.Fatal("Error deleting Entries:", err)
 	}
-	err = ts.service.DB(ts.ctx, false).Exec(`DELETE FROM transactions WHERE id IN ($1, $2, $3, $4,$5 )`, "T001", "T002", "T003", "T004", "T005").Error
+	err = ts.service.DB(ts.ctx, false).Exec(`DELETE FROM transactions WHERE id IN ($1, $2, $3, $4,$5, $6 )`, "t001", "t002", "t003", "t004", "t005", "t0015").Error
 	if err != nil {
 		t.Fatal("Error deleting transactions:", err)
 	}
-	err = ts.service.DB(ts.ctx, false).Exec(`DELETE FROM accounts WHERE id IN ($1, $2, $3, $4,$5,$6 )`, "A1", "A2", "A3", "A4", "B1", "B2").Error
+	err = ts.service.DB(ts.ctx, false).Exec(`DELETE FROM accounts WHERE id IN ($1, $2, $3, $4,$5,$6 )`, "a1", "a2", "a3", "a4", "b1", "b2").Error
 	if err != nil {
 		t.Fatal("Error deleting accounts:", err)
 	}

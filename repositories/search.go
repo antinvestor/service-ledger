@@ -91,9 +91,9 @@ func (engine *SearchEngine) Query(ctx context.Context, q string) (interface{}, l
 			var amount []*models.Int
 			json.Unmarshal([]byte(rawAccounts), &accounts)
 			json.Unmarshal([]byte(rawamount), &amount)
-			var entries []*models.TransactionEntry
+			var entries []models.TransactionEntry
 			for i, acc := range accounts {
-				l := &models.TransactionEntry{
+				l := models.TransactionEntry{
 					AccountID: acc,
 					Amount:    amount[i],
 				}
@@ -105,9 +105,9 @@ func (engine *SearchEngine) Query(ctx context.Context, q string) (interface{}, l
 		return transactions, nil
 
 	case SearchNamespaceTransactionEntries:
-		transactionEntries := make([]*models.TransactionEntry, 0)
+		transactionEntries := make([]models.TransactionEntry, 0)
 		for rows.Next() {
-			txnEntry := &models.TransactionEntry{}
+			txnEntry := models.TransactionEntry{}
 			if err := rows.Scan(&txnEntry.ID, &txnEntry.AccountID,
 				&txnEntry.AccountID, &txnEntry.TransactionID,
 				&txnEntry.Amount, &txnEntry.Credit, &txnEntry.Balance,

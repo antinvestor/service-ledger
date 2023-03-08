@@ -36,13 +36,13 @@ func (ledgerSrv *LedgerServer) SearchTransactionEntries(request *ledger.SearchRe
 		return aerr
 	}
 
-	castTransactionEntries, ok := results.([]*models.TransactionEntry)
+	castTransactionEntries, ok := results.([]models.TransactionEntry)
 	if !ok {
 		return ledger.ErrorSearchQueryResultsNotCasting
 	}
 
 	for _, txn := range castTransactionEntries {
-		_ = server.Send(transactionEntryToApi(txn))
+		_ = server.Send(transactionEntryToApi(&txn))
 	}
 
 	return nil
