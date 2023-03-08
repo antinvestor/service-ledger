@@ -2,15 +2,10 @@ package repositories
 
 import (
 	"context"
-	"fmt"
 	"github.com/antinvestor/service-ledger/ledger"
 	"github.com/antinvestor/service-ledger/models"
 	"github.com/pitabwire/frame"
 )
-
-const constLedgerQuery = `SELECT 
-    id, parent_id, data, type, created_at, modified_at, 
-       version, tenant_id, partition_id, access_id, deleted_at FROM ledgers`
 
 type LedgerRepository interface {
 	GetByID(ctx context.Context, id string) (*models.Ledger, ledger.ApplicationLedgerError)
@@ -58,28 +53,17 @@ func (l *ledgerRepository) Search(ctx context.Context, query string) ([]*models.
 	}
 
 	sqlQuery := rawQuery.ToQueryConditions()
+	var ledgerList []*models.Ledger
 
-	rows, err := l.service.DB(ctx, true).Raw(
-		fmt.Sprintf(`%s %s`, constLedgerQuery, sqlQuery.sql), sqlQuery.args...).Rows()
+	conditions := append([]interface{}{sqlQuery.sql}, sqlQuery.args...)
+
+	err := l.service.DB(ctx, true).
+		Find(&ledgerList, conditions...).Offset(sqlQuery.offset).Limit(sqlQuery.limit).Error
 	if err != nil {
 		if frame.DBErrorIsRecordNotFound(err) {
 			return nil, ledger.ErrorLedgerNotFound
 		}
 		return nil, ledger.ErrorSystemFailure.Override(err)
-	}
-
-	defer rows.Close()
-
-	var ledgerList []*models.Ledger
-	for rows.Next() {
-		l := models.Ledger{}
-		if err := rows.Scan(&l.ID, &l.ParentID, &l.Data, &l.Type,
-			&l.CreatedAt, &l.ModifiedAt, &l.Version, &l.TenantID, &l.PartitionID,
-			&l.AccessID, &l.DeletedAt); err != nil {
-			return nil, ledger.ErrorSystemFailure.Override(err)
-		}
-
-		ledgerList = append(ledgerList, &l)
 	}
 
 	return ledgerList, nil
