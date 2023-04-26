@@ -6,7 +6,7 @@ require (
 	github.com/golang-migrate/migrate v3.5.4+incompatible
 	github.com/golang/protobuf v1.5.3
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
-	github.com/lib/pq v1.10.8
+	github.com/lib/pq v1.10.9
 	github.com/pitabwire/frame v1.8.13
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.0
