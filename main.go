@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"github.com/antinvestor/service-ledger/config"
 	"github.com/antinvestor/service-ledger/controllers"
@@ -19,7 +18,6 @@ import (
 func main() {
 
 	serviceName := "service_ledger"
-	ctx := context.Background()
 
 	var ledgerConfig config.LedgerConfig
 	err := frame.ConfigProcess("", &ledgerConfig)
@@ -28,10 +26,11 @@ func main() {
 		return
 	}
 
-	service := frame.NewService(serviceName, frame.Config(&ledgerConfig), frame.Datastore(ctx))
+	ctx, service := frame.NewService(serviceName, frame.Config(&ledgerConfig))
+	defer service.Stop(ctx)
 	log := service.L()
 
-	var serviceOptions []frame.Option
+	serviceOptions := []frame.Option{frame.Datastore(ctx)}
 	if ledgerConfig.DoDatabaseMigrate() {
 		service.Init(serviceOptions...)
 

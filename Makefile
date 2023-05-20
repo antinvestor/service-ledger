@@ -49,16 +49,20 @@ pg_wait:
 docker-stop: ## stops all docker containers
 	docker-compose down
 
+
 # this command will run all tests in the repo
 # INTEGRATION_TEST_SUITE_PATH is used to run specific tests in Golang,
 # if it's not specified it will run all tests
 tests: ## runs all system tests
-	go test ./... -v
-    RETURNCODE=$?;
-    @if["$RETURNCODE" != "0"]; then\
-    	echo "unit tests failed" && exit 1;\
-    fi;
-
+	$(ENV_LOCAL_TEST) \
+	FILES=$(go list ./...  | grep -v /vendor/);\
+	go test ./... -v -run=$(INTEGRATION_TEST_SUITE_PATH)  -coverprofile=coverage.out;\
+	RETURNCODE=$$?;\
+	if [ "$$RETURNCODE" -ne 0 ]; then\
+		echo "unit tests failed with error code: $$RETURNCODE" >&2;\
+		exit 1;\
+	fi;\
+	go tool cover -html=coverage.out -o coverage.html
 
 build: clean fmt vet docker-setup pg_wait tests docker-stop ## run all preliminary steps and tests the setup
 

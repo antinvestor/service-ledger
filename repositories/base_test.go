@@ -15,7 +15,6 @@ type BaseTestSuite struct {
 
 func (bs *BaseTestSuite) SetupSuite() {
 
-	bs.ctx = context.Background()
 	configLedger := config.LedgerConfig{
 		ConfigurationDefault: frame.ConfigurationDefault{
 			ServerPort:         "",
@@ -25,7 +24,7 @@ func (bs *BaseTestSuite) SetupSuite() {
 		PartitionServiceURI: "",
 	}
 
-	bs.service = frame.NewService("ledger tests",
+	bs.ctx, bs.service = frame.NewService("ledger tests",
 		frame.Config(&configLedger),
 		frame.Datastore(bs.ctx),
 		frame.NoopDriver())
