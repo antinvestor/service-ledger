@@ -1,13 +1,15 @@
-[![CircleCI](https://circleci.com/gh/RealImage/QLedger.svg?style=svg)](https://circleci.com/gh/RealImage/QLedger)
+![project tests](https://github.com/antinvestor/service-ledger/actions/workflows/run_tests.yml/badge.svg) ![image release](https://github.com/antinvestor/service-ledger/actions/workflows/release.yml/badge.svg)
 
-# QLedger
-Systems that manage money do so by managing its movement - by tracking where it moved from, where it moved to, how much moved and why. QLedger is a service that provides APIs to manage the structured movement of money.
+
+
+# Service Ledger
+Systems that manage money do so by managing its movement - by tracking where it moved from, where it moved to, how much moved and why. Service Ledger is a service that provides APIs to manage the structured movement of money.
 
 The there are two primitives in the system: **accounts** and **transactions**. Money moves between accounts by means of a transaction.
 
-A **transaction** may have multiple *entries* - each line represents the change (*amount*) of money in one *account*. A valid transaction has a total amount of zero - no money is created or destroyed, and all money moved out of any account(s) has moved in to other account(s). QLedger validates all transactions made via the API with a zero amount check.
+A **transaction** may have multiple *entries* - each line represents the change (*amount*) of money in one *account*. A valid transaction has a total amount of zero - no money is created or destroyed, and all money moved out of any account(s) has moved in to other account(s). Service Ledger validates all transactions made via the API with a zero amount check.
 
-> Phrased another way, the law of conversation of money is formalized by the rules of double entry bookkeeping - money debited from any account must be credited to another account (and vice versa), implying that all transactions must have at least two entries (double entry) with a zero sum amount. QLedger makes it easy to follow these rules.
+> Phrased another way, the law of conversation of money is formalized by the rules of double entry bookkeeping - money debited from any account must be credited to another account (and vice versa), implying that all transactions must have at least two entries (double entry) with a zero sum amount. Service Ledger makes it easy to follow these rules.
 
 Accounts do not need to be predefined - they are called into existence when they are first used.
 
@@ -280,7 +282,7 @@ Example: The following query matches requests to match transactions which satisf
 
 ## Environment Variables:
 
-Please read the documentation of all QLedger environment variables [here](./context#environment-variables)
+Please read the documentation of all Service Ledger environment variables [here](./context#environment-variables)
 
 
 
