@@ -9,7 +9,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/pitabwire/frame v1.12.1
 	github.com/pkg/errors v0.9.1
-	github.com/sirupsen/logrus v1.9.2
+	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/text v0.9.0
 	google.golang.org/genproto v0.0.0-20230530153820-e85fd2cbaebc
