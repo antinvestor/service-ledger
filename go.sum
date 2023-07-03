@@ -2012,6 +2012,8 @@ github.com/pitabwire/frame v1.13.6 h1:xCySKSZ5ZYu10YG8I8EnwlN0ixzdP2sDecyy58K87i
 github.com/pitabwire/frame v1.13.6/go.mod h1:iXT4j5ejnMrnSNpwEiy+OpeM3tg8Db1IBaLhAJnrS20=
 github.com/pitabwire/frame v1.14.2 h1:3o4GyP5u1Jo32eBnMxnDAlppFPCKg90nOCGyj6OUps8=
 github.com/pitabwire/frame v1.14.2/go.mod h1:S184wVZWzeb+ZIIBou0611StgfRa93i44nL4TH0SecA=
+github.com/pitabwire/frame v1.15.3 h1:DNQH6dRuLP7IhGQ3/UFC6WCGFtz3hj7Z2X0Up9grDSQ=
+github.com/pitabwire/frame v1.15.3/go.mod h1:S184wVZWzeb+ZIIBou0611StgfRa93i44nL4TH0SecA=
 github.com/pkg/browser v0.0.0-20210115035449-ce105d075bb4/go.mod h1:N6UoU20jOqggOuDwUaBQpluzLNDqif3kq9z2wpdYEfQ=
 github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8/go.mod h1:HKlIX3XHQyzLZPlr7++PzdhaXEj94dEiJgZDTsxEqUI=
 github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e/go.mod h1:pJLUxLENpZxwdsKMEsNbx1VGcRFpLqf3715MtcvvzbA=
