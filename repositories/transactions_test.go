@@ -106,6 +106,7 @@ func (ts *TransactionsModelSuite) TestIsConflict() {
 		},
 	}
 	done, err := transactionRepository.Transact(ts.ctx, transaction)
+	assert.NoError(t, err)
 	assert.NotEqual(t, nil, done, "Transaction should be created")
 
 	conflicts, err := transactionRepository.IsConflict(ts.ctx, transaction)
@@ -175,6 +176,7 @@ func (ts *TransactionsModelSuite) TestTransact() {
 		},
 	}
 	done, err := transactionRepository.Transact(ts.ctx, transaction)
+	assert.NoError(t, err)
 	assert.NotEqual(t, nil, done, "Transaction should be created")
 
 	exists, err := transactionRepository.GetByID(ts.ctx, "t003")

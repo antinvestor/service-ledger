@@ -48,7 +48,7 @@ func (ss *SearchSuite) SetupSuite() {
 			"created":     "2017-01-01",
 		},
 	}
-	acc1, err = ss.accDB.Create(ss.ctx, acc1)
+	_, err = ss.accDB.Create(ss.ctx, acc1)
 	assert.Equal(t, nil, err, "Error creating test account with %s", err)
 	acc2 := &models.Account{
 		BaseModel: frame.BaseModel{ID: "acc2"},
@@ -60,7 +60,7 @@ func (ss *SearchSuite) SetupSuite() {
 			"created":     "2017-06-30",
 		},
 	}
-	acc2, err = ss.accDB.Create(ss.ctx, acc2)
+	_, err = ss.accDB.Create(ss.ctx, acc2)
 	assert.Equal(t, nil, err, "Error creating test account")
 
 	// Create test transactions
@@ -105,7 +105,7 @@ func (ss *SearchSuite) SetupSuite() {
 			"months": []string{"apr", "may", "jun"},
 		},
 	}
-	tx, err = ss.txnDB.Transact(ss.ctx, txn2)
+	tx, _ = ss.txnDB.Transact(ss.ctx, txn2)
 	assert.NotEqual(t, nil, tx, "Error creating test transaction")
 	txn3 := &models.Transaction{
 		BaseModel: frame.BaseModel{ID: "txn3"},
@@ -127,6 +127,9 @@ func (ss *SearchSuite) SetupSuite() {
 		},
 	}
 	tx, err = ss.txnDB.Transact(ss.ctx, txn3)
+
+	assert.NoError(t, err)
+
 	assert.NotEqual(t, nil, tx, "Error creating test transaction")
 }
 

@@ -47,7 +47,10 @@ func (ledgerSrv *LedgerServer) SearchLedgers(request *ledger.SearchRequest, serv
 	}
 
 	for _, lg := range castLedgers {
-		server.Send(ledgerToApi(lg))
+		err := server.Send(ledgerToApi(lg))
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

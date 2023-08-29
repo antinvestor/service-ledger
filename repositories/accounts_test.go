@@ -33,8 +33,10 @@ func (as *AccountsSuite) SetupSuite() {
 
 	account := &models.Account{LedgerID: as.ledger.ID, Currency: "UGX"}
 	account.ID = "100"
-	account, err = accountsDB.Create(as.ctx, account)
-
+	_, err = accountsDB.Create(as.ctx, account)
+	if err != nil {
+		as.Errorf(err, "Unable to create account")
+	}
 }
 
 func (as *AccountsSuite) TestAccountsInfoAPI() {

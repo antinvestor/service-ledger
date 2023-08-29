@@ -128,7 +128,7 @@ func (t *transactionRepository) Validate(ctx context.Context, txn *models.Transa
 		}
 
 		if !strings.EqualFold(txn.Currency, account.Currency) {
-			log.Println(fmt.Sprintf("Account %s has differing currency of %s to transaction currency of %s", entry.AccountID, account.Currency, txn.Currency))
+			t.service.L().Println(fmt.Sprintf("Account %s has differing currency of %s to transaction currency of %s", entry.AccountID, account.Currency, txn.Currency))
 			return nil, ledger.ErrorTransactionAccountsDifferCurrency.Extend(fmt.Sprintf("Account %s has differing currency of %s to transaction currency of %s", entry.AccountID, account.Currency, txn.Currency))
 		}
 	}

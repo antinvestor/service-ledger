@@ -9,6 +9,8 @@ func Ping(w http.ResponseWriter, r *http.Request) {
 	// TODO: Should DB connection check be made while ping ?
 	response := `{"ping": "pong"}`
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Write([]byte(response))
-	return
+	_, err := w.Write([]byte(response))
+	if err != nil {
+		return
+	}
 }
