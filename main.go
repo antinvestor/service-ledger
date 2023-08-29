@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/antinvestor/service-ledger/config"
 	"github.com/antinvestor/service-ledger/controllers"
 	"github.com/antinvestor/service-ledger/ledger"
@@ -73,10 +72,11 @@ func main() {
 
 	service.Init(serviceOptions...)
 
-	serverPort := ledgerConfig.ServerPort
+	log.WithField("server http port", ledgerConfig.HttpServerPort).
+		WithField("server grpc port", ledgerConfig.GrpcServerPort).
+		Info(" Initiating server operations")
 
-	log.Infof(" Initiating server operations on : %s", serverPort)
-	err = service.Run(ctx, fmt.Sprintf(":%v", serverPort))
+	err = service.Run(ctx, "")
 	if err != nil {
 		log.Printf("main -- Could not run Server : %v", err)
 	}
