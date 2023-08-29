@@ -1,5 +1,5 @@
 
-FROM golang:1.20 as builder
+FROM golang:1.21 as builder
 
 # Copy the local package files to the container's workspace.
 ADD . /go/src/github.com/antinvestor/service-ledger
