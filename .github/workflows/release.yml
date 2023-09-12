@@ -43,7 +43,7 @@ jobs:
 
       # Setting up Docker Builder
       - name: Set up Docker Builder
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
       # Set Github Access Token with "write:packages & read:packages" scope for Github Container Registry.
       # Then go to repository setings and add the copied token as a secret called "CR_PAT"
