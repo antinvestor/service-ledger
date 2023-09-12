@@ -58,7 +58,7 @@ jobs:
 
       # Push to Github Container Registry
       - name: Pushing Image to Github Container Registry
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         with:
           context: ./
           file: ./Dockerfile
