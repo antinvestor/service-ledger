@@ -2,7 +2,7 @@ version: '3'
 
 services:
   ledger_db:
-    image: postgres:15.4
+    image: postgres:15.5
     environment:
       - POSTGRES_USER=ant
       - POSTGRES_PASSWORD=secret
