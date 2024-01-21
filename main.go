@@ -5,10 +5,11 @@ import (
 	"github.com/antinvestor/service-ledger/controllers"
 	"github.com/antinvestor/service-ledger/ledger"
 	"github.com/antinvestor/service-ledger/models"
+	"github.com/bufbuild/protovalidate-go"
 	_ "github.com/golang-migrate/migrate/source/file"
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	grpcrecovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
-	grpcctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
+	protovalidateinterceptor "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
+
 	"github.com/pitabwire/frame"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -52,13 +53,22 @@ func main() {
 		jwtAudience = serviceName
 	}
 
+	validator, err := protovalidate.New()
+	if err != nil {
+		log.WithError(err).Fatal("could not load validator for proto messages")
+	}
+
 	grpcServer := grpc.NewServer(
-		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
-			grpcctxtags.UnaryServerInterceptor(),
-			grpcrecovery.UnaryServerInterceptor(),
+		grpc.ChainUnaryInterceptor(
 			service.UnaryAuthInterceptor(jwtAudience, ledgerConfig.Oauth2JwtVerifyIssuer),
-		)),
-		grpc.StreamInterceptor(service.StreamAuthInterceptor(jwtAudience, ledgerConfig.Oauth2JwtVerifyIssuer)),
+			protovalidateinterceptor.UnaryServerInterceptor(validator),
+			recovery.UnaryServerInterceptor(),
+		),
+		grpc.ChainStreamInterceptor(
+			service.StreamAuthInterceptor(jwtAudience, ledgerConfig.Oauth2JwtVerifyIssuer),
+			protovalidateinterceptor.StreamServerInterceptor(validator),
+			recovery.StreamServerInterceptor(),
+		),
 	)
 
 	implementation := &controllers.LedgerServer{
