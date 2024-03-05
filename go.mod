@@ -11,7 +11,7 @@ require (
 	github.com/pitabwire/frame v1.18.6
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.3
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	golang.org/x/text v0.14.0
 	google.golang.org/genproto v0.0.0-20240304212257-790db918fca8
 	google.golang.org/grpc v1.62.0
