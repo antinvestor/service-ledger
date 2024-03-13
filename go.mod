@@ -6,7 +6,7 @@ require (
 	github.com/bufbuild/protovalidate-go v0.6.0
 	github.com/golang-migrate/migrate v3.5.4+incompatible
 	github.com/golang/protobuf v1.5.4
-	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.0.1
+	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0
 	github.com/lib/pq v1.10.9
 	github.com/pitabwire/frame v1.18.6
 	github.com/pkg/errors v0.9.1
