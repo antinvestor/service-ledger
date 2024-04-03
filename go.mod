@@ -14,7 +14,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/text v0.14.0
 	google.golang.org/genproto v0.0.0-20240401170217-c3f982113cda
-	google.golang.org/grpc v1.62.1
+	google.golang.org/grpc v1.63.0
 	google.golang.org/protobuf v1.33.0
 	gorm.io/datatypes v1.2.0
 )
