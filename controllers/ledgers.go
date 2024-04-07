@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"context"
-	"github.com/antinvestor/service-ledger/ledger"
+	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
 	"github.com/antinvestor/service-ledger/models"
 	"github.com/antinvestor/service-ledger/repositories"
 	"github.com/pitabwire/frame"
@@ -10,23 +10,24 @@ import (
 
 type LedgerServer struct {
 	Service *frame.Service
+	ledgerV1.UnimplementedLedgerServiceServer
 }
 
-func fromLedgerType(raw ledger.LedgerType) string {
-	return ledger.LedgerType_name[int32(raw)]
+func fromLedgerType(raw ledgerV1.LedgerType) string {
+	return ledgerV1.LedgerType_name[int32(raw)]
 }
 
-func toLedgerType(model string) ledger.LedgerType {
-	ledgerType := ledger.LedgerType_value[model]
-	return ledger.LedgerType(ledgerType)
+func toLedgerType(model string) ledgerV1.LedgerType {
+	ledgerType := ledgerV1.LedgerType_value[model]
+	return ledgerV1.LedgerType(ledgerType)
 }
 
-func ledgerToApi(mLg *models.Ledger) *ledger.Ledger {
-	return &ledger.Ledger{Reference: mLg.ID, Type: toLedgerType(mLg.Type),
+func ledgerToApi(mLg *models.Ledger) *ledgerV1.Ledger {
+	return &ledgerV1.Ledger{Reference: mLg.ID, Type: toLedgerType(mLg.Type),
 		Parent: mLg.ParentID, Data: frame.DBPropertiesToMap(mLg.Data)}
 }
 
-func ledgerFromApi(aLg *ledger.Ledger) *models.Ledger {
+func ledgerFromApi(aLg *ledgerV1.Ledger) *models.Ledger {
 	return &models.Ledger{
 		BaseModel: frame.BaseModel{ID: aLg.GetReference()},
 		Type:      fromLedgerType(aLg.GetType()),
@@ -36,7 +37,7 @@ func ledgerFromApi(aLg *ledger.Ledger) *models.Ledger {
 }
 
 // SearchLedgers for an ledger based on search request json query
-func (ledgerSrv *LedgerServer) SearchLedgers(request *ledger.SearchRequest, server ledger.LedgerService_SearchLedgersServer) error {
+func (ledgerSrv *LedgerServer) SearchLedgers(request *ledgerV1.SearchRequest, server ledgerV1.LedgerService_SearchLedgersServer) error {
 
 	ctx := server.Context()
 	ledgerRepository := repositories.NewLedgerRepository(ledgerSrv.Service)
@@ -57,7 +58,7 @@ func (ledgerSrv *LedgerServer) SearchLedgers(request *ledger.SearchRequest, serv
 }
 
 // CreateLedger a new account based on supplied data
-func (ledgerSrv *LedgerServer) CreateLedger(ctx context.Context, lg *ledger.Ledger) (*ledger.Ledger, error) {
+func (ledgerSrv *LedgerServer) CreateLedger(ctx context.Context, lg *ledgerV1.Ledger) (*ledgerV1.Ledger, error) {
 
 	ledgerRepository := repositories.NewLedgerRepository(ledgerSrv.Service)
 
@@ -72,7 +73,7 @@ func (ledgerSrv *LedgerServer) CreateLedger(ctx context.Context, lg *ledger.Ledg
 }
 
 // UpdateLedger the data component of the account.
-func (ledgerSrv *LedgerServer) UpdateLedger(context context.Context, aLg *ledger.Ledger) (*ledger.Ledger, error) {
+func (ledgerSrv *LedgerServer) UpdateLedger(context context.Context, aLg *ledgerV1.Ledger) (*ledgerV1.Ledger, error) {
 
 	ledgerDB := repositories.NewLedgerRepository(ledgerSrv.Service)
 

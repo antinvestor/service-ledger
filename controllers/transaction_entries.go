@@ -1,18 +1,18 @@
 package controllers
 
 import (
-	"github.com/antinvestor/service-ledger/ledger"
+	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
 	"github.com/antinvestor/service-ledger/models"
 	"github.com/antinvestor/service-ledger/repositories"
 )
 
-func transactionEntryToApi(mEntry *models.TransactionEntry) *ledger.TransactionEntry {
+func transactionEntryToApi(mEntry *models.TransactionEntry) *ledgerV1.TransactionEntry {
 
 	entryAmount := toMoneyInt(mEntry.Currency, mEntry.Amount)
 
 	balanceAmount := toMoneyInt(mEntry.Currency, mEntry.Balance)
 
-	return &ledger.TransactionEntry{
+	return &ledgerV1.TransactionEntry{
 		Account:      mEntry.AccountID,
 		Transaction:  mEntry.TransactionID,
 		TransactedAt: mEntry.TransactedAt,
@@ -23,7 +23,7 @@ func transactionEntryToApi(mEntry *models.TransactionEntry) *ledger.TransactionE
 }
 
 // SearchTransactionEntries for transactions based on details of the query json
-func (ledgerSrv *LedgerServer) SearchTransactionEntries(request *ledger.SearchRequest, server ledger.LedgerService_SearchTransactionEntriesServer) error {
+func (ledgerSrv *LedgerServer) SearchTransactionEntries(request *ledgerV1.SearchRequest, server ledgerV1.LedgerService_SearchTransactionEntriesServer) error {
 
 	ctx := server.Context()
 

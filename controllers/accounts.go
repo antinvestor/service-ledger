@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"context"
-	"github.com/antinvestor/service-ledger/ledger"
+	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
 	"github.com/antinvestor/service-ledger/models"
 	"github.com/antinvestor/service-ledger/repositories"
 	"github.com/pitabwire/frame"
@@ -32,15 +32,15 @@ func fromMoney(m *money.Money) (naive *models.Int) {
 	return models.FromBigInt(total)
 }
 
-func accountToApi(mAcc *models.Account) *ledger.Account {
+func accountToApi(mAcc *models.Account) *ledgerV1.Account {
 
 	balance := toMoneyInt(mAcc.Currency, mAcc.Balance)
 
-	return &ledger.Account{Reference: mAcc.ID,
+	return &ledgerV1.Account{Reference: mAcc.ID,
 		Ledger: mAcc.LedgerID, Balance: &balance, Data: frame.DBPropertiesToMap(mAcc.Data)}
 }
 
-func accountFromApi(account *ledger.Account) *models.Account {
+func accountFromApi(account *ledgerV1.Account) *models.Account {
 
 	return &models.Account{
 		BaseModel: frame.BaseModel{ID: account.GetReference()},
@@ -51,7 +51,7 @@ func accountFromApi(account *ledger.Account) *models.Account {
 }
 
 func (ledgerSrv *LedgerServer) SearchAccounts(
-	request *ledger.SearchRequest, server ledger.LedgerService_SearchAccountsServer) error {
+	request *ledgerV1.SearchRequest, server ledgerV1.LedgerService_SearchAccountsServer) error {
 
 	ctx := server.Context()
 
@@ -70,7 +70,7 @@ func (ledgerSrv *LedgerServer) SearchAccounts(
 }
 
 // CreateAccount a new account based on supplied data
-func (ledgerSrv *LedgerServer) CreateAccount(ctx context.Context, aAcc *ledger.Account) (*ledger.Account, error) {
+func (ledgerSrv *LedgerServer) CreateAccount(ctx context.Context, aAcc *ledgerV1.Account) (*ledgerV1.Account, error) {
 
 	accountsRepo := repositories.NewAccountRepository(ledgerSrv.Service)
 
@@ -85,7 +85,7 @@ func (ledgerSrv *LedgerServer) CreateAccount(ctx context.Context, aAcc *ledger.A
 }
 
 // UpdateAccount the data component of the account.
-func (ledgerSrv *LedgerServer) UpdateAccount(ctx context.Context, aAcc *ledger.Account) (*ledger.Account, error) {
+func (ledgerSrv *LedgerServer) UpdateAccount(ctx context.Context, aAcc *ledgerV1.Account) (*ledgerV1.Account, error) {
 
 	accountsRepo := repositories.NewAccountRepository(ledgerSrv.Service)
 

@@ -1,9 +1,9 @@
 package main
 
 import (
+	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
 	"github.com/antinvestor/service-ledger/config"
 	"github.com/antinvestor/service-ledger/controllers"
-	"github.com/antinvestor/service-ledger/ledger"
 	"github.com/antinvestor/service-ledger/models"
 	"github.com/bufbuild/protovalidate-go"
 	_ "github.com/golang-migrate/migrate/source/file"
@@ -75,7 +75,7 @@ func main() {
 		Service: service,
 	}
 
-	ledger.RegisterLedgerServiceServer(grpcServer, implementation)
+	ledgerV1.RegisterLedgerServiceServer(grpcServer, implementation)
 
 	grpcServerOpt := frame.GrpcServer(grpcServer)
 	serviceOptions = append(serviceOptions, grpcServerOpt)
