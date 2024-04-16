@@ -3,7 +3,7 @@ module github.com/antinvestor/service-ledger
 go 1.21
 
 require (
-	github.com/antinvestor/apis/go/ledger v1.16.2
+	github.com/antinvestor/apis/go/ledger v1.16.4
 	github.com/bufbuild/protovalidate-go v0.6.1
 	github.com/golang-migrate/migrate v3.5.4+incompatible
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0
@@ -23,7 +23,7 @@ require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/BurntSushi/toml v1.3.2 // indirect
 	github.com/alitto/pond v1.8.3 // indirect
-	github.com/antinvestor/apis/go/common v1.16.1 // indirect
+	github.com/antinvestor/apis/go/common v1.16.2 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
