@@ -12,7 +12,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.9.0
-	golang.org/x/text v0.14.0
+	golang.org/x/text v0.15.0
 	google.golang.org/genproto v0.0.0-20240509183442-62759503f434
 	google.golang.org/grpc v1.63.2
 	gorm.io/datatypes v1.2.0
