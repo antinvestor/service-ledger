@@ -1,6 +1,6 @@
 module github.com/antinvestor/service-ledger
 
-go 1.21
+go 1.22
 
 require (
 	github.com/antinvestor/apis/go/ledger v1.16.1
