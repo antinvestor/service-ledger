@@ -58,17 +58,27 @@ func main() {
 		log.WithError(err).Fatal("could not load validator for proto messages")
 	}
 
+	unaryInterceptors := []grpc.UnaryServerInterceptor{
+		protovalidateinterceptor.UnaryServerInterceptor(validator),
+		recovery.UnaryServerInterceptor(),
+	}
+
+	if ledgerConfig.SecurelyRunService {
+		unaryInterceptors = append([]grpc.UnaryServerInterceptor{service.UnaryAuthInterceptor(jwtAudience, ledgerConfig.Oauth2JwtVerifyIssuer)}, unaryInterceptors...)
+	}
+
+	streamInterceptors := []grpc.StreamServerInterceptor{
+		protovalidateinterceptor.StreamServerInterceptor(validator),
+		recovery.StreamServerInterceptor(),
+	}
+
+	if ledgerConfig.SecurelyRunService {
+		streamInterceptors = append([]grpc.StreamServerInterceptor{service.StreamAuthInterceptor(jwtAudience, ledgerConfig.Oauth2JwtVerifyIssuer)}, streamInterceptors...)
+	}
+
 	grpcServer := grpc.NewServer(
-		grpc.ChainUnaryInterceptor(
-			service.UnaryAuthInterceptor(jwtAudience, ledgerConfig.Oauth2JwtVerifyIssuer),
-			protovalidateinterceptor.UnaryServerInterceptor(validator),
-			recovery.UnaryServerInterceptor(),
-		),
-		grpc.ChainStreamInterceptor(
-			service.StreamAuthInterceptor(jwtAudience, ledgerConfig.Oauth2JwtVerifyIssuer),
-			protovalidateinterceptor.StreamServerInterceptor(validator),
-			recovery.StreamServerInterceptor(),
-		),
+		grpc.ChainUnaryInterceptor(unaryInterceptors...),
+		grpc.ChainStreamInterceptor(streamInterceptors...),
 	)
 
 	implementation := &controllers.LedgerServer{

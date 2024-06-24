@@ -21,7 +21,6 @@ func (bs *BaseTestSuite) SetupSuite() {
 			DatabasePrimaryURL: "postgres://ant:secret@localhost:5437/service_ledger?sslmode=disable",
 			DatabaseReplicaURL: "postgres://ant:secret@localhost:5437/service_ledger?sslmode=disable",
 		},
-		PartitionServiceURI: "",
 	}
 
 	bs.ctx, bs.service = frame.NewService("ledger tests",
