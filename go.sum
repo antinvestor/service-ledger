@@ -37,6 +37,8 @@ github.com/antinvestor/apis/go/common v1.18.0 h1:J4vnhemTIOD+pwX2QX5HjZnsbv8xtL/
 github.com/antinvestor/apis/go/common v1.18.0/go.mod h1:yt4cFjFTx+tqvFVSiwaW+tykCBE/gyLxyBZzHEUvJ30=
 github.com/antinvestor/apis/go/ledger v1.18.1 h1:+0hDllVg/OYoYrhqDFwRh3XRvZz22OZqPIWVQgNrZ9U=
 github.com/antinvestor/apis/go/ledger v1.18.1/go.mod h1:1987iHojufkeFMvlKTuiYPxwRZxZFTPcOFSNcvnm8j4=
+github.com/antinvestor/apis/go/ledger v1.18.3 h1:t3tCewXBQyZs68BSV7OBOs9slyY6zwtoDfV2tN5RfNk=
+github.com/antinvestor/apis/go/ledger v1.18.3/go.mod h1:B8n06bwAJDGhpWgGIhVqsYjppU4qfuADYg2M9DHT9JA=
 github.com/antlr4-go/antlr/v4 v4.13.0 h1:lxCg3LAv+EUK6t1i0y1V6/SLeUi0eKEKdhQAlS8TVTI=
 github.com/antlr4-go/antlr/v4 v4.13.0/go.mod h1:pfChB/xh/Unjila75QW7+VU4TSnWnnk9UTnmpPaOR2g=
 github.com/apache/thrift v0.12.0/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=
