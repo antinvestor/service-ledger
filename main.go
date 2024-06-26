@@ -74,6 +74,8 @@ func main() {
 
 	if ledgerConfig.SecurelyRunService {
 		streamInterceptors = append([]grpc.StreamServerInterceptor{service.StreamAuthInterceptor(jwtAudience, ledgerConfig.Oauth2JwtVerifyIssuer)}, streamInterceptors...)
+	} else {
+		log.Warn("service is running insecurely: secure by setting SECURELY_RUN_SERVICE=True")
 	}
 
 	grpcServer := grpc.NewServer(
