@@ -21,16 +21,16 @@ type Account struct {
 	Balance    *Int              `gorm:"-" json:"balance"`
 	LedgerID   string            `gorm:"type:varchar(50)" json:"ledger_id"`
 	Data       datatypes.JSONMap `json:"data"`
-	LedgerType string            `json:"ledger_type"`
+	LedgerType string            `gorm:"type:varchar(50)" json:"ledger_type"`
 }
 
 // Transaction represents a transaction in a ledger
 type Transaction struct {
 	frame.BaseModel
-	Currency     string             `gorm:"type:varchar(10)" json:"currency"`
-	Data         datatypes.JSONMap  `json:"data"`
-	TransactedAt string             `gorm:"type:varchar(50)" json:"transacted_at"`
-	Entries      []TransactionEntry `json:"entries"`
+	Currency     string              `gorm:"type:varchar(10)" json:"currency"`
+	Data         datatypes.JSONMap   `json:"data"`
+	TransactedAt string              `gorm:"type:varchar(50)" json:"transacted_at"`
+	Entries      []*TransactionEntry `json:"entries"`
 }
 
 // TransactionEntry represents a transaction line in a ledger
@@ -49,8 +49,9 @@ func (t *TransactionEntry) Equal(ot TransactionEntry) bool {
 	return t.AccountID == ot.AccountID && t.Amount.Cmp(ot.Amount.ToInt()) == 0
 }
 
-// IsValid validates the Amount list of a transaction
-func (t *Transaction) IsValid() bool {
+// IsZeroSum validates the Amount list of a transaction
+func (t *Transaction) IsZeroSum() bool {
+
 	sum := big.NewInt(0)
 	for _, entry := range t.Entries {
 		if entry.Credit {
@@ -61,4 +62,20 @@ func (t *Transaction) IsValid() bool {
 
 	}
 	return big.NewInt(0).Cmp(sum) == 0
+}
+
+// IsTrueDrCr validates that there is one debit and at least one credit entry
+func (t *Transaction) IsTrueDrCr() bool {
+
+	crEntries := 0
+	drEntries := 0
+
+	for _, entry := range t.Entries {
+		if entry.Credit {
+			crEntries += 1
+		} else {
+			drEntries += 1
+		}
+	}
+	return drEntries == 1 && crEntries >= 1
 }

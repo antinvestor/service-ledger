@@ -96,8 +96,12 @@ func (t *transactionRepository) Validate(ctx context.Context, txn *models.Transa
 
 	// Skip if the transaction is invalid
 	// by validating the amount values
-	if !txn.IsValid() {
+	if !txn.IsZeroSum() {
 		return nil, ledger.ErrorTransactionHasNonZeroSum
+	}
+
+	if !txn.IsTrueDrCr() {
+		return nil, ledger.ErrorTransactionHasInvalidDrCrEntry
 	}
 
 	accountIdSet := map[string]bool{}
@@ -131,9 +135,6 @@ func (t *transactionRepository) Validate(ctx context.Context, txn *models.Transa
 			t.service.L().Println(fmt.Sprintf("Account %s has differing currency of %s to transaction currency of %s", entry.AccountID, account.Currency, txn.Currency))
 			return nil, ledger.ErrorTransactionAccountsDifferCurrency.Extend(fmt.Sprintf("Account %s has differing currency of %s to transaction currency of %s", entry.AccountID, account.Currency, txn.Currency))
 		}
-
-		// Helps us lock the account balance just before the transaction
-		entry.Balance = account.Balance
 	}
 
 	return accountsMap, nil
@@ -189,17 +190,22 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 	// Add transaction Entries in one go to succeed or fail all
 	for _, line := range transaction.Entries {
 		account := accountsMap[line.AccountID]
-		line.Currency = account.Currency
 
-		entryAmount := line.Amount
+		line.Currency = account.Currency
+		line.Balance = account.Balance.Copy()
+
 		// Decide the signage of entry based on : https://en.wikipedia.org/wiki/Double-entry_bookkeeping :DEADCLIC
 		if line.Credit && (account.LedgerType == models.LEDGER_TYPE_ASSET || account.LedgerType == models.LEDGER_TYPE_EXPENSE) ||
 			!line.Credit && (account.LedgerType == models.LEDGER_TYPE_LIABILITY || account.LedgerType == models.LEDGER_TYPE_INCOME || account.LedgerType == models.LEDGER_TYPE_CAPITAL) {
-			line.Amount = entryAmount.ToNeg()
+			line.Amount = line.Amount.ToNeg()
 		}
 	}
 
-	err := t.service.DB(ctx, false).Debug().Create(&transaction).Error
+	for _, line := range transaction.Entries {
+		log.Println(" -----   Entry Line ", line.ID, " CR:", line.Credit, " Currency:", line.Currency, " Amt:", line.Amount, " Bal:", line.Balance)
+	}
+
+	err := t.service.DB(ctx, false).Create(&transaction).Error
 	if err != nil {
 		return nil, ledger.ErrorSystemFailure.Override(err)
 	}

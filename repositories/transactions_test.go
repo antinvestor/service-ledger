@@ -5,6 +5,7 @@ import (
 	"github.com/antinvestor/service-ledger/repositories"
 	"github.com/pitabwire/frame"
 	"log"
+	"math/big"
 	"sync"
 	"testing"
 
@@ -60,29 +61,72 @@ func (ts *TransactionsModelSuite) SetupSuite() {
 
 }
 
-func (ts *TransactionsModelSuite) TestIsValid() {
+func (ts *TransactionsModelSuite) TestIsZeroSum() {
 	t := ts.T()
 
 	transaction := &models.Transaction{
 		BaseModel: frame.BaseModel{ID: "t001"},
 		Currency:  "UGX",
-		Entries: []models.TransactionEntry{
+		Entries: []*models.TransactionEntry{
 			{
 				AccountID: "a1",
+				Credit:    false,
 				Amount:    models.New(100),
 			},
 			{
 				AccountID: "a2",
-				Amount:    models.New(-100),
+				Credit:    true,
+				Amount:    models.New(100),
 			},
 		},
 	}
-	valid := transaction.IsValid()
-	assert.Equal(t, valid, true, "Transaction should be valid")
+	valid := transaction.IsZeroSum()
+	assert.Equal(t, valid, true, "Transaction should be zero summed")
 
 	transaction.Entries[0].Amount = models.New(200)
-	valid = transaction.IsValid()
-	assert.Equal(t, valid, false, "Transaction should not be valid")
+	valid = transaction.IsZeroSum()
+	assert.Equal(t, valid, false, "Transaction should not be zero summed")
+}
+
+func (ts *TransactionsModelSuite) TestIsTrueDrCr() {
+	t := ts.T()
+
+	transaction := &models.Transaction{
+		BaseModel: frame.BaseModel{ID: "t001"},
+		Currency:  "UGX",
+		Entries: []*models.TransactionEntry{
+			{
+				AccountID: "a1",
+				Credit:    false,
+				Amount:    models.New(30),
+			},
+			{
+				AccountID: "a2",
+				Credit:    true,
+				Amount:    models.New(30),
+			},
+		},
+	}
+	valid := transaction.IsTrueDrCr()
+	assert.Equal(t, valid, true, "Transaction should contain one dr and other cr entries")
+
+	transaction.Entries[0].Credit = true
+	valid = transaction.IsTrueDrCr()
+	assert.Equal(t, valid, false, "Transaction should fail DrCr test")
+}
+
+func (ts *TransactionsModelSuite) TestNegateAmount() {
+	t := ts.T()
+
+	negateTest := models.New(51)
+
+	assert.Equal(t, models.New(51), negateTest, "Amounts should match")
+	assert.Equal(t, models.New(-51), negateTest.ToNeg(), "Amounts should match")
+
+	assert.Equal(t, models.New(-51), negateTest, "Amounts should match")
+	assert.Equal(t, models.New(51), negateTest.ToNeg(), "Amounts should match")
+	assert.Equal(t, models.New(51), negateTest, "Amounts should match")
+
 }
 
 func (ts *TransactionsModelSuite) TestIsConflict() {
@@ -94,14 +138,16 @@ func (ts *TransactionsModelSuite) TestIsConflict() {
 	transaction := &models.Transaction{
 		BaseModel: frame.BaseModel{ID: "t0015"},
 		Currency:  "UGX",
-		Entries: []models.TransactionEntry{
+		Entries: []*models.TransactionEntry{
 			{
 				AccountID: "a1",
+				Credit:    false,
 				Amount:    models.New(100),
 			},
 			{
 				AccountID: "a2",
-				Amount:    models.New(-100),
+				Credit:    true,
+				Amount:    models.New(100),
 			},
 		},
 	}
@@ -116,14 +162,16 @@ func (ts *TransactionsModelSuite) TestIsConflict() {
 	transaction = &models.Transaction{
 		BaseModel: frame.BaseModel{ID: "t0015"},
 		Currency:  "UGX",
-		Entries: []models.TransactionEntry{
+		Entries: []*models.TransactionEntry{
 			{
 				AccountID: "a1",
+				Credit:    false,
 				Amount:    models.New(50),
 			},
 			{
 				AccountID: "a2",
-				Amount:    models.New(-50),
+				Credit:    true,
+				Amount:    models.New(50),
 			},
 		},
 	}
@@ -135,14 +183,16 @@ func (ts *TransactionsModelSuite) TestIsConflict() {
 	transaction = &models.Transaction{
 		BaseModel: frame.BaseModel{ID: "t0015"},
 		Currency:  "UGX",
-		Entries: []models.TransactionEntry{
+		Entries: []*models.TransactionEntry{
 			{
 				AccountID: "b1",
+				Credit:    false,
 				Amount:    models.New(100),
 			},
 			{
 				AccountID: "b2",
-				Amount:    models.New(-100),
+				Credit:    true,
+				Amount:    models.New(100),
 			},
 		},
 	}
@@ -160,14 +210,16 @@ func (ts *TransactionsModelSuite) TestTransact() {
 	transaction := &models.Transaction{
 		BaseModel: frame.BaseModel{ID: "t003"},
 		Currency:  "UGX",
-		Entries: []models.TransactionEntry{
+		Entries: []*models.TransactionEntry{
 			{
 				AccountID: "a1",
+				Credit:    false,
 				Amount:    models.New(100),
 			},
 			{
 				AccountID: "a2",
-				Amount:    models.New(-100),
+				Credit:    true,
+				Amount:    models.New(100),
 			},
 		},
 		Data: map[string]interface{}{
@@ -184,6 +236,57 @@ func (ts *TransactionsModelSuite) TestTransact() {
 	assert.Equal(t, "t003", exists.ID, "Transaction should exist")
 }
 
+func (ts *TransactionsModelSuite) TestTransactBalanceCheck() {
+	t := ts.T()
+
+	accountRepo := repositories.NewAccountRepository(ts.service)
+	transactionRepository := repositories.NewTransactionRepository(ts.service, accountRepo)
+
+	initialAccMap, err := accountRepo.ListByID(ts.ctx, "a3", "a4")
+	assert.NoError(t, err)
+
+	transaction := &models.Transaction{
+		BaseModel: frame.BaseModel{ID: "t008"},
+		Currency:  "UGX",
+		Entries: []*models.TransactionEntry{
+			{
+				AccountID: "a3",
+				Amount:    models.New(51),
+				Credit:    false,
+			},
+			{
+				AccountID: "a4",
+				Amount:    models.New(51),
+				Credit:    true,
+			},
+		},
+		Data: map[string]interface{}{
+			"tag1": "transaction balance check",
+		},
+	}
+	done, err1 := transactionRepository.Transact(ts.ctx, transaction)
+	assert.NoError(t, err1)
+	assert.NotEqual(t, nil, done, "Transaction should be created")
+
+	log.Println("---------------------------------------------------------------------------")
+	for _, entry := range done.Entries {
+		log.Println(" -----   Entry ", entry.ID, " CR:", entry.Credit, " Currency:", entry.Currency, " Amt:", entry.Amount, " Bal:", entry.Balance)
+	}
+
+	finalAccMap, err2 := accountRepo.ListByID(ts.ctx, "a3", "a4")
+	assert.NoError(t, err2)
+
+	for _, account := range []*models.Account{initialAccMap["a3"], initialAccMap["a4"], finalAccMap["a3"], finalAccMap["a4"]} {
+		log.Println("------ Acc ", account.ID, " Bal:", account.Balance, " Currency:", account.Currency)
+	}
+
+	log.Println("---------------------------------------------------------------------------")
+
+	assert.Equal(t, big.NewInt(51), models.New(0).Sub(finalAccMap["a3"].Balance.ToInt(), initialAccMap["a3"].Balance.ToInt()), "Debited Balance should be equal")
+	assert.Equal(t, big.NewInt(-51), models.New(0).Sub(finalAccMap["a4"].Balance.ToInt(), initialAccMap["a4"].Balance.ToInt()), "Credited Balance should be equal")
+
+}
+
 func (ts *TransactionsModelSuite) TestDuplicateTransactions() {
 	t := ts.T()
 
@@ -192,14 +295,16 @@ func (ts *TransactionsModelSuite) TestDuplicateTransactions() {
 	transaction := &models.Transaction{
 		BaseModel: frame.BaseModel{ID: "t005"},
 		Currency:  "UGX",
-		Entries: []models.TransactionEntry{
+		Entries: []*models.TransactionEntry{
 			{
 				AccountID: "a1",
+				Credit:    false,
 				Amount:    models.New(100),
 			},
 			{
 				AccountID: "a2",
-				Amount:    models.New(-100),
+				Credit:    true,
+				Amount:    models.New(100),
 			},
 		},
 	}
@@ -232,14 +337,16 @@ func (ts *TransactionsModelSuite) TestTransactWithBoundaryValues() {
 	transaction := &models.Transaction{
 		BaseModel: frame.BaseModel{ID: "t004"},
 		Currency:  "UGX",
-		Entries: []models.TransactionEntry{
+		Entries: []*models.TransactionEntry{
 			{
 				AccountID: "a3",
+				Credit:    false,
 				Amount:    models.New(boundaryValue),
 			},
 			{
 				AccountID: "a4",
-				Amount:    models.New(-boundaryValue),
+				Credit:    true,
+				Amount:    models.New(boundaryValue),
 			},
 		},
 		Data: map[string]interface{}{
@@ -263,20 +370,27 @@ func (ts *TransactionsModelSuite) TearDownSuite() {
 	log.Println("Cleaning up the test database")
 
 	t := ts.T()
-	err := ts.service.DB(ts.ctx, false).Exec(`DELETE FROM transaction_entries WHERE transaction_id 
-		IN (SELECT transaction_id FROM transactions WHERE id IN($1, $2, $3, $4,$5, $6 ))`, "t001", "t002", "t003", "t004", "t005", "t0015").Error
+	err := ts.service.DB(ts.ctx, false).Exec(
+		`DELETE FROM transaction_entries WHERE transaction_id 
+                                          IN (SELECT transaction_id FROM transactions WHERE id IN($1, $2, $3, $4,$5, $6, $7 ))`,
+		"t001", "t002", "t003", "t004", "t005", "t008", "t0015").Error
 	if err != nil {
 		t.Fatal("Error deleting Entries:", err)
 	}
-	err = ts.service.DB(ts.ctx, false).Exec(`DELETE FROM transactions WHERE id IN ($1, $2, $3, $4,$5, $6 )`, "t001", "t002", "t003", "t004", "t005", "t0015").Error
+	err = ts.service.DB(ts.ctx, false).Exec(
+		`DELETE FROM transactions WHERE id IN ($1, $2, $3, $4,$5, $6, $7 )`,
+		"t001", "t002", "t003", "t004", "t005", "t008", "t0015").Error
 	if err != nil {
 		t.Fatal("Error deleting transactions:", err)
 	}
-	err = ts.service.DB(ts.ctx, false).Exec(`DELETE FROM accounts WHERE id IN ($1, $2, $3, $4,$5,$6 )`, "a1", "a2", "a3", "a4", "b1", "b2").Error
+	err = ts.service.DB(ts.ctx, false).Exec(
+		`DELETE FROM accounts WHERE id IN ($1, $2, $3, $4,$5,$6 )`,
+		"a1", "a2", "a3", "a4", "b1", "b2").Error
 	if err != nil {
 		t.Fatal("Error deleting accounts:", err)
 	}
-	err = ts.service.DB(ts.ctx, false).Exec(`DELETE FROM ledgers WHERE id=$1`, ts.ledger.ID).Error
+	err = ts.service.DB(ts.ctx, false).Exec(
+		`DELETE FROM ledgers WHERE id=$1`, ts.ledger.ID).Error
 	if err != nil {
 		t.Fatal("Error deleting ledgers:", err)
 	}

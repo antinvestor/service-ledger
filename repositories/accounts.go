@@ -11,7 +11,7 @@ import (
 )
 
 const constAccountQuery = `SELECT 
-				id, currency, data, balance, ledger_id,
+				id, currency, data, COALESCE(balance, 0), ledger_id, ledger_type,
 				created_at, modified_at, version, tenant_id, partition_id, access_id, deleted_at 
 				FROM accounts a LEFT JOIN current_balances cb ON a.id = cb.account_id`
 
@@ -88,7 +88,7 @@ func (a *accountRepository) ListByID(ctx context.Context, ids ...string) (map[st
 
 	for rows.Next() {
 		acc := models.Account{}
-		if err := rows.Scan(&acc.ID, &acc.Currency, &acc.Data, &acc.Balance, &acc.LedgerID,
+		if err := rows.Scan(&acc.ID, &acc.Currency, &acc.Data, &acc.Balance, &acc.LedgerID, &acc.LedgerType,
 			&acc.CreatedAt, &acc.ModifiedAt, &acc.Version, &acc.TenantID, &acc.PartitionID,
 			&acc.AccessID, &acc.DeletedAt); err != nil {
 			return nil, ledger.ErrorSystemFailure.Override(err)
@@ -123,7 +123,7 @@ func (a *accountRepository) Search(ctx context.Context, query string) ([]*models
 	var accountsList []*models.Account
 	for rows.Next() {
 		acc := models.Account{}
-		if err := rows.Scan(&acc.ID, &acc.Currency, &acc.Data, &acc.Balance, &acc.LedgerID,
+		if err := rows.Scan(&acc.ID, &acc.Currency, &acc.Data, &acc.Balance, &acc.LedgerID, &acc.LedgerType,
 			&acc.CreatedAt, &acc.ModifiedAt, &acc.Version, &acc.TenantID, &acc.PartitionID,
 			&acc.AccessID, &acc.DeletedAt); err != nil {
 			return nil, ledger.ErrorSystemFailure.Override(err)
@@ -168,6 +168,7 @@ func (a *accountRepository) Create(ctx context.Context, account *models.Account)
 			return nil, ledger.ErrorSystemFailure.Override(err)
 		}
 		account.LedgerID = lg.ID
+		account.LedgerType = lg.Type
 	}
 
 	currencyUnit, err := currency.ParseISO(account.Currency)

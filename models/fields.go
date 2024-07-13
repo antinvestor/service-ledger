@@ -36,8 +36,8 @@ func FromBigInt(i *big.Int) *Int {
 
 // MarshalJSON implements the json.Marshaler interface.
 // It converts *big.Int to string integer
-func (i Int) MarshalJSON() ([]byte, error) {
-	if i.Int == nil {
+func (i *Int) MarshalJSON() ([]byte, error) {
+	if i.IsNil() {
 		return append([]byte(nil), null...), nil
 	}
 	return json.Marshal(i.Int.String())
@@ -110,36 +110,37 @@ func (i *Int) Scan(val interface{}) error {
 //	_ = db.Exec("INSERT INTO example (i) VALUES (?);", i)
 //	i = bigint.New(1024)
 //	_ = db.Exec("INSERT INTO example (i) VALUES (?);", i)
-func (i Int) Value() (driver.Value, error) {
-	if i.Int == nil {
+func (i *Int) Value() (driver.Value, error) {
+	if i.IsNil() {
 		return nil, nil
 	}
 	return i.Int.String(), nil
 }
 
 // Copy creates new bigint.Int with deeply copy
-func (i Int) Copy() Int {
-	if i.Int == nil {
-		return Int{}
+func (i *Int) Copy() *Int {
+	if i.IsNil() {
+		return New(0)
 	}
-	return Int{new(big.Int).Set(i.Int)}
+
+	return New(i.Int64())
 }
 
 // IsNil returns is or not nil
-func (i Int) IsNil() bool {
-	return i.Int == nil
+func (i *Int) IsNil() bool {
+	return i == nil || i.Int == nil
 }
 
 // Safer converts nil value to new(big.Int)
 func (i *Int) Safer() *Int {
-	if i.Int == nil {
+	if i.IsNil() {
 		i.Int = new(big.Int)
 	}
 	return i
 }
 
 // Readable gets readable float64
-func (i Int) Readable(decimal int64) float64 {
+func (i *Int) Readable(decimal int64) float64 {
 	if i.IsNil() {
 		return 0
 	}
@@ -162,15 +163,19 @@ func (i Int) Readable(decimal int64) float64 {
 	return f
 }
 
-func (i Int) ToNeg() *Int {
-	return FromBigInt(new(big.Int).Neg(i.ToInt()))
+func (i *Int) ToNeg() *Int {
+	if i.IsNil() {
+		return i
+	}
+	i.Int = new(big.Int).Neg(i.Int)
+	return i
 }
 
 // ToInt converts to non-nil *big.Int
-func (i Int) ToInt() *big.Int {
+func (i *Int) ToInt() *big.Int {
 	return i.Safer().Int
 }
 
-func (i Int) ToAbs() *Int {
+func (i *Int) ToAbs() *Int {
 	return FromBigInt(big.NewInt(0).Abs(i.Int))
 }

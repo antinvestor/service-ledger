@@ -77,7 +77,8 @@ var (
 	ErrorTransactionAccountsDifferCurrency = New(34, "Transaction accounts have different currencies")
 	ErrorTransactionAlreadyExists          = New(35, "Transaction with reference/id already exists")
 	ErrorTransactionHasNonZeroSum          = New(36, "Transaction has a non zero sum")
-	ErrorTransactionIsConfilicting         = New(37, "Transaction is conflicting")
+	ErrorTransactionHasInvalidDrCrEntry    = New(37, "Transaction has a invalid count of dr/cr entries")
+	ErrorTransactionIsConfilicting         = New(38, "Transaction is conflicting")
 
 	ErrorSearchNamespaceUnknown       = New(41, "Search namespace provided is unknown")
 	ErrorSearchQueryHasInvalidFormart = New(42, "Search query has invalid format")

@@ -67,14 +67,16 @@ func (ss *SearchSuite) SetupSuite() {
 	txn1 := &models.Transaction{
 		BaseModel: frame.BaseModel{ID: "txn1"},
 		Currency:  "UGX",
-		Entries: []models.TransactionEntry{
+		Entries: []*models.TransactionEntry{
 			{
 				AccountID: "acc1",
+				Credit:    false,
 				Amount:    models.New(1000),
 			},
 			{
 				AccountID: "acc2",
-				Amount:    models.New(-1000),
+				Credit:    true,
+				Amount:    models.New(1000),
 			},
 		},
 		Data: map[string]interface{}{
@@ -89,14 +91,16 @@ func (ss *SearchSuite) SetupSuite() {
 	txn2 := &models.Transaction{
 		BaseModel: frame.BaseModel{ID: "txn2"},
 		Currency:  "UGX",
-		Entries: []models.TransactionEntry{
+		Entries: []*models.TransactionEntry{
 			{
 				AccountID: "acc1",
+				Credit:    false,
 				Amount:    models.New(100),
 			},
 			{
 				AccountID: "acc2",
-				Amount:    models.New(-100),
+				Credit:    true,
+				Amount:    models.New(100),
 			},
 		},
 		Data: map[string]interface{}{
@@ -110,14 +114,16 @@ func (ss *SearchSuite) SetupSuite() {
 	txn3 := &models.Transaction{
 		BaseModel: frame.BaseModel{ID: "txn3"},
 		Currency:  "UGX",
-		Entries: []models.TransactionEntry{
+		Entries: []*models.TransactionEntry{
 			{
 				AccountID: "acc1",
+				Credit:    false,
 				Amount:    models.New(400),
 			},
 			{
 				AccountID: "acc2",
-				Amount:    models.New(-400),
+				Credit:    true,
+				Amount:    models.New(400),
 			},
 		},
 		Data: map[string]interface{}{
