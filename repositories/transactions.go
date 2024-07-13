@@ -131,6 +131,9 @@ func (t *transactionRepository) Validate(ctx context.Context, txn *models.Transa
 			t.service.L().Println(fmt.Sprintf("Account %s has differing currency of %s to transaction currency of %s", entry.AccountID, account.Currency, txn.Currency))
 			return nil, ledger.ErrorTransactionAccountsDifferCurrency.Extend(fmt.Sprintf("Account %s has differing currency of %s to transaction currency of %s", entry.AccountID, account.Currency, txn.Currency))
 		}
+
+		// Helps us lock the account balance just before the transaction
+		entry.Balance = account.Balance
 	}
 
 	return accountsMap, nil
