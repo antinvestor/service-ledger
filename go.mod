@@ -3,7 +3,7 @@ module github.com/antinvestor/service-ledger
 go 1.22
 
 require (
-	github.com/antinvestor/apis/go/ledger v1.18.4
+	github.com/antinvestor/apis/go/ledger v1.18.5
 	github.com/bufbuild/protovalidate-go v0.6.3
 	github.com/golang-migrate/migrate v3.5.4+incompatible
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0
@@ -13,7 +13,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/text v0.16.0
-	google.golang.org/genproto v0.0.0-20240708141625-4ad9e859172b
+	google.golang.org/genproto v0.0.0-20240711142825-46eb208f015d
 	google.golang.org/grpc v1.65.0
 	gorm.io/datatypes v1.2.1
 )
@@ -23,7 +23,7 @@ require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/BurntSushi/toml v1.4.0 // indirect
 	github.com/alitto/pond v1.8.3 // indirect
-	github.com/antinvestor/apis/go/common v1.18.0 // indirect
+	github.com/antinvestor/apis/go/common v1.18.4 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
