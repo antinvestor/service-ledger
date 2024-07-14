@@ -4,8 +4,8 @@ import (
 	"github.com/antinvestor/service-ledger/models"
 	"github.com/antinvestor/service-ledger/repositories"
 	"github.com/pitabwire/frame"
+	"github.com/shopspring/decimal"
 	"log"
-	"math/big"
 	"sync"
 	"testing"
 
@@ -71,19 +71,19 @@ func (ts *TransactionsModelSuite) TestIsZeroSum() {
 			{
 				AccountID: "a1",
 				Credit:    false,
-				Amount:    models.New(100),
+				Amount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
 			},
 			{
 				AccountID: "a2",
 				Credit:    true,
-				Amount:    models.New(100),
+				Amount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
 			},
 		},
 	}
 	valid := transaction.IsZeroSum()
 	assert.Equal(t, valid, true, "Transaction should be zero summed")
 
-	transaction.Entries[0].Amount = models.New(200)
+	transaction.Entries[0].Amount = decimal.NewNullDecimal(decimal.NewFromInt(200))
 	valid = transaction.IsZeroSum()
 	assert.Equal(t, valid, false, "Transaction should not be zero summed")
 }
@@ -98,12 +98,12 @@ func (ts *TransactionsModelSuite) TestIsTrueDrCr() {
 			{
 				AccountID: "a1",
 				Credit:    false,
-				Amount:    models.New(30),
+				Amount:    decimal.NewNullDecimal(decimal.NewFromInt(30)),
 			},
 			{
 				AccountID: "a2",
 				Credit:    true,
-				Amount:    models.New(30),
+				Amount:    decimal.NewNullDecimal(decimal.NewFromInt(30)),
 			},
 		},
 	}
@@ -113,20 +113,6 @@ func (ts *TransactionsModelSuite) TestIsTrueDrCr() {
 	transaction.Entries[0].Credit = true
 	valid = transaction.IsTrueDrCr()
 	assert.Equal(t, valid, false, "Transaction should fail DrCr test")
-}
-
-func (ts *TransactionsModelSuite) TestNegateAmount() {
-	t := ts.T()
-
-	negateTest := models.New(51)
-
-	assert.Equal(t, models.New(51), negateTest, "Amounts should match")
-	assert.Equal(t, models.New(-51), negateTest.ToNeg(), "Amounts should match")
-
-	assert.Equal(t, models.New(-51), negateTest, "Amounts should match")
-	assert.Equal(t, models.New(51), negateTest.ToNeg(), "Amounts should match")
-	assert.Equal(t, models.New(51), negateTest, "Amounts should match")
-
 }
 
 func (ts *TransactionsModelSuite) TestIsConflict() {
@@ -142,12 +128,12 @@ func (ts *TransactionsModelSuite) TestIsConflict() {
 			{
 				AccountID: "a1",
 				Credit:    false,
-				Amount:    models.New(100),
+				Amount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
 			},
 			{
 				AccountID: "a2",
 				Credit:    true,
-				Amount:    models.New(100),
+				Amount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
 			},
 		},
 	}
@@ -166,12 +152,12 @@ func (ts *TransactionsModelSuite) TestIsConflict() {
 			{
 				AccountID: "a1",
 				Credit:    false,
-				Amount:    models.New(50),
+				Amount:    decimal.NewNullDecimal(decimal.NewFromInt(50)),
 			},
 			{
 				AccountID: "a2",
 				Credit:    true,
-				Amount:    models.New(50),
+				Amount:    decimal.NewNullDecimal(decimal.NewFromInt(50)),
 			},
 		},
 	}
@@ -187,12 +173,12 @@ func (ts *TransactionsModelSuite) TestIsConflict() {
 			{
 				AccountID: "b1",
 				Credit:    false,
-				Amount:    models.New(100),
+				Amount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
 			},
 			{
 				AccountID: "b2",
 				Credit:    true,
-				Amount:    models.New(100),
+				Amount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
 			},
 		},
 	}
@@ -214,12 +200,12 @@ func (ts *TransactionsModelSuite) TestTransact() {
 			{
 				AccountID: "a1",
 				Credit:    false,
-				Amount:    models.New(100),
+				Amount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
 			},
 			{
 				AccountID: "a2",
 				Credit:    true,
-				Amount:    models.New(100),
+				Amount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
 			},
 		},
 		Data: map[string]interface{}{
@@ -251,12 +237,12 @@ func (ts *TransactionsModelSuite) TestTransactBalanceCheck() {
 		Entries: []*models.TransactionEntry{
 			{
 				AccountID: "a3",
-				Amount:    models.New(51),
+				Amount:    decimal.NewNullDecimal(decimal.NewFromInt(51)),
 				Credit:    false,
 			},
 			{
 				AccountID: "a4",
-				Amount:    models.New(51),
+				Amount:    decimal.NewNullDecimal(decimal.NewFromInt(51)),
 				Credit:    true,
 			},
 		},
@@ -282,8 +268,8 @@ func (ts *TransactionsModelSuite) TestTransactBalanceCheck() {
 
 	log.Println("---------------------------------------------------------------------------")
 
-	assert.Equal(t, big.NewInt(51), models.New(0).Sub(finalAccMap["a3"].Balance.ToInt(), initialAccMap["a3"].Balance.ToInt()), "Debited Balance should be equal")
-	assert.Equal(t, big.NewInt(-51), models.New(0).Sub(finalAccMap["a4"].Balance.ToInt(), initialAccMap["a4"].Balance.ToInt()), "Credited Balance should be equal")
+	assert.Equal(t, decimal.NewFromInt(51), finalAccMap["a3"].Balance.Decimal.Sub(initialAccMap["a3"].Balance.Decimal), "Debited Balance should be equal")
+	assert.Equal(t, decimal.NewFromInt(-51), finalAccMap["a4"].Balance.Decimal.Sub(initialAccMap["a4"].Balance.Decimal), "Credited Balance should be equal")
 
 }
 
@@ -299,12 +285,12 @@ func (ts *TransactionsModelSuite) TestDuplicateTransactions() {
 			{
 				AccountID: "a1",
 				Credit:    false,
-				Amount:    models.New(100),
+				Amount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
 			},
 			{
 				AccountID: "a2",
 				Credit:    true,
-				Amount:    models.New(100),
+				Amount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
 			},
 		},
 	}
@@ -341,12 +327,12 @@ func (ts *TransactionsModelSuite) TestTransactWithBoundaryValues() {
 			{
 				AccountID: "a3",
 				Credit:    false,
-				Amount:    models.New(boundaryValue),
+				Amount:    decimal.NewNullDecimal(decimal.NewFromInt(boundaryValue)),
 			},
 			{
 				AccountID: "a4",
 				Credit:    true,
-				Amount:    models.New(boundaryValue),
+				Amount:    decimal.NewNullDecimal(decimal.NewFromInt(boundaryValue)),
 			},
 		},
 		Data: map[string]interface{}{

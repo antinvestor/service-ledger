@@ -6,35 +6,26 @@ import (
 	"github.com/antinvestor/service-ledger/models"
 	"github.com/antinvestor/service-ledger/repositories"
 	"github.com/pitabwire/frame"
+	"github.com/shopspring/decimal"
 	"google.golang.org/genproto/googleapis/type/money"
 	"math/big"
 )
 
-const NanoAmountDivisor = 1000000000
-const DefaultAmountDivisor = 10000
-
-func toMoneyInt(currency string, naive *models.Int) money.Money {
-	naive = naive.ToAbs()
-	unitBig := big.NewInt(0).Div(naive.ToInt(), big.NewInt(DefaultAmountDivisor))
-	nanosBig := big.NewInt(0).Sub(naive.ToInt(), unitBig)
-	nanosBig = big.NewInt(0).Mul(nanosBig, big.NewInt(NanoAmountDivisor))
-	nanosBig = big.NewInt(0).Div(nanosBig, big.NewInt(DefaultAmountDivisor))
-
-	return money.Money{CurrencyCode: currency, Units: unitBig.Int64(), Nanos: int32(nanosBig.Int64())}
+func toMoneyInt(currency string, naive decimal.Decimal) money.Money {
+	return money.Money{CurrencyCode: currency, Units: naive.IntPart(), Nanos: naive.Exponent()}
 }
 
-func fromMoney(m *money.Money) (naive *models.Int) {
-
-	unitsBig := big.NewInt(0).Mul(big.NewInt(m.Units), big.NewInt(DefaultAmountDivisor))
-	nanosBig := big.NewInt(0).Mul(big.NewInt(int64(m.Nanos)), big.NewInt(DefaultAmountDivisor/NanoAmountDivisor))
-
-	total := big.NewInt(0).Add(unitsBig, nanosBig)
-	return models.FromBigInt(total)
+func fromMoney(m *money.Money) (naive decimal.Decimal) {
+	return decimal.NewFromBigInt(new(big.Int).SetInt64(m.Units), m.Nanos)
 }
 
 func accountToApi(mAcc *models.Account) *ledgerV1.Account {
 
-	balance := toMoneyInt(mAcc.Currency, mAcc.Balance)
+	accountBalance := decimal.Zero
+	if mAcc.Balance.Valid {
+		accountBalance = mAcc.Balance.Decimal
+	}
+	balance := toMoneyInt(mAcc.Currency, accountBalance)
 
 	return &ledgerV1.Account{Reference: mAcc.ID,
 		Ledger: mAcc.LedgerID, Balance: &balance, Data: frame.DBPropertiesToMap(mAcc.Data)}
@@ -42,11 +33,13 @@ func accountToApi(mAcc *models.Account) *ledgerV1.Account {
 
 func accountFromApi(account *ledgerV1.Account) *models.Account {
 
+	accountBalance := fromMoney(account.GetBalance())
+
 	return &models.Account{
 		BaseModel: frame.BaseModel{ID: account.GetReference()},
 		LedgerID:  account.GetLedger(),
 		Currency:  account.GetBalance().CurrencyCode,
-		Balance:   fromMoney(account.GetBalance()),
+		Balance:   decimal.NewNullDecimal(accountBalance),
 		Data:      frame.DBPropertiesFromMap(account.Data)}
 }
 

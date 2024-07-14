@@ -8,9 +8,9 @@ import (
 
 func transactionEntryToApi(mEntry *models.TransactionEntry) *ledgerV1.TransactionEntry {
 
-	entryAmount := toMoneyInt(mEntry.Currency, mEntry.Amount)
+	entryAmount := toMoneyInt(mEntry.Currency, mEntry.Amount.Decimal)
 
-	balanceAmount := toMoneyInt(mEntry.Currency, mEntry.Balance)
+	balanceAmount := toMoneyInt(mEntry.Currency, mEntry.Balance.Decimal)
 
 	return &ledgerV1.TransactionEntry{
 		Account:      mEntry.AccountID,

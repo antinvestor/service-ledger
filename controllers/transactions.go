@@ -6,6 +6,7 @@ import (
 	"github.com/antinvestor/service-ledger/models"
 	"github.com/antinvestor/service-ledger/repositories"
 	"github.com/pitabwire/frame"
+	"github.com/shopspring/decimal"
 )
 
 func transactionToApi(mTxn *models.Transaction) *ledgerV1.Transaction {
@@ -30,7 +31,7 @@ func transactionFromApi(aTxn *ledgerV1.Transaction) *models.Transaction {
 		modelEntries[index] = &models.TransactionEntry{
 			Credit:    mEntry.Credit,
 			AccountID: mEntry.GetAccount(),
-			Amount:    fromMoney(mEntry.Amount),
+			Amount:    decimal.NewNullDecimal(fromMoney(mEntry.GetAmount())),
 		}
 	}
 	return &models.Transaction{

@@ -4,6 +4,7 @@ import (
 	"github.com/antinvestor/service-ledger/models"
 	"github.com/antinvestor/service-ledger/repositories"
 	"github.com/pitabwire/frame"
+	"github.com/shopspring/decimal"
 	"log"
 	"testing"
 
@@ -71,12 +72,12 @@ func (ss *SearchSuite) SetupSuite() {
 			{
 				AccountID: "acc1",
 				Credit:    false,
-				Amount:    models.New(1000),
+				Amount:    decimal.NewNullDecimal(decimal.NewFromInt(1000)),
 			},
 			{
 				AccountID: "acc2",
 				Credit:    true,
-				Amount:    models.New(1000),
+				Amount:    decimal.NewNullDecimal(decimal.NewFromInt(1000)),
 			},
 		},
 		Data: map[string]interface{}{
@@ -95,12 +96,12 @@ func (ss *SearchSuite) SetupSuite() {
 			{
 				AccountID: "acc1",
 				Credit:    false,
-				Amount:    models.New(100),
+				Amount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
 			},
 			{
 				AccountID: "acc2",
 				Credit:    true,
-				Amount:    models.New(100),
+				Amount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
 			},
 		},
 		Data: map[string]interface{}{
@@ -118,12 +119,12 @@ func (ss *SearchSuite) SetupSuite() {
 			{
 				AccountID: "acc1",
 				Credit:    false,
-				Amount:    models.New(400),
+				Amount:    decimal.NewNullDecimal(decimal.NewFromInt(400)),
 			},
 			{
 				AccountID: "acc2",
 				Credit:    true,
-				Amount:    models.New(400),
+				Amount:    decimal.NewNullDecimal(decimal.NewFromInt(400)),
 			},
 		},
 		Data: map[string]interface{}{

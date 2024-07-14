@@ -4,8 +4,8 @@ import (
 	"context"
 	"github.com/antinvestor/service-ledger/models"
 	"github.com/pitabwire/frame"
+	"github.com/shopspring/decimal"
 	"log"
-	"math/big"
 	"strings"
 	"time"
 
@@ -121,7 +121,7 @@ func (t *transactionRepository) Validate(ctx context.Context, txn *models.Transa
 
 	for _, entry := range txn.Entries {
 
-		if big.NewInt(0).Cmp(entry.Amount.ToInt()) == 0 {
+		if entry.Amount.Decimal.IsZero() {
 			return nil, ledger.ErrorTransactionEntryHasZeroAmount.Extend(fmt.Sprintf("A transaction entry for account : %s has a zero amount", entry.AccountID))
 		}
 
@@ -192,12 +192,12 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 		account := accountsMap[line.AccountID]
 
 		line.Currency = account.Currency
-		line.Balance = account.Balance.Copy()
+		line.Balance = decimal.NewNullDecimal(account.Balance.Decimal)
 
 		// Decide the signage of entry based on : https://en.wikipedia.org/wiki/Double-entry_bookkeeping :DEADCLIC
 		if line.Credit && (account.LedgerType == models.LEDGER_TYPE_ASSET || account.LedgerType == models.LEDGER_TYPE_EXPENSE) ||
 			!line.Credit && (account.LedgerType == models.LEDGER_TYPE_LIABILITY || account.LedgerType == models.LEDGER_TYPE_INCOME || account.LedgerType == models.LEDGER_TYPE_CAPITAL) {
-			line.Amount = line.Amount.ToNeg()
+			line.Amount = decimal.NewNullDecimal(line.Amount.Decimal.Neg())
 		}
 	}
 
@@ -270,7 +270,7 @@ func (t *transactionRepository) Reverse(ctx context.Context, id string) (*models
 
 	for _, entry := range reversalTxn.Entries {
 		entry.Credit = !entry.Credit
-		entry.Amount = entry.Amount.ToAbs()
+		entry.Amount = decimal.NewNullDecimal(entry.Amount.Decimal.Abs())
 	}
 
 	reversalTxn.ID = fmt.Sprintf("REVERSAL_%s", reversalTxn.ID)

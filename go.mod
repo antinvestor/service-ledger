@@ -10,12 +10,14 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/pitabwire/frame v1.21.2
 	github.com/pkg/errors v0.9.1
+	github.com/shopspring/decimal v1.4.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/text v0.16.0
 	google.golang.org/genproto v0.0.0-20240711142825-46eb208f015d
 	google.golang.org/grpc v1.65.0
 	gorm.io/datatypes v1.2.1
+
 )
 
 require (

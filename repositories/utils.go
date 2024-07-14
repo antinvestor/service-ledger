@@ -12,7 +12,7 @@ func (entries Orderedentries) Len() int      { return len(entries) }
 func (entries Orderedentries) Swap(i, j int) { entries[i], entries[j] = entries[j], entries[i] }
 func (entries Orderedentries) Less(i, j int) bool {
 	if entries[i].AccountID == entries[j].AccountID {
-		return entries[i].Amount.Cmp(entries[j].Amount.ToInt()) == -1
+		return entries[i].Amount.Decimal.LessThan(entries[j].Amount.Decimal)
 	}
 	return entries[i].AccountID < entries[j].AccountID
 }
@@ -37,9 +37,9 @@ func containsSameElements(l1 []*models.TransactionEntry, l2 []*models.Transactio
 		}
 
 		// Fix to tolerate floating point errors from elsewhere
-		amount1 := entry.Amount.ToAbs()
-		amount2 := entry2.Amount.ToAbs()
-		if amount1.CmpAbs(amount2.ToInt()) != 0 {
+		amount1 := entry.Amount.Decimal.Abs()
+		amount2 := entry2.Amount.Decimal.Abs()
+		if !amount1.Equal(amount2) {
 			return false
 		}
 	}

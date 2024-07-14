@@ -2,8 +2,8 @@ package models
 
 import (
 	"github.com/pitabwire/frame"
+	"github.com/shopspring/decimal"
 	"gorm.io/datatypes"
-	"math/big"
 )
 
 // Ledger represents the hierarchy for organizing ledgers with information such as type, and JSON data
@@ -17,11 +17,11 @@ type Ledger struct {
 // Account represents the ledger account with information such as Reference, balance and JSON data
 type Account struct {
 	frame.BaseModel
-	Currency   string            `gorm:"type:varchar(10)" json:"currency"`
-	Balance    *Int              `gorm:"-" json:"balance"`
-	LedgerID   string            `gorm:"type:varchar(50)" json:"ledger_id"`
-	Data       datatypes.JSONMap `json:"data"`
-	LedgerType string            `gorm:"type:varchar(50)" json:"ledger_type"`
+	Currency   string              `gorm:"type:varchar(10)" json:"currency"`
+	Balance    decimal.NullDecimal `gorm:"-" json:"balance"`
+	LedgerID   string              `gorm:"type:varchar(50)" json:"ledger_id"`
+	Data       datatypes.JSONMap   `json:"data"`
+	LedgerType string              `gorm:"type:varchar(50)" json:"ledger_type"`
 }
 
 // Transaction represents a transaction in a ledger
@@ -36,32 +36,32 @@ type Transaction struct {
 // TransactionEntry represents a transaction line in a ledger
 type TransactionEntry struct {
 	frame.BaseModel
-	AccountID     string `gorm:"type:varchar(50)" json:"account_id"`
-	TransactionID string `gorm:"type:varchar(50)" json:"transaction_id"`
-	Amount        *Int   `gorm:"type:bigint" json:"amount"`
-	Credit        bool   `json:"credit"`
-	Balance       *Int   `gorm:"type:bigint"  json:"balance"`
-	Currency      string `gorm:"type:varchar(10)" json:"currency"`
-	TransactedAt  string `gorm:"type:varchar(50)" json:"transacted_at"`
+	AccountID     string              `gorm:"type:varchar(50)" json:"account_id"`
+	TransactionID string              `gorm:"type:varchar(50)" json:"transaction_id"`
+	Amount        decimal.NullDecimal `gorm:"type:numeric" json:"amount"`
+	Credit        bool                `json:"credit"`
+	Balance       decimal.NullDecimal `gorm:"type:numeric"  json:"balance"`
+	Currency      string              `gorm:"type:varchar(10)" json:"currency"`
+	TransactedAt  string              `gorm:"type:varchar(50)" json:"transacted_at"`
 }
 
 func (t *TransactionEntry) Equal(ot TransactionEntry) bool {
-	return t.AccountID == ot.AccountID && t.Amount.Cmp(ot.Amount.ToInt()) == 0
+	return t.AccountID == ot.AccountID && t.Amount.Valid && ot.Amount.Valid && t.Amount.Decimal.Equal(ot.Amount.Decimal)
 }
 
 // IsZeroSum validates the Amount list of a transaction
 func (t *Transaction) IsZeroSum() bool {
 
-	sum := big.NewInt(0)
+	sum := decimal.NewFromInt(0)
 	for _, entry := range t.Entries {
 		if entry.Credit {
-			sum = big.NewInt(0).Add(sum, entry.Amount.ToInt())
+			sum = sum.Add(entry.Amount.Decimal)
 		} else {
-			sum = big.NewInt(0).Sub(sum, entry.Amount.ToInt())
+			sum = sum.Sub(entry.Amount.Decimal)
 		}
 
 	}
-	return big.NewInt(0).Cmp(sum) == 0
+	return sum.IsZero()
 }
 
 // IsTrueDrCr validates that there is one debit and at least one credit entry

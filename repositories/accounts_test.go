@@ -50,7 +50,7 @@ func (as *AccountsSuite) TestAccountsInfoAPI() {
 	} else {
 		assert.Equal(t, nil, err, "Error while getting acccount")
 		assert.Equal(t, "100", account.ID, "Invalid account Reference")
-		assert.Equal(t, models.New(0), account.Balance, "Invalid account balance")
+		assert.True(t, account.Balance.Valid && account.Balance.Decimal.IsZero(), "Invalid account balance")
 	}
 }
 
