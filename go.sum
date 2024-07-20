@@ -1,5 +1,7 @@
 buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.34.2-20240508200655-46a4cf4ba109.2 h1:cFrEG/pJch6t62+jqndcPXeTNkYcztS4tBRgNkR+drw=
 buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.34.2-20240508200655-46a4cf4ba109.2/go.mod h1:ylS4c28ACSI59oJrOdW4pHS4n0Hw4TgSPHn8rpHl4Yw=
+buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.34.2-20240717164558-a6c49f84cc0f.2 h1:SZRVx928rbYZ6hEKUIN+vtGDkl7uotABRWGY4OAg5gM=
+buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.34.2-20240717164558-a6c49f84cc0f.2/go.mod h1:ylS4c28ACSI59oJrOdW4pHS4n0Hw4TgSPHn8rpHl4Yw=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.115.0 h1:CnFSK6Xo3lDYRoBKEcAtia6VSC837/ZkJuRduSFnr14=
@@ -37,10 +39,14 @@ github.com/antinvestor/apis/go/common v1.18.4 h1:6Rgg8Z5kjRp51/NBZucxX8HfN8r3cMI
 github.com/antinvestor/apis/go/common v1.18.4/go.mod h1:92APw131ecNJBMN/9MQiKjXqyXL6bR4gARYoHjHlZ2E=
 github.com/antinvestor/apis/go/common v1.18.5 h1:IGg9DD8pIlioVLxFIhE+vsHy7l/kJ0sg+oPv6/Sse1g=
 github.com/antinvestor/apis/go/common v1.18.5/go.mod h1:92APw131ecNJBMN/9MQiKjXqyXL6bR4gARYoHjHlZ2E=
+github.com/antinvestor/apis/go/common v1.19.0 h1:PwrSz7a8Ec2oypq7sPkoc5wjBvC6uSH6ZlM6tagpNcI=
+github.com/antinvestor/apis/go/common v1.19.0/go.mod h1:Y63AZ5dwudhZBLQJzFYJjDP3oGy216Tqk6XlENczpp0=
 github.com/antinvestor/apis/go/ledger v1.18.5 h1:uxT3JNxgPFpFbJ7swezTdsHOU0zgc+ApUh9Wc6Wxo+M=
 github.com/antinvestor/apis/go/ledger v1.18.5/go.mod h1:fmS3+7wNyEcoz8pui1XaAAxzn8iLRP2WwKGg9Eit1eY=
 github.com/antinvestor/apis/go/ledger v1.18.8 h1:uSep8KELNWesRGk9YiE1aQ9pFzuK3aTWooPXhaRtJbk=
 github.com/antinvestor/apis/go/ledger v1.18.8/go.mod h1:3Jj1STX9b4sovtjmUaw2hHBGQtRp3t05ZcJ79rD4AlQ=
+github.com/antinvestor/apis/go/ledger v1.19.3 h1:M31OVpJEKOFXAieBobCCXRfZfeNCGjxut3aT7U3+zSk=
+github.com/antinvestor/apis/go/ledger v1.19.3/go.mod h1:FxJE7XgKtNbQp4nUWXnzGNVXDqOHiSq8tvn5r1vmxTo=
 github.com/antlr4-go/antlr/v4 v4.13.0 h1:lxCg3LAv+EUK6t1i0y1V6/SLeUi0eKEKdhQAlS8TVTI=
 github.com/antlr4-go/antlr/v4 v4.13.0/go.mod h1:pfChB/xh/Unjila75QW7+VU4TSnWnnk9UTnmpPaOR2g=
 github.com/apache/thrift v0.12.0/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=
