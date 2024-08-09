@@ -280,7 +280,7 @@ func (ts *TransactionsModelSuite) TestReserveTransaction() {
 	finalAcc, err := accountRepo.GetByID(ts.ctx, "a3")
 	assert.NoError(t, err)
 
-	assert.Equal(t, decimal.NewFromInt(98), finalAcc.Balance.Decimal.Sub(initialAcc.Balance.Decimal), "Reservation Balance should be consistent")
+	assert.Equal(t, decimal.NewFromInt(0), finalAcc.Balance.Decimal.Sub(initialAcc.Balance.Decimal), "Reservation Balance should be consistent")
 
 	assert.Equal(t, decimal.NewFromInt(98), finalAcc.ReservedBalance.Decimal, "reserved balance should be consistent")
 }
@@ -367,6 +367,44 @@ func (ts *TransactionsModelSuite) TestDuplicateTransactions() {
 	exists, err := transactionRepository.GetByID(ts.ctx, "t005")
 	assert.Equal(t, nil, err, "Error while checking for existing transaction")
 	assert.Equal(t, "t005", exists.ID, "Transaction should exist")
+}
+func (ts *TransactionsModelSuite) TestTransactionReversal() {
+	t := ts.T()
+
+	accountRepo := repositories.NewAccountRepository(ts.service)
+	transactionRepository := repositories.NewTransactionRepository(ts.service, accountRepo)
+	transaction := &models.Transaction{
+		BaseModel:       frame.BaseModel{ID: "t053"},
+		Currency:        "UGX",
+		TransactionType: ledgerV1.TransactionType_NORMAL.String(),
+		TransactedAt:    sql.NullTime{Time: time.Now().UTC(), Valid: true},
+		ClearedAt:       sql.NullTime{Time: time.Now().UTC(), Valid: true},
+		Entries: []*models.TransactionEntry{
+			{
+				AccountID: "a1",
+				Credit:    false,
+				Amount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
+			},
+			{
+				AccountID: "a2",
+				Credit:    true,
+				Amount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
+			},
+		},
+	}
+
+	trxn, err := transactionRepository.Transact(ts.ctx, transaction)
+	assert.NoError(t, err)
+	assert.NotEqual(t, nil, trxn, "Transaction creation should be success")
+
+	reversal, err := transactionRepository.Reverse(ts.ctx, trxn.ID)
+	assert.NoError(t, err)
+	assert.NotEqual(t, nil, reversal, "Transaction reversal should be success")
+
+	exists, err := transactionRepository.GetByID(ts.ctx, "REVERSAL_t053")
+	assert.Equal(t, nil, err, "Error while checking for existing transaction")
+	assert.Equal(t, "REVERSAL_t053", exists.ID, "Transaction should exist")
+	assert.Equal(t, ledgerV1.TransactionType_REVERSAL.String(), exists.TransactionType, "Transaction type is not setup correctly")
 }
 
 func (ts *TransactionsModelSuite) TestUnClearedTransactions() {

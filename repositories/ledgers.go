@@ -9,7 +9,7 @@ import (
 
 type LedgerRepository interface {
 	GetByID(ctx context.Context, id string) (*models.Ledger, ledger.ApplicationLedgerError)
-	Search(ctx context.Context, query string) ([]*models.Ledger, ledger.ApplicationLedgerError)
+	Search(ctx context.Context, query string) (<-chan any, error)
 	Create(ctx context.Context, ledger *models.Ledger) (*models.Ledger, ledger.ApplicationLedgerError)
 	Update(ctx context.Context, ledger *models.Ledger) (*models.Ledger, ledger.ApplicationLedgerError)
 }
@@ -45,28 +45,63 @@ func (l *ledgerRepository) GetByID(ctx context.Context, id string) (*models.Ledg
 	return lg, nil
 }
 
-func (l *ledgerRepository) Search(ctx context.Context, query string) ([]*models.Ledger, ledger.ApplicationLedgerError) {
+func (l *ledgerRepository) Search(ctx context.Context, query string) (<-chan any, error) {
 
-	rawQuery, aerr := NewSearchRawQuery(ctx, query)
-	if aerr != nil {
-		return nil, aerr
-	}
+	resultChannel := make(chan any)
 
-	sqlQuery := rawQuery.ToQueryConditions()
-	var ledgerList []*models.Ledger
+	service := l.service
+	job := service.NewJob(func(ctx context.Context) error {
+		defer close(resultChannel)
 
-	conditions := append([]interface{}{sqlQuery.sql}, sqlQuery.args...)
-
-	err := l.service.DB(ctx, true).
-		Find(&ledgerList, conditions...).Offset(sqlQuery.offset).Limit(sqlQuery.limit).Error
-	if err != nil {
-		if frame.DBErrorIsRecordNotFound(err) {
-			return nil, ledger.ErrorLedgerNotFound
+		rawQuery, aerr := NewSearchRawQuery(ctx, query)
+		if aerr != nil {
+			resultChannel <- aerr
+			return nil
 		}
-		return nil, ledger.ErrorSystemFailure.Override(err)
+
+		sqlQuery := rawQuery.ToQueryConditions()
+		var ledgerList []*models.Ledger
+
+		conditions := append([]interface{}{sqlQuery.sql}, sqlQuery.args...)
+
+		for sqlQuery.canLoad() {
+			result := service.DB(ctx, true).
+				Offset(sqlQuery.offset).Limit(sqlQuery.batchSize).
+				Find(&ledgerList, conditions...)
+			err1 := result.Error
+			if err1 != nil {
+				if frame.DBErrorIsRecordNotFound(err1) {
+					resultChannel <- ledger.ErrorLedgerNotFound
+					return nil
+				}
+				resultChannel <- ledger.ErrorSystemFailure.Override(err1)
+				return nil
+			}
+
+			if result.RowsAffected == 0 {
+				break // No more rows
+			}
+
+			for _, entry := range ledgerList {
+				resultChannel <- entry
+			}
+
+			if sqlQuery.next(len(ledgerList)) {
+				return nil
+			}
+		}
+
+		return nil
+
+	})
+
+	err := service.SubmitJob(ctx, job)
+	if err != nil {
+		return nil, err
 	}
 
-	return ledgerList, nil
+	return resultChannel, nil
+
 }
 
 // Update persists an existing ledger in the database if it exists and only updates the data component

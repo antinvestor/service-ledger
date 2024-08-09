@@ -50,16 +50,31 @@ func (ledgerSrv *LedgerServer) SearchAccounts(
 
 	accountsRepo := repositories.NewAccountRepository(ledgerSrv.Service)
 
-	castAccounts, aerr := accountsRepo.Search(ctx, request.GetQuery())
-	if aerr != nil {
-		return aerr
+	accountsChannel, err := accountsRepo.Search(ctx, request.GetQuery())
+	if err != nil {
+		return err
 	}
 
-	for _, account := range castAccounts {
-		_ = server.Send(accountToApi(account))
-	}
+	for {
 
-	return nil
+		select {
+
+		case result := <-accountsChannel:
+
+			switch v := result.(type) {
+			case *models.Account:
+				_ = server.Send(accountToApi(v))
+			case error:
+				return err
+			}
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			return nil
+
+		}
+
+	}
 }
 
 // CreateAccount a new account based on supplied data

@@ -14,8 +14,8 @@ const constAccountQuery = `WITH balance_summary AS (
     SELECT 
         e.account_id, 
         t.currency,
-        COALESCE(SUM(CASE WHEN t.cleared_at IS NOT NULL THEN e.amount ELSE 0 END), 0) AS balance,
-        COALESCE(SUM(CASE WHEN t.cleared_at IS NULL THEN e.amount ELSE 0 END), 0) AS uncleared_balance,
+        COALESCE(SUM(CASE WHEN t.transaction_type IN ('NORMAL', 'REVERSAL') AND t.cleared_at IS NOT NULL THEN e.amount ELSE 0 END), 0) AS balance,
+        COALESCE(SUM(CASE WHEN t.transaction_type IN ('NORMAL', 'REVERSAL') AND t.cleared_at IS NULL THEN e.amount ELSE 0 END), 0) AS uncleared_balance,
         COALESCE(SUM(CASE WHEN t.transaction_type = 'RESERVATION' THEN e.amount ELSE 0 END), 0) AS reserved_balance
     FROM transaction_entries e 
     LEFT JOIN transactions t ON e.transaction_id = t.id
@@ -43,7 +43,7 @@ LEFT JOIN balance_summary bs ON a.id = bs.account_id AND a.currency = bs.currenc
 type AccountRepository interface {
 	GetByID(ctx context.Context, id string) (*models.Account, ledger.ApplicationLedgerError)
 	ListByID(ctx context.Context, ids ...string) (map[string]*models.Account, ledger.ApplicationLedgerError)
-	Search(ctx context.Context, query string) ([]*models.Account, ledger.ApplicationLedgerError)
+	Search(ctx context.Context, query string) (<-chan any, error)
 	Create(ctx context.Context, ledger *models.Account) (*models.Account, ledger.ApplicationLedgerError)
 	Update(ctx context.Context, id string, data map[string]string) (*models.Account, ledger.ApplicationLedgerError)
 }
@@ -125,40 +125,74 @@ func (a *accountRepository) ListByID(ctx context.Context, ids ...string) (map[st
 	return accountsMap, nil
 }
 
-func (a *accountRepository) Search(ctx context.Context, query string) ([]*models.Account, ledger.ApplicationLedgerError) {
+func (a *accountRepository) Search(ctx context.Context, query string) (<-chan any, error) {
 
-	rawQuery, aerr := NewSearchRawQuery(ctx, query)
-	if aerr != nil {
-		return nil, aerr
-	}
+	resultChannel := make(chan any)
 
-	sqlQuery := rawQuery.ToQueryConditions()
+	service := a.service
+	job := service.NewJob(func(ctx context.Context) error {
 
-	rows, err := a.service.DB(ctx, true).Raw(
-		fmt.Sprintf(`%s WHERE %s`, constAccountQuery, sqlQuery.sql), sqlQuery.args...).Rows()
+		defer close(resultChannel)
+
+		rawQuery, aerr := NewSearchRawQuery(ctx, query)
+		if aerr != nil {
+			resultChannel <- aerr
+			return nil
+		}
+
+		sqlQuery := rawQuery.ToQueryConditions()
+
+		for sqlQuery.canLoad() {
+
+			rows, err := service.DB(ctx, true).
+				Offset(sqlQuery.offset).Limit(sqlQuery.batchSize).
+				Raw(fmt.Sprintf(`%s WHERE %s`, constAccountQuery, sqlQuery.sql), sqlQuery.args...).Rows()
+			if err != nil {
+				if frame.DBErrorIsRecordNotFound(err) {
+					resultChannel <- ledger.ErrorLedgerNotFound
+					return nil
+				}
+				resultChannel <- ledger.ErrorSystemFailure.Override(err)
+				return nil
+			}
+
+			var accountList []*models.Account
+			for rows.Next() {
+				acc := models.Account{}
+				err = rows.Scan(
+					&acc.ID, &acc.Currency, &acc.Data, &acc.Balance, &acc.UnClearedBalance, &acc.ReservedBalance,
+					&acc.LedgerID, &acc.LedgerType, &acc.CreatedAt, &acc.ModifiedAt, &acc.Version, &acc.TenantID,
+					&acc.PartitionID, &acc.AccessID, &acc.DeletedAt)
+				if err != nil {
+					resultChannel <- ledger.ErrorSystemFailure.Override(err)
+					return nil
+				}
+				accountList = append(accountList, &acc)
+			}
+
+			err = rows.Close()
+			if err != nil {
+				resultChannel <- err
+				return nil
+			}
+
+			for _, acc := range accountList {
+				resultChannel <- acc
+			}
+			if sqlQuery.next(len(accountList)) {
+				return nil
+			}
+		}
+		return nil
+
+	})
+
+	err := service.SubmitJob(ctx, job)
 	if err != nil {
-		if frame.DBErrorIsRecordNotFound(err) {
-			return nil, ledger.ErrorLedgerNotFound
-		}
-		return nil, ledger.ErrorSystemFailure.Override(err)
+		return nil, err
 	}
 
-	defer rows.Close()
-
-	var accountsList []*models.Account
-	for rows.Next() {
-		acc := models.Account{}
-		if err := rows.Scan(
-			&acc.ID, &acc.Currency, &acc.Data, &acc.Balance, &acc.UnClearedBalance, &acc.ReservedBalance,
-			&acc.LedgerID, &acc.LedgerType, &acc.CreatedAt, &acc.ModifiedAt, &acc.Version, &acc.TenantID,
-			&acc.PartitionID, &acc.AccessID, &acc.DeletedAt); err != nil {
-			return nil, ledger.ErrorSystemFailure.Override(err)
-		}
-
-		accountsList = append(accountsList, &acc)
-	}
-
-	return accountsList, nil
+	return resultChannel, nil
 }
 
 // Update persists an existing account in the ledger if it is existent

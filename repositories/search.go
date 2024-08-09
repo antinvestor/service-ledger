@@ -21,6 +21,8 @@ var (
 	SearchNamespaceTransactionEntries = "transaction_entries"
 )
 
+const SystemBatchSize = 30
+
 // SearchEngine is the interface for all search operations
 type SearchEngine struct {
 	service   *frame.Service
@@ -62,6 +64,21 @@ type SearchSQLQuery struct {
 	args   []interface{}
 	offset int
 	limit  int
+
+	batchSize int
+}
+
+func (sq *SearchSQLQuery) canLoad() bool {
+	return sq.offset < sq.limit
+}
+
+func (sq *SearchSQLQuery) next(loadedCount int) bool {
+	sq.offset += loadedCount
+	if sq.offset+sq.batchSize > sq.limit {
+		sq.batchSize = sq.limit - sq.offset
+	}
+
+	return loadedCount < sq.batchSize
 }
 
 func hasValidKeys(items interface{}) bool {
@@ -152,7 +169,7 @@ func (rawQuery *SearchRawQuery) ToQueryConditions() *SearchSQLQuery {
 	conditionArgs = append(conditionArgs, rangesArgs...)
 
 	if len(mustWhere) == 0 && len(shouldWhere) == 0 {
-		return &SearchSQLQuery{sql: conditionSQL, args: conditionArgs}
+		return &SearchSQLQuery{sql: conditionSQL, args: conditionArgs, offset: 0, limit: SystemBatchSize, batchSize: SystemBatchSize}
 	}
 
 	if len(mustWhere) != 0 {
@@ -176,5 +193,10 @@ func (rawQuery *SearchRawQuery) ToQueryConditions() *SearchSQLQuery {
 		limit = 100
 	}
 
-	return &SearchSQLQuery{sql: conditionSQL, args: conditionArgs, offset: offset, limit: limit}
+	batchSize := limit
+	if SystemBatchSize < limit {
+		batchSize = SystemBatchSize
+	}
+
+	return &SearchSQLQuery{sql: conditionSQL, args: conditionArgs, offset: offset, limit: limit, batchSize: batchSize}
 }

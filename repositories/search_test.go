@@ -190,7 +190,10 @@ func (ss *SearchSuite) TestSearchAccountsWithBothMustAndShould() {
             }
         }
     }`
-	accounts, err := ss.accDB.Search(ctx, query)
+
+	resultChannel, err := ss.accDB.Search(ctx, query)
+	assert.NoError(t, err)
+	accounts, err := toSlice[*models.Account](resultChannel)
 	assert.Equal(t, nil, err, "Error in building search query")
 	assert.Equal(t, 1, len(accounts), "Account count doesn't match")
 	assert.Equal(t, "acc1", accounts[0].ID, "Account Reference doesn't match")
@@ -199,8 +202,6 @@ func (ss *SearchSuite) TestSearchAccountsWithBothMustAndShould() {
 func (ss *SearchSuite) TestSearchTransactionsWithBothMustAndShould() {
 	t := ss.T()
 	ctx := ss.ctx
-
-	resultChannel := make(chan any)
 
 	query := `{
         "query": {
@@ -224,7 +225,8 @@ func (ss *SearchSuite) TestSearchTransactionsWithBothMustAndShould() {
             }
         }
     }`
-	go ss.txnDB.Search(ctx, query, resultChannel)
+	resultChannel, err := ss.txnDB.Search(ctx, query)
+	assert.NoError(t, err)
 	transactions, err := toSlice[*models.Transaction](resultChannel)
 
 	assert.Equal(t, nil, err, "Error in building search query")

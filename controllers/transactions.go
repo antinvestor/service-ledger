@@ -110,20 +110,11 @@ func (ledgerSrv *LedgerServer) CreateTransaction(ctx context.Context, apiTransac
 func (ledgerSrv *LedgerServer) SearchTransactions(request *ledgerV1.SearchRequest, server ledgerV1.LedgerService_SearchTransactionsServer) error {
 
 	ctx := server.Context()
-	service := ledgerSrv.Service
 
 	accountRepository := repositories.NewAccountRepository(ledgerSrv.Service)
 	transactionRepository := repositories.NewTransactionRepository(ledgerSrv.Service, accountRepository)
 
-	transactionChannel := make(chan any)
-	job := service.NewJob(func(ctx context.Context) error {
-
-		transactionRepository.Search(ctx, request.GetQuery(), transactionChannel)
-		return nil
-
-	})
-
-	err := service.SubmitJob(ctx, job)
+	transactionChannel, err := transactionRepository.Search(ctx, request.GetQuery())
 	if err != nil {
 		return err
 	}
@@ -140,6 +131,8 @@ func (ledgerSrv *LedgerServer) SearchTransactions(request *ledgerV1.SearchReques
 			case error:
 				return err
 			}
+		case <-ctx.Done():
+			return ctx.Err()
 		default:
 			return nil
 

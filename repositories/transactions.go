@@ -19,8 +19,8 @@ const DefaultTimestamLayout = time.RFC3339Nano
 
 type TransactionRepository interface {
 	GetByID(ctx context.Context, id string) (*models.Transaction, ledger.ApplicationLedgerError)
-	Search(ctx context.Context, query string, resultChannel chan<- any)
-	SearchEntries(ctx context.Context, query string, resultChannel chan<- any)
+	Search(ctx context.Context, query string) (<-chan any, error)
+	SearchEntries(ctx context.Context, query string) (<-chan any, error)
 	Validate(ctx context.Context, transaction *models.Transaction) (map[string]*models.Account, ledger.ApplicationLedgerError)
 	IsConflict(ctx context.Context, transaction2 *models.Transaction) (bool, ledger.ApplicationLedgerError)
 	Transact(ctx context.Context, transaction *models.Transaction) (*models.Transaction, ledger.ApplicationLedgerError)
@@ -42,92 +42,118 @@ func NewTransactionRepository(service *frame.Service, accountRepo AccountReposit
 	}
 }
 
-func (t *transactionRepository) Search(ctx context.Context, query string, resultChannel chan<- any) {
+func (t *transactionRepository) Search(ctx context.Context, query string) (<-chan any, error) {
 
-	defer close(resultChannel)
+	resultChannel := make(chan any)
 
-	rawQuery, err := NewSearchRawQuery(ctx, query)
-	if err != nil {
-		resultChannel <- err
-		return
-	}
+	service := t.service
+	job := service.NewJob(func(ctx context.Context) error {
+		defer close(resultChannel)
 
-	sqlQuery := rawQuery.ToQueryConditions()
-	var transactionsList []*models.Transaction
+		rawQuery, err := NewSearchRawQuery(ctx, query)
+		if err != nil {
+			resultChannel <- err
+			return nil
+		}
 
-	conditions := append([]interface{}{sqlQuery.sql}, sqlQuery.args...)
+		sqlQuery := rawQuery.ToQueryConditions()
+		var transactionList []*models.Transaction
 
-	batchSize := sqlQuery.limit
-	offset := sqlQuery.offset
+		conditions := append([]interface{}{sqlQuery.sql}, sqlQuery.args...)
 
-	for {
+		for sqlQuery.canLoad() {
 
-		result := t.service.DB(ctx, true).Debug().Offset(offset).Limit(batchSize).
-			Preload("Entries").Find(&transactionsList, conditions...)
-		err1 := result.Error
-		if err1 != nil {
-			if frame.DBErrorIsRecordNotFound(err1) {
-				resultChannel <- ledger.ErrorLedgerNotFound
-				return
+			result := service.DB(ctx, true).Offset(sqlQuery.offset).Limit(sqlQuery.batchSize).
+				Preload("Entries").Find(&transactionList, conditions...)
+			err1 := result.Error
+			if err1 != nil {
+				if frame.DBErrorIsRecordNotFound(err1) {
+					resultChannel <- ledger.ErrorLedgerNotFound
+					return nil
+				}
+				resultChannel <- ledger.ErrorSystemFailure.Override(err)
 			}
-			resultChannel <- ledger.ErrorSystemFailure.Override(err)
+
+			if result.RowsAffected == 0 {
+				break // No more rows
+			}
+
+			for _, transaction := range transactionList {
+				resultChannel <- transaction
+			}
+
+			if sqlQuery.next(len(transactionList)) {
+				return nil
+			}
+
 		}
 
-		if result.RowsAffected == 0 {
-			break // No more rows
-		}
+		return nil
 
-		for _, transaction := range transactionsList {
-			resultChannel <- transaction
-		}
+	})
 
-		offset += batchSize
+	err := service.SubmitJob(ctx, job)
+	if err != nil {
+		return nil, err
 	}
+
+	return resultChannel, nil
 
 }
 
-func (t *transactionRepository) SearchEntries(ctx context.Context, query string, resultChannel chan<- any) {
+func (t *transactionRepository) SearchEntries(ctx context.Context, query string) (<-chan any, error) {
 
-	defer close(resultChannel)
+	resultChannel := make(chan any)
 
-	rawQuery, aerr := NewSearchRawQuery(ctx, query)
-	if aerr != nil {
-		resultChannel <- aerr
-		return
-	}
+	service := t.service
+	job := service.NewJob(func(ctx context.Context) error {
+		defer close(resultChannel)
 
-	sqlQuery := rawQuery.ToQueryConditions()
-	var transactionEntriesList []*models.TransactionEntry
+		rawQuery, aerr := NewSearchRawQuery(ctx, query)
+		if aerr != nil {
+			resultChannel <- aerr
+			return nil
+		}
 
-	conditions := append([]interface{}{sqlQuery.sql}, sqlQuery.args...)
+		sqlQuery := rawQuery.ToQueryConditions()
+		var transactionEntriesList []*models.TransactionEntry
 
-	batchSize := sqlQuery.limit
-	offset := sqlQuery.offset
+		conditions := append([]interface{}{sqlQuery.sql}, sqlQuery.args...)
 
-	for {
+		for sqlQuery.canLoad() {
 
-		result := t.service.DB(ctx, true).Find(&transactionEntriesList, conditions)
+			result := service.DB(ctx, true).Offset(sqlQuery.offset).Limit(sqlQuery.batchSize).
+				Find(&transactionEntriesList, conditions)
 
-		err1 := result.Error
-		if err1 != nil {
-			if frame.DBErrorIsRecordNotFound(err1) {
-				resultChannel <- ledger.ErrorLedgerNotFound
-				return
+			err1 := result.Error
+			if err1 != nil {
+				if frame.DBErrorIsRecordNotFound(err1) {
+					resultChannel <- ledger.ErrorLedgerNotFound
+					return nil
+				}
+				resultChannel <- ledger.ErrorSystemFailure.Override(err1)
+				return nil
 			}
-			resultChannel <- ledger.ErrorSystemFailure.Override(err1)
-			return
+
+			for _, entry := range transactionEntriesList {
+				resultChannel <- entry
+			}
+
+			if sqlQuery.next(len(transactionEntriesList)) {
+				return nil
+			}
 		}
 
-		if result.RowsAffected == 0 {
-			break // No more rows
-		}
+		return nil
 
-		for _, entry := range transactionEntriesList {
-			resultChannel <- entry
-		}
+	})
 
-		offset += batchSize
+	err := service.SubmitJob(ctx, job)
+	if err != nil {
+		return nil, err
 	}
+
+	return resultChannel, nil
 
 }
 
@@ -308,5 +334,6 @@ func (t *transactionRepository) Reverse(ctx context.Context, id string) (*models
 	}
 
 	reversalTxn.ID = fmt.Sprintf("REVERSAL_%s", reversalTxn.ID)
+	reversalTxn.TransactionType = ledgerV1.TransactionType_REVERSAL.String()
 	return t.Transact(ctx, reversalTxn)
 }

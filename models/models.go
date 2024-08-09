@@ -27,14 +27,6 @@ type Account struct {
 	LedgerType       string              `gorm:"type:varchar(50)" json:"ledger_type"`
 }
 
-type TransactionType string
-
-const (
-	TransactionTypeNormal      TransactionType = "NORMAL"
-	TransactionTypeReversal    TransactionType = "REVERSAL"
-	TransactionTypeReservation TransactionType = "RESERVATION"
-)
-
 // Transaction represents a transaction in a ledger
 type Transaction struct {
 	frame.BaseModel

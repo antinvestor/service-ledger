@@ -19,7 +19,11 @@ func (ss *SearchSuite) TestSearchAccountsWithShouldTerms() {
             }
         }
     }`
-	accounts, err := ss.accDB.Search(ctx, query)
+
+	resultChannel, err := ss.accDB.Search(ctx, query)
+	assert.NoError(t, err)
+	accounts, err := toSlice[*models.Account](resultChannel)
+
 	assert.Equal(t, nil, err, "Error in building search query")
 	assert.Equal(t, 2, len(accounts), "Accounts count doesn't match")
 
@@ -33,7 +37,10 @@ func (ss *SearchSuite) TestSearchAccountsWithShouldTerms() {
             }
         }
     }`
-	accounts, err = ss.accDB.Search(ctx, query)
+	resultChannel, err = ss.accDB.Search(ctx, query)
+	assert.NoError(t, err)
+	accounts, err = toSlice[*models.Account](resultChannel)
+
 	assert.Equal(t, nil, err, "Error in building search query")
 	assert.Equal(t, 0, len(accounts), "No account should exist for given query")
 }
@@ -41,8 +48,6 @@ func (ss *SearchSuite) TestSearchAccountsWithShouldTerms() {
 func (ss *SearchSuite) TestSearchTransactionsWithShouldTerms() {
 	t := ss.T()
 	ctx := ss.ctx
-
-	resultChannel := make(chan any)
 
 	query := `{
         "query": {
@@ -55,7 +60,8 @@ func (ss *SearchSuite) TestSearchTransactionsWithShouldTerms() {
         }
     }`
 
-	go ss.txnDB.Search(ctx, query, resultChannel)
+	resultChannel, err := ss.txnDB.Search(ctx, query)
+	assert.NoError(t, err)
 	transactions, err := toSlice[*models.Transaction](resultChannel)
 	assert.Equal(t, nil, err, "Error in building search query")
 	assert.Equal(t, 3, len(transactions), "Transactions count doesn't match")
@@ -71,8 +77,8 @@ func (ss *SearchSuite) TestSearchTransactionsWithShouldTerms() {
         }
     }`
 
-	resultChannel = make(chan any)
-	go ss.txnDB.Search(ctx, query, resultChannel)
+	resultChannel, err = ss.txnDB.Search(ctx, query)
+	assert.NoError(t, err)
 	transactions, err = toSlice[*models.Transaction](resultChannel)
 	assert.Equal(t, nil, err, "Error in building search query")
 	assert.Equal(t, 0, len(transactions), "No transaction should exist for given query")

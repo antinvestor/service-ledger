@@ -42,19 +42,31 @@ func (ledgerSrv *LedgerServer) SearchLedgers(request *ledgerV1.SearchRequest, se
 	ctx := server.Context()
 	ledgerRepository := repositories.NewLedgerRepository(ledgerSrv.Service)
 
-	castLedgers, aerr := ledgerRepository.Search(ctx, request.GetQuery())
-	if aerr != nil {
-		return aerr
+	ledgersChannel, err := ledgerRepository.Search(ctx, request.GetQuery())
+	if err != nil {
+		return err
 	}
 
-	for _, lg := range castLedgers {
-		err := server.Send(ledgerToApi(lg))
-		if err != nil {
-			return err
+	for {
+
+		select {
+
+		case result := <-ledgersChannel:
+
+			switch v := result.(type) {
+			case *models.Ledger:
+				_ = server.Send(ledgerToApi(v))
+			case error:
+				return err
+			}
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			return nil
+
 		}
-	}
 
-	return nil
+	}
 }
 
 // CreateLedger a new account based on supplied data
