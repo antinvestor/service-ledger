@@ -2,27 +2,24 @@ package repositories
 
 import (
 	"context"
+	"fmt"
+	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
+	"github.com/antinvestor/service-ledger/ledger"
 	"github.com/antinvestor/service-ledger/models"
 	"github.com/pitabwire/frame"
+	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 	"log"
 	"strings"
-	"time"
-
-	"fmt"
-	"github.com/antinvestor/service-ledger/ledger"
-	"github.com/pkg/errors"
 )
 
-const (
-	// LedgerTimestampLayout is the timestamp layout followed in Ledger
-	LedgerTimestampLayout = "2006-01-02 15:04:05.000"
-)
+// DefaultTimestamLayout is the timestamp layout followed in Ledger
+const DefaultTimestamLayout = "2006-01-23T15:04:05.123Z"
 
 type TransactionRepository interface {
 	GetByID(ctx context.Context, id string) (*models.Transaction, ledger.ApplicationLedgerError)
-	Search(ctx context.Context, query string) ([]*models.Transaction, ledger.ApplicationLedgerError)
-	SearchEntries(ctx context.Context, query string) ([]*models.TransactionEntry, ledger.ApplicationLedgerError)
+	Search(ctx context.Context, query string, resultChannel chan<- any)
+	SearchEntries(ctx context.Context, query string, resultChannel chan<- any)
 	Validate(ctx context.Context, transaction *models.Transaction) (map[string]*models.Account, ledger.ApplicationLedgerError)
 	IsConflict(ctx context.Context, transaction2 *models.Transaction) (bool, ledger.ApplicationLedgerError)
 	Transact(ctx context.Context, transaction *models.Transaction) (*models.Transaction, ledger.ApplicationLedgerError)
@@ -44,11 +41,14 @@ func NewTransactionRepository(service *frame.Service, accountRepo AccountReposit
 	}
 }
 
-func (t *transactionRepository) Search(ctx context.Context, query string) ([]*models.Transaction, ledger.ApplicationLedgerError) {
+func (t *transactionRepository) Search(ctx context.Context, query string, resultChannel chan<- any) {
 
-	rawQuery, aerr := NewSearchRawQuery(ctx, query)
-	if aerr != nil {
-		return nil, aerr
+	defer close(resultChannel)
+
+	rawQuery, err := NewSearchRawQuery(ctx, query)
+	if err != nil {
+		resultChannel <- err
+		return
 	}
 
 	sqlQuery := rawQuery.ToQueryConditions()
@@ -56,52 +56,94 @@ func (t *transactionRepository) Search(ctx context.Context, query string) ([]*mo
 
 	conditions := append([]interface{}{sqlQuery.sql}, sqlQuery.args...)
 
-	err := t.service.DB(ctx, true).Preload("Entries").
-		Find(&transactionsList, conditions...).Offset(sqlQuery.offset).Limit(sqlQuery.limit).Error
-	if err != nil {
-		if frame.DBErrorIsRecordNotFound(err) {
-			return nil, ledger.ErrorLedgerNotFound
+	batchSize := sqlQuery.limit
+	offset := sqlQuery.offset
+
+	for {
+
+		result := t.service.DB(ctx, true).Debug().Offset(offset).Limit(batchSize).
+			Preload("Entries").Find(&transactionsList, conditions...)
+		err1 := result.Error
+		if err1 != nil {
+			if frame.DBErrorIsRecordNotFound(err1) {
+				resultChannel <- ledger.ErrorLedgerNotFound
+				return
+			}
+			resultChannel <- ledger.ErrorSystemFailure.Override(err)
 		}
-		return nil, ledger.ErrorSystemFailure.Override(err)
+
+		if result.RowsAffected == 0 {
+			break // No more rows
+		}
+
+		for _, transaction := range transactionsList {
+			resultChannel <- transaction
+		}
+
+		offset += batchSize
 	}
 
-	return transactionsList, nil
 }
 
-func (t *transactionRepository) SearchEntries(ctx context.Context, query string) ([]*models.TransactionEntry, ledger.ApplicationLedgerError) {
+func (t *transactionRepository) SearchEntries(ctx context.Context, query string, resultChannel chan<- any) {
+
+	defer close(resultChannel)
 
 	rawQuery, aerr := NewSearchRawQuery(ctx, query)
 	if aerr != nil {
-		return nil, aerr
+		resultChannel <- aerr
+		return
 	}
 
 	sqlQuery := rawQuery.ToQueryConditions()
-	var entriesList []*models.TransactionEntry
+	var transactionEntriesList []*models.TransactionEntry
 
 	conditions := append([]interface{}{sqlQuery.sql}, sqlQuery.args...)
 
-	err := t.service.DB(ctx, true).Find(&entriesList, conditions).Error
-	if err != nil {
-		if frame.DBErrorIsRecordNotFound(err) {
-			return nil, ledger.ErrorLedgerNotFound
+	batchSize := sqlQuery.limit
+	offset := sqlQuery.offset
+
+	for {
+
+		result := t.service.DB(ctx, true).Find(&transactionEntriesList, conditions)
+
+		err1 := result.Error
+		if err1 != nil {
+			if frame.DBErrorIsRecordNotFound(err1) {
+				resultChannel <- ledger.ErrorLedgerNotFound
+				return
+			}
+			resultChannel <- ledger.ErrorSystemFailure.Override(err1)
+			return
 		}
-		return nil, ledger.ErrorSystemFailure.Override(err)
+
+		if result.RowsAffected == 0 {
+			break // No more rows
+		}
+
+		for _, entry := range transactionEntriesList {
+			resultChannel <- entry
+		}
+
+		offset += batchSize
 	}
 
-	return entriesList, nil
 }
 
 // Validate checks all issues around transaction are satisfied
 func (t *transactionRepository) Validate(ctx context.Context, txn *models.Transaction) (map[string]*models.Account, ledger.ApplicationLedgerError) {
 
-	// Skip if the transaction is invalid
-	// by validating the amount values
-	if !txn.IsZeroSum() {
-		return nil, ledger.ErrorTransactionHasNonZeroSum
-	}
+	if ledgerV1.TransactionType_NORMAL.String() == txn.TransactionType {
+		// Skip if the transaction is invalid
+		// by validating the amount values
+		if !txn.IsZeroSum() {
+			return nil, ledger.ErrorTransactionHasNonZeroSum
+		}
 
-	if !txn.IsTrueDrCr() {
-		return nil, ledger.ErrorTransactionHasInvalidDrCrEntry
+		if !txn.IsTrueDrCr() {
+			return nil, ledger.ErrorTransactionHasInvalidDrCrEntry
+		}
+
 	}
 
 	accountIdSet := map[string]bool{}
@@ -183,15 +225,10 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 		return nil, err1
 	}
 
-	if transaction.TransactedAt == "" {
-		transaction.TransactedAt = time.Now().UTC().Format(LedgerTimestampLayout)
-	}
-
 	// Add transaction Entries in one go to succeed or fail all
 	for _, line := range transaction.Entries {
 		account := accountsMap[line.AccountID]
 
-		line.Currency = account.Currency
 		line.Balance = decimal.NewNullDecimal(account.Balance.Decimal)
 
 		// Decide the signage of entry based on : https://en.wikipedia.org/wiki/Double-entry_bookkeeping :DEADCLIC
@@ -199,10 +236,6 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 			!line.Credit && (account.LedgerType == models.LEDGER_TYPE_LIABILITY || account.LedgerType == models.LEDGER_TYPE_INCOME || account.LedgerType == models.LEDGER_TYPE_CAPITAL) {
 			line.Amount = decimal.NewNullDecimal(line.Amount.Decimal.Neg())
 		}
-	}
-
-	for _, line := range transaction.Entries {
-		log.Println(" -----   Entry Line ", line.ID, " CR:", line.Credit, " Currency:", line.Currency, " Amt:", line.Amount, " Bal:", line.Balance)
 	}
 
 	err := t.service.DB(ctx, false).Create(&transaction).Error

@@ -127,7 +127,7 @@ func getSQLConditionAndArgsFromRange(key string, op string, value interface{}) (
 		var opnew string
 		if op == "in" {
 			opnew = "eq"
-		} else if op == "nin" {
+		} else {
 			opnew = "ne"
 		}
 		values, _ := value.([]interface{})

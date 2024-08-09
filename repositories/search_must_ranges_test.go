@@ -1,6 +1,7 @@
 package repositories_test
 
 import (
+	"github.com/antinvestor/service-ledger/models"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -41,6 +42,7 @@ func (ss *SearchSuite) TestSearchAccountsWithMustRanges() {
 func (ss *SearchSuite) TestSearchTransactionsWithMustRanges() {
 	t := ss.T()
 	ctx := ss.ctx
+	resultChannel := make(chan any)
 
 	query := `{
         "query": {
@@ -52,7 +54,8 @@ func (ss *SearchSuite) TestSearchTransactionsWithMustRanges() {
             }
         }
     }`
-	transactions, err := ss.txnDB.Search(ctx, query)
+	go ss.txnDB.Search(ctx, query, resultChannel)
+	transactions, err := toSlice[*models.Transaction](resultChannel)
 	assert.Equal(t, nil, err, "Error in building search query")
 	assert.Equal(t, 1, len(transactions), "Transactions count doesn't match")
 	if len(transactions) > 0 {
@@ -68,7 +71,10 @@ func (ss *SearchSuite) TestSearchTransactionsWithMustRanges() {
             }
         }
     }`
-	transactions, err = ss.txnDB.Search(ctx, query)
+
+	resultChannel = make(chan any)
+	go ss.txnDB.Search(ctx, query, resultChannel)
+	transactions, err = toSlice[*models.Transaction](resultChannel)
 	assert.Equal(t, nil, err, "Error in building search query")
 	assert.Equal(t, 0, len(transactions), "No transaction should exist for given query")
 }
@@ -76,6 +82,7 @@ func (ss *SearchSuite) TestSearchTransactionsWithMustRanges() {
 func (ss *SearchSuite) TestSearchTransactionsWithIsOperator() {
 	t := ss.T()
 	ctx := ss.ctx
+	resultChannel := make(chan any)
 
 	// Test IS operator
 	query := `{
@@ -87,7 +94,9 @@ func (ss *SearchSuite) TestSearchTransactionsWithIsOperator() {
 			}
 		}
 	}`
-	transactions, err := ss.txnDB.Search(ctx, query)
+
+	go ss.txnDB.Search(ctx, query, resultChannel)
+	transactions, err := toSlice[*models.Transaction](resultChannel)
 	assert.Equal(t, nil, err, "Error in building search query")
 	assert.Equal(t, 3, len(transactions), "Transactions count doesn't match")
 
@@ -101,7 +110,10 @@ func (ss *SearchSuite) TestSearchTransactionsWithIsOperator() {
 			}
 		}
 	}`
-	transactions, err = ss.txnDB.Search(ctx, query)
+
+	resultChannel = make(chan any)
+	go ss.txnDB.Search(ctx, query, resultChannel)
+	transactions, err = toSlice[*models.Transaction](resultChannel)
 	assert.Equal(t, nil, err, "Error in building search query")
 	assert.Equal(t, 3, len(transactions), "Transactions count doesn't match")
 }

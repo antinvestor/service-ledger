@@ -1,12 +1,15 @@
 package repositories_test
 
 import (
+	"database/sql"
+	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
 	"github.com/antinvestor/service-ledger/models"
 	"github.com/antinvestor/service-ledger/repositories"
 	"github.com/pitabwire/frame"
 	"github.com/shopspring/decimal"
 	"log"
 	"testing"
+	"time"
 
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
@@ -22,9 +25,23 @@ type SearchSuite struct {
 	ledger *models.Ledger
 }
 
+func toSlice[T any](result <-chan any) ([]T, error) {
+	var resultSlice []T
+	for t := range result {
+		switch v := t.(type) {
+		case T:
+			resultSlice = append(resultSlice, v)
+		case error:
+			return nil, v
+		}
+	}
+	return resultSlice, nil
+}
+
 func (ss *SearchSuite) SetupSuite() {
 
 	ss.BaseTestSuite.SetupSuite()
+
 	t := ss.T()
 
 	log.Println("Successfully established connection to database.")
@@ -66,8 +83,11 @@ func (ss *SearchSuite) SetupSuite() {
 
 	// Create test transactions
 	txn1 := &models.Transaction{
-		BaseModel: frame.BaseModel{ID: "txn1"},
-		Currency:  "UGX",
+		BaseModel:       frame.BaseModel{ID: "txn1"},
+		Currency:        "UGX",
+		TransactionType: ledgerV1.TransactionType_NORMAL.String(),
+		TransactedAt:    sql.NullTime{Time: time.Now().UTC(), Valid: true},
+		ClearedAt:       sql.NullTime{Time: time.Now().UTC(), Valid: true},
 		Entries: []*models.TransactionEntry{
 			{
 				AccountID: "acc1",
@@ -90,8 +110,11 @@ func (ss *SearchSuite) SetupSuite() {
 	assert.Equal(t, nil, err, "Error creating test transaction")
 	assert.NotEqual(t, nil, tx, "Error creating test transaction")
 	txn2 := &models.Transaction{
-		BaseModel: frame.BaseModel{ID: "txn2"},
-		Currency:  "UGX",
+		BaseModel:       frame.BaseModel{ID: "txn2"},
+		Currency:        "UGX",
+		TransactionType: ledgerV1.TransactionType_NORMAL.String(),
+		TransactedAt:    sql.NullTime{Time: time.Now().UTC(), Valid: true},
+		ClearedAt:       sql.NullTime{Time: time.Now().UTC(), Valid: true},
 		Entries: []*models.TransactionEntry{
 			{
 				AccountID: "acc1",
@@ -113,8 +136,11 @@ func (ss *SearchSuite) SetupSuite() {
 	tx, _ = ss.txnDB.Transact(ss.ctx, txn2)
 	assert.NotEqual(t, nil, tx, "Error creating test transaction")
 	txn3 := &models.Transaction{
-		BaseModel: frame.BaseModel{ID: "txn3"},
-		Currency:  "UGX",
+		BaseModel:       frame.BaseModel{ID: "txn3"},
+		Currency:        "UGX",
+		TransactionType: ledgerV1.TransactionType_NORMAL.String(),
+		TransactedAt:    sql.NullTime{Time: time.Now().UTC(), Valid: true},
+		ClearedAt:       sql.NullTime{Time: time.Now().UTC(), Valid: true},
 		Entries: []*models.TransactionEntry{
 			{
 				AccountID: "acc1",
@@ -174,6 +200,8 @@ func (ss *SearchSuite) TestSearchTransactionsWithBothMustAndShould() {
 	t := ss.T()
 	ctx := ss.ctx
 
+	resultChannel := make(chan any)
+
 	query := `{
         "query": {
             "must": {
@@ -196,34 +224,13 @@ func (ss *SearchSuite) TestSearchTransactionsWithBothMustAndShould() {
             }
         }
     }`
-	transactions, err := ss.txnDB.Search(ctx, query)
+	go ss.txnDB.Search(ctx, query, resultChannel)
+	transactions, err := toSlice[*models.Transaction](resultChannel)
+
 	assert.Equal(t, nil, err, "Error in building search query")
 	assert.Equal(t, 1, len(transactions), "Transaction count doesn't match")
 	if len(transactions) > 0 {
 		assert.Equal(t, "txn1", transactions[0].ID, "Transaction Reference doesn't match")
-	}
-}
-
-func (ss *SearchSuite) TearDownSuite() {
-	log.Println("Cleaning up the test database")
-
-	t := ss.T()
-	err := ss.service.DB(ss.ctx, false).Exec(`DELETE FROM transaction_entries WHERE transaction_id IN (
-					SELECT transaction_id FROM transactions WHERE ID IN($1, $2, $3))`, "txn1", "TXN2", "TXN3").Error
-	if err != nil {
-		t.Fatal("Error deleting Entries:", err)
-	}
-	err = ss.service.DB(ss.ctx, false).Exec(`DELETE FROM transactions WHERE ID IN($1, $2, $3)`, "txn1", "TXN2", "TXN3").Error
-	if err != nil {
-		t.Fatal("Error deleting transactions:", err)
-	}
-	err = ss.service.DB(ss.ctx, false).Exec(`DELETE FROM accounts WHERE ID IN($1, $2)`, "acc1", "acc2").Error
-	if err != nil {
-		t.Fatal("Error deleting accounts:", err)
-	}
-	err = ss.service.DB(ss.ctx, false).Exec(`DELETE FROM ledgers WHERE id = $1`, ss.ledger.ID).Error
-	if err != nil {
-		t.Fatal("Error deleting ledgers:", err)
 	}
 }
 

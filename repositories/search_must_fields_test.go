@@ -1,6 +1,7 @@
 package repositories_test
 
 import (
+	"github.com/antinvestor/service-ledger/models"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -48,6 +49,7 @@ func (ss *SearchSuite) TestSearchAccountsWithMustFields() {
 func (ss *SearchSuite) TestSearchTransactionsWithMustFields() {
 	t := ss.T()
 	ctx := ss.ctx
+	resultChannel := make(chan any)
 
 	query := `{
         "query": {
@@ -59,7 +61,8 @@ func (ss *SearchSuite) TestSearchTransactionsWithMustFields() {
             }
         }
     }`
-	transactions, err := ss.txnDB.Search(ctx, query)
+	go ss.txnDB.Search(ctx, query, resultChannel)
+	transactions, err := toSlice[*models.Transaction](resultChannel)
 	assert.Equal(t, nil, err, "Error in building search query")
 	assert.Equal(t, 1, len(transactions), "Transactions count doesn't match")
 	if len(transactions) > 0 {
@@ -75,7 +78,10 @@ func (ss *SearchSuite) TestSearchTransactionsWithMustFields() {
             }
         }
     }`
-	transactions, err = ss.txnDB.Search(ctx, query)
+
+	resultChannel = make(chan any)
+	go ss.txnDB.Search(ctx, query, resultChannel)
+	transactions, err = toSlice[*models.Transaction](resultChannel)
 	assert.Equal(t, nil, err, "Error in building search query")
 	assert.Equal(t, 0, len(transactions), "No transaction should exist for given query")
 }

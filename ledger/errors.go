@@ -20,7 +20,7 @@ type applicationLedgerError struct {
 	ExtraMessage string
 }
 
-func New(Code int32, Message string) ApplicationLedgerError {
+func NewApplicationError(Code int32, Message string) ApplicationLedgerError {
 	return &applicationLedgerError{Code, 200, Message, ""}
 }
 
@@ -60,28 +60,29 @@ func (e applicationLedgerError) Override(errs ...error) ApplicationLedgerError {
 }
 
 var (
-	ErrorSystemFailure        = New(1, "System failure")
-	ErrorUnspecifiedID        = New(2, "No ID was supplied")
-	ErrorUnspecifiedReference = New(3, "No reference was supplied")
+	ErrorSystemFailure        = NewApplicationError(1, "System failure")
+	ErrorUnspecifiedID        = NewApplicationError(2, "No ID was supplied")
+	ErrorUnspecifiedReference = NewApplicationError(3, "No reference was supplied")
 
-	ErrorLedgerNotFound = New(11, "Ledger with reference/id not found")
+	ErrorLedgerNotFound = NewApplicationError(11, "Ledger with reference/id not found")
 
-	ErrorAccountNotFound            = New(21, "Account with reference/id not found")
-	ErrorAccountsNotFound           = New(22, "Accounts with references/ids were not found")
-	ErrorAccountsCurrencyUnknown    = New(22, "Supplied account currency is unknown")
-	ErrorAccountWithReferenceExists = New(23, "An account with the given reference exists")
+	ErrorAccountNotFound            = NewApplicationError(21, "Account with reference/id not found")
+	ErrorAccountsNotFound           = NewApplicationError(22, "Accounts with references/ids were not found")
+	ErrorAccountsCurrencyUnknown    = NewApplicationError(22, "Supplied account currency is unknown")
+	ErrorAccountWithReferenceExists = NewApplicationError(23, "An account with the given reference exists")
 
-	ErrorTransactionNotFound               = New(31, "Transaction with reference/id not found")
-	ErrorTransactionEntriesNotFound        = New(32, "Transaction with reference/id has no entries not found")
-	ErrorTransactionEntryHasZeroAmount     = New(33, "Transaction entry has zero amount")
-	ErrorTransactionAccountsDifferCurrency = New(34, "Transaction accounts have different currencies")
-	ErrorTransactionAlreadyExists          = New(35, "Transaction with reference/id already exists")
-	ErrorTransactionHasNonZeroSum          = New(36, "Transaction has a non zero sum")
-	ErrorTransactionHasInvalidDrCrEntry    = New(37, "Transaction has a invalid count of dr/cr entries")
-	ErrorTransactionIsConfilicting         = New(38, "Transaction is conflicting")
+	ErrorTransactionNotFound               = NewApplicationError(31, "Transaction with reference/id not found")
+	ErrorTransactionEntriesNotFound        = NewApplicationError(32, "Transaction with reference/id has no entries not found")
+	ErrorTransactionEntryHasZeroAmount     = NewApplicationError(33, "Transaction entry has zero amount")
+	ErrorTransactionAccountsDifferCurrency = NewApplicationError(34, "Transaction accounts have different currencies")
+	ErrorTransactionAlreadyExists          = NewApplicationError(35, "Transaction with reference/id already exists")
+	ErrorTransactionHasNonZeroSum          = NewApplicationError(36, "Transaction has a non zero sum")
+	ErrorTransactionHasInvalidDrCrEntry    = NewApplicationError(37, "Transaction has a invalid count of dr/cr entries")
+	ErrorTransactionIsConfilicting         = NewApplicationError(38, "Transaction is conflicting")
+	ErrorTransactionDateNotSupplied        = NewApplicationError(39, "Transaction date should be supplied")
 
-	ErrorSearchNamespaceUnknown       = New(41, "Search namespace provided is unknown")
-	ErrorSearchQueryHasInvalidFormart = New(42, "Search query has invalid format")
-	ErrorSearchQueryHasInvalidKeys    = New(43, "Search query has invalid keys")
-	ErrorSearchQueryResultsNotCasting = New(44, "Search query results not casting")
+	ErrorSearchNamespaceUnknown       = NewApplicationError(61, "Search namespace provided is unknown")
+	ErrorSearchQueryHasInvalidFormart = NewApplicationError(62, "Search query has invalid format")
+	ErrorSearchQueryHasInvalidKeys    = NewApplicationError(63, "Search query has invalid keys")
+	ErrorSearchQueryResultsNotCasting = NewApplicationError(64, "Search query results not casting")
 )

@@ -10,10 +10,35 @@ import (
 	"strings"
 )
 
-const constAccountQuery = `SELECT 
-				id, currency, data, COALESCE(balance, 0), ledger_id, ledger_type,
-				created_at, modified_at, version, tenant_id, partition_id, access_id, deleted_at 
-				FROM accounts a LEFT JOIN current_balances cb ON a.id = cb.account_id`
+const constAccountQuery = `WITH balance_summary AS (
+    SELECT 
+        e.account_id, 
+        t.currency,
+        COALESCE(SUM(CASE WHEN t.cleared_at IS NOT NULL THEN e.amount ELSE 0 END), 0) AS balance,
+        COALESCE(SUM(CASE WHEN t.cleared_at IS NULL THEN e.amount ELSE 0 END), 0) AS uncleared_balance,
+        COALESCE(SUM(CASE WHEN t.transaction_type = 'RESERVATION' THEN e.amount ELSE 0 END), 0) AS reserved_balance
+    FROM transaction_entries e 
+    LEFT JOIN transactions t ON e.transaction_id = t.id
+    GROUP BY e.account_id, t.currency
+)
+SELECT 
+    a.id, 
+    a.currency, 
+    a.data, 
+    COALESCE(bs.balance, 0) AS balance, 
+    COALESCE(bs.uncleared_balance, 0) AS uncleared_balance, 
+    COALESCE(bs.reserved_balance, 0) AS reserved_balance, 
+    a.ledger_id, 
+    a.ledger_type,
+    a.created_at, 
+    a.modified_at, 
+    a.version, 
+    a.tenant_id, 
+    a.partition_id, 
+    a.access_id, 
+    a.deleted_at 
+FROM accounts a 
+LEFT JOIN balance_summary bs ON a.id = bs.account_id AND a.currency = bs.currency`
 
 type AccountRepository interface {
 	GetByID(ctx context.Context, id string) (*models.Account, ledger.ApplicationLedgerError)
@@ -88,7 +113,7 @@ func (a *accountRepository) ListByID(ctx context.Context, ids ...string) (map[st
 
 	for rows.Next() {
 		acc := models.Account{}
-		if err := rows.Scan(&acc.ID, &acc.Currency, &acc.Data, &acc.Balance, &acc.LedgerID, &acc.LedgerType,
+		if err := rows.Scan(&acc.ID, &acc.Currency, &acc.Data, &acc.Balance, &acc.UnClearedBalance, &acc.ReservedBalance, &acc.LedgerID, &acc.LedgerType,
 			&acc.CreatedAt, &acc.ModifiedAt, &acc.Version, &acc.TenantID, &acc.PartitionID,
 			&acc.AccessID, &acc.DeletedAt); err != nil {
 			return nil, ledger.ErrorSystemFailure.Override(err)
@@ -123,9 +148,10 @@ func (a *accountRepository) Search(ctx context.Context, query string) ([]*models
 	var accountsList []*models.Account
 	for rows.Next() {
 		acc := models.Account{}
-		if err := rows.Scan(&acc.ID, &acc.Currency, &acc.Data, &acc.Balance, &acc.LedgerID, &acc.LedgerType,
-			&acc.CreatedAt, &acc.ModifiedAt, &acc.Version, &acc.TenantID, &acc.PartitionID,
-			&acc.AccessID, &acc.DeletedAt); err != nil {
+		if err := rows.Scan(
+			&acc.ID, &acc.Currency, &acc.Data, &acc.Balance, &acc.UnClearedBalance, &acc.ReservedBalance,
+			&acc.LedgerID, &acc.LedgerType, &acc.CreatedAt, &acc.ModifiedAt, &acc.Version, &acc.TenantID,
+			&acc.PartitionID, &acc.AccessID, &acc.DeletedAt); err != nil {
 			return nil, ledger.ErrorSystemFailure.Override(err)
 		}
 

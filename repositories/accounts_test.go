@@ -1,7 +1,6 @@
 package repositories_test
 
 import (
-	"context"
 	"github.com/antinvestor/service-ledger/models"
 	"github.com/antinvestor/service-ledger/repositories"
 	"testing"
@@ -24,8 +23,8 @@ func (as *AccountsSuite) SetupSuite() {
 	ledgersDB := repositories.NewLedgerRepository(as.service)
 	accountsDB := repositories.NewAccountRepository(as.service)
 
-	var err error
 	as.ledger = &models.Ledger{Type: models.LEDGER_TYPE_ASSET}
+	var err error
 	as.ledger, err = ledgersDB.Create(as.ctx, as.ledger)
 	if err != nil {
 		as.Errorf(err, "Unable to create ledger for account")
@@ -51,20 +50,6 @@ func (as *AccountsSuite) TestAccountsInfoAPI() {
 		assert.Equal(t, nil, err, "Error while getting acccount")
 		assert.Equal(t, "100", account.ID, "Invalid account Reference")
 		assert.True(t, account.Balance.Valid && account.Balance.Decimal.IsZero(), "Invalid account balance")
-	}
-}
-
-func (as *AccountsSuite) TearDownSuite() {
-
-	t := as.T()
-	ctx := context.Background()
-	err := as.service.DB(ctx, false).Exec(`DELETE FROM accounts WHERE id = $1`, "100").Error
-	if err != nil {
-		t.Fatal("Error deleting accounts:", err)
-	}
-	err = as.service.DB(ctx, false).Exec(`DELETE FROM ledgers WHERE id = $1`, as.ledger.ID).Error
-	if err != nil {
-		t.Fatal("Error deleting ledgers:", err)
 	}
 }
 

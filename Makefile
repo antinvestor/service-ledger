@@ -34,22 +34,6 @@ vet:    ## run go vet on the source files
 doc:    ## generate godocs and start a local documentation webserver on port 8085
 	godoc -http=:8085 -index
 
-# this command will start docker components that we set in docker-compose.yml
-docker-setup: ## sets up docker container images
-	docker compose up -d --remove-orphans
-
-pg_wait:
-	@count=0; \
-	until  nc -z localhost 5437; do \
-	  if [ $$count -gt 30 ]; then echo "can't wait forever for pg"; exit 1; fi; \
-	    sleep 1; echo "waiting for postgresql" $$count; count=$$(($$count+1)); done; \
-	    sleep 5;
-
-# shutting down docker components
-docker-stop: ## stops all docker containers
-	docker compose down
-
-
 # this command will run all tests in the repo
 # INTEGRATION_TEST_SUITE_PATH is used to run specific tests in Golang,
 # if it's not specified it will run all tests
@@ -64,5 +48,5 @@ tests: ## runs all system tests
 	fi;\
 	go tool cover -html=coverage.out -o coverage.html
 
-build: clean fmt vet docker-setup pg_wait tests docker-stop ## run all preliminary steps and tests the setup
+build: clean fmt vet tests ## run all preliminary steps and tests the setup
 

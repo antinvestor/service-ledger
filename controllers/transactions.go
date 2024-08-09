@@ -2,30 +2,45 @@ package controllers
 
 import (
 	"context"
+	"database/sql"
 	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
 	"github.com/antinvestor/service-ledger/models"
 	"github.com/antinvestor/service-ledger/repositories"
 	"github.com/pitabwire/frame"
 	"github.com/shopspring/decimal"
+	"time"
 )
 
 func transactionToApi(mTxn *models.Transaction) *ledgerV1.Transaction {
 
 	apiEntries := make([]*ledgerV1.TransactionEntry, len(mTxn.Entries))
 	for index, mEntry := range mTxn.Entries {
-		mEntry.Currency = mTxn.Currency
 		mEntry.TransactionID = mTxn.ID
+		mEntry.Currency = mTxn.Currency
 		mEntry.TransactedAt = mTxn.TransactedAt
+		mEntry.ClearedAt = mTxn.ClearedAt
+
 		apiEntries[index] = transactionEntryToApi(mEntry)
 	}
-	return &ledgerV1.Transaction{
-		Reference:    mTxn.ID,
-		TransactedAt: mTxn.TransactedAt,
-		Data:         frame.DBPropertiesToMap(mTxn.Data),
-		Entries:      apiEntries}
+	trx := &ledgerV1.Transaction{
+		Reference: mTxn.ID,
+		Currency:  mTxn.Currency,
+		Cleared:   mTxn.ClearedAt.Valid,
+		Data:      frame.DBPropertiesToMap(mTxn.Data),
+		Entries:   apiEntries}
+
+	if mTxn.TransactedAt.Valid {
+		trx.TransactedAt = mTxn.TransactedAt.Time.Format(repositories.DefaultTimestamLayout)
+	}
+
+	trx.Cleared = mTxn.ClearedAt.Valid
+
+	trx.Type = ledgerV1.TransactionType(ledgerV1.TransactionType_value[string(mTxn.TransactionType)])
+
+	return trx
 }
 
-func transactionFromApi(aTxn *ledgerV1.Transaction) *models.Transaction {
+func transactionFromApi(aTxn *ledgerV1.Transaction) (*models.Transaction, error) {
 	modelEntries := make([]*models.TransactionEntry, len(aTxn.Entries))
 	for index, mEntry := range aTxn.Entries {
 		modelEntries[index] = &models.TransactionEntry{
@@ -34,27 +49,56 @@ func transactionFromApi(aTxn *ledgerV1.Transaction) *models.Transaction {
 			Amount:    decimal.NewNullDecimal(fromMoney(mEntry.GetAmount())),
 		}
 	}
-	return &models.Transaction{
+
+	transaction := &models.Transaction{
 		BaseModel: frame.BaseModel{
 			ID: aTxn.GetReference(),
 		},
-		Currency:     aTxn.GetCurrency(),
-		TransactedAt: aTxn.GetTransactedAt(),
-		Data:         frame.DBPropertiesFromMap(aTxn.Data),
-		Entries:      modelEntries,
+		Currency: aTxn.GetCurrency(),
+		Data:     frame.DBPropertiesFromMap(aTxn.Data),
+		Entries:  modelEntries,
 	}
+
+	transaction.TransactionType = aTxn.GetType().String()
+
+	var transactedAt time.Time
+	if aTxn.GetTransactedAt() == "" {
+		transactedAt = time.Now().UTC()
+	} else {
+		var err error
+		transactedAt, err = time.Parse(repositories.DefaultTimestamLayout, aTxn.GetTransactedAt())
+		if err != nil {
+			return nil, err
+		}
+	}
+	transaction.TransactedAt = sql.NullTime{
+		Time:  transactedAt,
+		Valid: true,
+	}
+
+	if aTxn.Cleared {
+		transaction.ClearedAt = sql.NullTime{
+			Time:  transactedAt,
+			Valid: true,
+		}
+	}
+
+	return transaction, nil
 }
 
 // CreateTransaction a new transaction
-func (ledgerSrv *LedgerServer) CreateTransaction(ctx context.Context, txn *ledgerV1.Transaction) (*ledgerV1.Transaction, error) {
+func (ledgerSrv *LedgerServer) CreateTransaction(ctx context.Context, apiTransaction *ledgerV1.Transaction) (*ledgerV1.Transaction, error) {
 
 	accountsRepo := repositories.NewAccountRepository(ledgerSrv.Service)
 	transactionsDB := repositories.NewTransactionRepository(ledgerSrv.Service, accountsRepo)
 
-	apiTransaction := transactionFromApi(txn)
+	dbTransaction, err := transactionFromApi(apiTransaction)
+	if err != nil {
+		return nil, err
+	}
 
 	// Otherwise, do transaction
-	transaction, err := transactionsDB.Transact(ctx, apiTransaction)
+	transaction, err := transactionsDB.Transact(ctx, dbTransaction)
 	if err != nil {
 		return nil, err
 	}
@@ -66,21 +110,42 @@ func (ledgerSrv *LedgerServer) CreateTransaction(ctx context.Context, txn *ledge
 func (ledgerSrv *LedgerServer) SearchTransactions(request *ledgerV1.SearchRequest, server ledgerV1.LedgerService_SearchTransactionsServer) error {
 
 	ctx := server.Context()
+	service := ledgerSrv.Service
 
 	accountRepository := repositories.NewAccountRepository(ledgerSrv.Service)
 	transactionRepository := repositories.NewTransactionRepository(ledgerSrv.Service, accountRepository)
 
-	castTransactions, aerr := transactionRepository.Search(ctx, request.GetQuery())
-	if aerr != nil {
-		return aerr
+	transactionChannel := make(chan any)
+	job := service.NewJob(func(ctx context.Context) error {
+
+		transactionRepository.Search(ctx, request.GetQuery(), transactionChannel)
+		return nil
+
+	})
+
+	err := service.SubmitJob(ctx, job)
+	if err != nil {
+		return err
 	}
 
-	for _, txn := range castTransactions {
-		_ = server.Send(transactionToApi(txn))
+	for {
+
+		select {
+
+		case transaction := <-transactionChannel:
+
+			switch v := transaction.(type) {
+			case *models.Transaction:
+				_ = server.Send(transactionToApi(v))
+			case error:
+				return err
+			}
+		default:
+			return nil
+
+		}
+
 	}
-
-	return nil
-
 }
 
 // UpdateTransaction a transaction's details
@@ -89,8 +154,12 @@ func (ledgerSrv *LedgerServer) UpdateTransaction(ctx context.Context, txn *ledge
 	accountRepository := repositories.NewAccountRepository(ledgerSrv.Service)
 	transactionRepository := repositories.NewTransactionRepository(ledgerSrv.Service, accountRepository)
 
+	transaction, err := transactionFromApi(txn)
+	if err != nil {
+		return nil, err
+	}
 	// Otherwise, update transaction
-	mTxn, terr := transactionRepository.Update(ctx, transactionFromApi(txn))
+	mTxn, terr := transactionRepository.Update(ctx, transaction)
 	if terr != nil {
 		return nil, terr
 	}

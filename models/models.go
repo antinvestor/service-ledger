@@ -1,6 +1,7 @@
 package models
 
 import (
+	"database/sql"
 	"github.com/pitabwire/frame"
 	"github.com/shopspring/decimal"
 	"gorm.io/datatypes"
@@ -17,20 +18,32 @@ type Ledger struct {
 // Account represents the ledger account with information such as Reference, balance and JSON data
 type Account struct {
 	frame.BaseModel
-	Currency   string              `gorm:"type:varchar(10)" json:"currency"`
-	Balance    decimal.NullDecimal `gorm:"-" json:"balance"`
-	LedgerID   string              `gorm:"type:varchar(50)" json:"ledger_id"`
-	Data       datatypes.JSONMap   `json:"data"`
-	LedgerType string              `gorm:"type:varchar(50)" json:"ledger_type"`
+	Currency         string              `gorm:"type:varchar(10)" json:"currency"`
+	Balance          decimal.NullDecimal `gorm:"-" json:"balance"`
+	UnClearedBalance decimal.NullDecimal `gorm:"-" json:"un_cleared_balance"`
+	ReservedBalance  decimal.NullDecimal `gorm:"-" json:"reserved_balance"`
+	LedgerID         string              `gorm:"type:varchar(50)" json:"ledger_id"`
+	Data             datatypes.JSONMap   `json:"data"`
+	LedgerType       string              `gorm:"type:varchar(50)" json:"ledger_type"`
 }
+
+type TransactionType string
+
+const (
+	TransactionTypeNormal      TransactionType = "NORMAL"
+	TransactionTypeReversal    TransactionType = "REVERSAL"
+	TransactionTypeReservation TransactionType = "RESERVATION"
+)
 
 // Transaction represents a transaction in a ledger
 type Transaction struct {
 	frame.BaseModel
-	Currency     string              `gorm:"type:varchar(10)" json:"currency"`
-	Data         datatypes.JSONMap   `json:"data"`
-	TransactedAt string              `gorm:"type:varchar(50)" json:"transacted_at"`
-	Entries      []*TransactionEntry `json:"entries"`
+	Currency        string              `gorm:"type:varchar(10)" json:"currency"`
+	TransactionType string              `gorm:"type:varchar(50)" json:"transaction_type"`
+	Data            datatypes.JSONMap   `json:"data"`
+	ClearedAt       sql.NullTime        `gorm:"type:timestamp;default:NULL" json:"cleared_at"`
+	TransactedAt    sql.NullTime        `gorm:"type:timestamp;default:NULL" json:"transacted_at"`
+	Entries         []*TransactionEntry `json:"entries"`
 }
 
 // TransactionEntry represents a transaction line in a ledger
@@ -38,11 +51,12 @@ type TransactionEntry struct {
 	frame.BaseModel
 	AccountID     string              `gorm:"type:varchar(50)" json:"account_id"`
 	TransactionID string              `gorm:"type:varchar(50)" json:"transaction_id"`
+	Currency      string              `gorm:"-" json:"currency"`
 	Amount        decimal.NullDecimal `gorm:"type:numeric" json:"amount"`
 	Credit        bool                `json:"credit"`
 	Balance       decimal.NullDecimal `gorm:"type:numeric"  json:"balance"`
-	Currency      string              `gorm:"type:varchar(10)" json:"currency"`
-	TransactedAt  string              `gorm:"type:varchar(50)" json:"transacted_at"`
+	ClearedAt     sql.NullTime        `gorm:"-" json:"cleared_at"`
+	TransactedAt  sql.NullTime        `gorm:"-" json:"transacted_at"`
 }
 
 func (t *TransactionEntry) Equal(ot TransactionEntry) bool {
