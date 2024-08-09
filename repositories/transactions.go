@@ -11,10 +11,11 @@ import (
 	"github.com/shopspring/decimal"
 	"log"
 	"strings"
+	"time"
 )
 
 // DefaultTimestamLayout is the timestamp layout followed in Ledger
-const DefaultTimestamLayout = "2006-01-23T15:04:05.123Z"
+const DefaultTimestamLayout = time.RFC3339Nano
 
 type TransactionRepository interface {
 	GetByID(ctx context.Context, id string) (*models.Transaction, ledger.ApplicationLedgerError)

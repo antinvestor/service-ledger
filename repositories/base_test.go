@@ -44,6 +44,7 @@ func (bs *BaseTestSuite) SetupSuite() {
 	assert.NoError(bs.T(), err)
 
 	postgresIP, err := postgresContainer.ContainerIP(ctx)
+	assert.NoError(bs.T(), err)
 
 	err = bs.setupMigrations(ctx, networks, postgresIP)
 	assert.NoError(bs.T(), err)
