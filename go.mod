@@ -3,7 +3,7 @@ module github.com/antinvestor/service-ledger
 go 1.22
 
 require (
-	github.com/antinvestor/apis/go/ledger v1.20.5
+	github.com/antinvestor/apis/go/ledger v1.21.1
 	github.com/bufbuild/protovalidate-go v0.6.3
 	github.com/docker/docker v27.1.1+incompatible
 	github.com/golang-migrate/migrate v3.5.4+incompatible
@@ -32,7 +32,7 @@ require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/Microsoft/hcsshim v0.11.5 // indirect
 	github.com/alitto/pond v1.9.1 // indirect
-	github.com/antinvestor/apis/go/common v1.20.2 // indirect
+	github.com/antinvestor/apis/go/common v1.20.5 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/containerd/containerd v1.7.18 // indirect
