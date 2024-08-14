@@ -29,8 +29,23 @@ func accountToApi(mAcc *models.Account) *ledgerV1.Account {
 	}
 	balance := toMoneyInt(mAcc.Currency, accountBalance)
 
-	return &ledgerV1.Account{Reference: mAcc.ID,
-		Ledger: mAcc.LedgerID, Balance: &balance, Data: frame.DBPropertiesToMap(mAcc.Data)}
+	reservedBalanceAmt := decimal.Zero
+	if mAcc.ReservedBalance.Valid {
+		reservedBalanceAmt = mAcc.Balance.Decimal
+	}
+
+	reservedBalance := toMoneyInt(mAcc.Currency, reservedBalanceAmt)
+
+	unClearedBalanceAmt := decimal.Zero
+	if mAcc.UnClearedBalance.Valid {
+		unClearedBalanceAmt = mAcc.UnClearedBalance.Decimal
+	}
+	unClearedBalance := toMoneyInt(mAcc.Currency, unClearedBalanceAmt)
+
+	return &ledgerV1.Account{
+		Reference: mAcc.ID, Ledger: mAcc.LedgerID,
+		Balance: &balance, ReservedBalance: &reservedBalance, UnclearedBalance: &unClearedBalance,
+		Data: frame.DBPropertiesToMap(mAcc.Data)}
 }
 
 func accountFromApi(account *ledgerV1.Account) *models.Account {
