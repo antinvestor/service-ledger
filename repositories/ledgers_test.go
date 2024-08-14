@@ -23,7 +23,7 @@ func (ls *LedgersSuite) SetupSuite() {
 
 	lg, err := ledgersDB.Create(ls.ctx, &models.Ledger{Type: models.LEDGER_TYPE_ASSET})
 	if err != nil {
-		ls.Errorf(err, "Error creating ledger", err)
+		ls.Errorf(err, "Error creating ledger")
 	}
 
 	ls.ledger = lg
