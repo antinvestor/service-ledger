@@ -50,12 +50,12 @@ func (l *ledgerRepository) Search(ctx context.Context, query string) (<-chan any
 	resultChannel := make(chan any)
 
 	service := l.service
-	job := service.NewJob(func(ctx context.Context) error {
+	job := service.NewJob(func(ctxI context.Context) error {
 		defer close(resultChannel)
 
-		rawQuery, aerr := NewSearchRawQuery(ctx, query)
-		if aerr != nil {
-			resultChannel <- aerr
+		rawQuery, err := NewSearchRawQuery(ctxI, query)
+		if err != nil {
+			resultChannel <- err
 			return nil
 		}
 
@@ -65,16 +65,17 @@ func (l *ledgerRepository) Search(ctx context.Context, query string) (<-chan any
 		conditions := append([]interface{}{sqlQuery.sql}, sqlQuery.args...)
 
 		for sqlQuery.canLoad() {
-			result := service.DB(ctx, true).
+
+			result := service.DB(ctxI, true).
 				Offset(sqlQuery.offset).Limit(sqlQuery.batchSize).
 				Find(&ledgerList, conditions...)
-			err1 := result.Error
-			if err1 != nil {
-				if frame.DBErrorIsRecordNotFound(err1) {
+			errR := result.Error
+			if errR != nil {
+				if frame.DBErrorIsRecordNotFound(errR) {
 					resultChannel <- ledger.ErrorLedgerNotFound
 					return nil
 				}
-				resultChannel <- ledger.ErrorSystemFailure.Override(err1)
+				resultChannel <- ledger.ErrorSystemFailure.Override(errR)
 				return nil
 			}
 

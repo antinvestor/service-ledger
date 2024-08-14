@@ -2,7 +2,9 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
+	"github.com/antinvestor/service-ledger/ledger"
 	"github.com/antinvestor/service-ledger/models"
 	"github.com/antinvestor/service-ledger/repositories"
 	"github.com/pitabwire/frame"
@@ -56,25 +58,29 @@ func (ledgerSrv *LedgerServer) SearchAccounts(
 	}
 
 	for {
-
 		select {
-
-		case result := <-accountsChannel:
+		case result, ok := <-accountsChannel:
+			if !ok {
+				// Channel closed, stop processing
+				return nil
+			}
 
 			switch v := result.(type) {
 			case *models.Account:
-				_ = server.Send(accountToApi(v))
+				if err = server.Send(accountToApi(v)); err != nil {
+					return err
+				}
 			case error:
-				return err
+				return v
+			default:
+				return ledger.ErrorBadDataSupplied.Extend(fmt.Sprintf(" unsupported type supplied %v", v))
 			}
+
 		case <-ctx.Done():
 			return ctx.Err()
-		default:
-			return nil
-
 		}
-
 	}
+
 }
 
 // CreateAccount a new account based on supplied data

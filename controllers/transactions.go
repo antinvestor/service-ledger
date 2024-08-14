@@ -3,7 +3,9 @@ package controllers
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
+	"github.com/antinvestor/service-ledger/ledger"
 	"github.com/antinvestor/service-ledger/models"
 	"github.com/antinvestor/service-ledger/repositories"
 	"github.com/pitabwire/frame"
@@ -120,24 +122,27 @@ func (ledgerSrv *LedgerServer) SearchTransactions(request *ledgerV1.SearchReques
 	}
 
 	for {
-
 		select {
-
-		case transaction := <-transactionChannel:
-
-			switch v := transaction.(type) {
-			case *models.Transaction:
-				_ = server.Send(transactionToApi(v))
-			case error:
-				return err
+		case result, ok := <-transactionChannel:
+			if !ok {
+				// Channel closed, stop processing
+				return nil
 			}
+
+			switch v := result.(type) {
+			case *models.Transaction:
+				if err = server.Send(transactionToApi(v)); err != nil {
+					return err
+				}
+			case error:
+				return v
+			default:
+				return ledger.ErrorBadDataSupplied.Extend(fmt.Sprintf(" unsupported type supplied %v", v))
+			}
+
 		case <-ctx.Done():
 			return ctx.Err()
-		default:
-			return nil
-
 		}
-
 	}
 }
 

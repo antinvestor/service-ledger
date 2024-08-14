@@ -60,9 +60,10 @@ func (e applicationLedgerError) Override(errs ...error) ApplicationLedgerError {
 }
 
 var (
-	ErrorSystemFailure        = NewApplicationError(1, "System failure")
+	ErrorSystemFailure        = NewApplicationError(1, "Internal System failure")
 	ErrorUnspecifiedID        = NewApplicationError(2, "No ID was supplied")
 	ErrorUnspecifiedReference = NewApplicationError(3, "No reference was supplied")
+	ErrorBadDataSupplied      = NewApplicationError(4, "Invalid data format was supplied")
 
 	ErrorLedgerNotFound = NewApplicationError(11, "Ledger with reference/id not found")
 
