@@ -3,9 +3,9 @@ module github.com/antinvestor/service-ledger
 go 1.22
 
 require (
-	github.com/antinvestor/apis/go/ledger v1.20.5
+	github.com/antinvestor/apis/go/ledger v1.21.1
 	github.com/bufbuild/protovalidate-go v0.6.3
-	github.com/docker/docker v27.1.1+incompatible
+	github.com/docker/docker v27.1.2+incompatible
 	github.com/golang-migrate/migrate v3.5.4+incompatible
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0
 	github.com/lib/pq v1.10.9
@@ -17,7 +17,7 @@ require (
 	github.com/testcontainers/testcontainers-go v0.32.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.32.0
 	golang.org/x/text v0.17.0
-	google.golang.org/genproto v0.0.0-20240808171019-573a1156607a
+	google.golang.org/genproto v0.0.0-20240812133136-8ffd90a71988
 	google.golang.org/grpc v1.65.0
 	gorm.io/datatypes v1.2.1
 
@@ -32,7 +32,7 @@ require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/Microsoft/hcsshim v0.11.5 // indirect
 	github.com/alitto/pond v1.9.1 // indirect
-	github.com/antinvestor/apis/go/common v1.20.2 // indirect
+	github.com/antinvestor/apis/go/common v1.20.5 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/containerd/containerd v1.7.18 // indirect
@@ -72,6 +72,7 @@ require (
 	github.com/moby/patternmatcher v0.6.0 // indirect
 	github.com/moby/sys/sequential v0.5.0 // indirect
 	github.com/moby/sys/user v0.1.0 // indirect
+	github.com/moby/sys/userns v0.1.0 // indirect
 	github.com/moby/term v0.5.0 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/nats-io/nats.go v1.36.0 // indirect
