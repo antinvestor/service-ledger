@@ -4,7 +4,7 @@ go 1.22
 
 require (
 	github.com/antinvestor/apis/go/ledger v1.21.3
-	github.com/bufbuild/protovalidate-go v0.6.3
+	github.com/bufbuild/protovalidate-go v0.6.4
 	github.com/docker/docker v27.1.2+incompatible
 	github.com/golang-migrate/migrate v3.5.4+incompatible
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0
@@ -52,7 +52,7 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/google/cel-go v0.20.1 // indirect
+	github.com/google/cel-go v0.21.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/gax-go/v2 v2.12.4 // indirect
 	github.com/gorilla/handlers v1.5.2 // indirect
