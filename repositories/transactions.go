@@ -223,7 +223,7 @@ func (t *transactionRepository) IsConflict(ctx context.Context, transaction2 *mo
 // Transact creates the input transaction in the DB
 func (t *transactionRepository) Transact(ctx context.Context, transaction *models.Transaction) (*models.Transaction, ledger.ApplicationLedgerError) {
 
-	// Check if a transaction with same Reference already exists
+	// Check if a transaction with Reference already exists
 	existingTransaction, err1 := t.GetByID(ctx, transaction.ID)
 	if err1 != nil && !errors.Is(err1, ledger.ErrorTransactionNotFound) {
 		return nil, err1
@@ -306,6 +306,22 @@ func (t *transactionRepository) Update(ctx context.Context, txn *models.Transact
 	for key, value := range txn.Data {
 		if value != "" && value != existingTransaction.Data[key] {
 			existingTransaction.Data[key] = value
+		}
+	}
+
+	if !existingTransaction.ClearedAt.Valid {
+		if txn.ClearedAt.Valid {
+
+			accountsMap, err1 := t.Validate(ctx, existingTransaction)
+			if err1 != nil {
+				return nil, err1
+			}
+
+			for _, line := range existingTransaction.Entries {
+				account := accountsMap[line.AccountID]
+				line.Balance = decimal.NewNullDecimal(account.Balance.Decimal)
+			}
+			existingTransaction.ClearedAt = txn.ClearedAt
 		}
 	}
 

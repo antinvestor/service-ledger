@@ -56,12 +56,13 @@ func transactionFromApi(aTxn *ledgerV1.Transaction) (*models.Transaction, error)
 		BaseModel: frame.BaseModel{
 			ID: aTxn.GetReference(),
 		},
-		Currency: aTxn.GetCurrency(),
-		Data:     frame.DBPropertiesFromMap(aTxn.Data),
-		Entries:  modelEntries,
+		Currency:        aTxn.GetCurrency(),
+		TransactionType: aTxn.GetType().String(),
+		Data:            frame.DBPropertiesFromMap(aTxn.Data),
+		ClearedAt:       sql.NullTime{Valid: false},
+		TransactedAt:    sql.NullTime{Valid: false},
+		Entries:         modelEntries,
 	}
-
-	transaction.TransactionType = aTxn.GetType().String()
 
 	var transactedAt time.Time
 	if aTxn.GetTransactedAt() == "" {
