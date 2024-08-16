@@ -7,7 +7,6 @@ import (
 	"github.com/antinvestor/service-ledger/models"
 	"github.com/bufbuild/protovalidate-go"
 	_ "github.com/golang-migrate/migrate/source/file"
-	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	protovalidateinterceptor "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 
@@ -59,10 +58,9 @@ func main() {
 		log.WithError(err).Fatal("could not load validator for proto messages")
 	}
 
-	logInterceptor := frame.LoggingInterceptor(service.L())
 	unaryInterceptors := []grpc.UnaryServerInterceptor{
 		protovalidateinterceptor.UnaryServerInterceptor(validator),
-		recovery.UnaryServerInterceptor(), logging.UnaryServerInterceptor(logInterceptor),
+		recovery.UnaryServerInterceptor(recovery.WithRecoveryHandlerContext(frame.RecoveryHandlerFun)),
 	}
 
 	if ledgerConfig.SecurelyRunService {
@@ -71,7 +69,7 @@ func main() {
 
 	streamInterceptors := []grpc.StreamServerInterceptor{
 		protovalidateinterceptor.StreamServerInterceptor(validator),
-		recovery.StreamServerInterceptor(), logging.StreamServerInterceptor(logInterceptor),
+		recovery.StreamServerInterceptor(recovery.WithRecoveryHandlerContext(frame.RecoveryHandlerFun)),
 	}
 
 	if ledgerConfig.SecurelyRunService {
