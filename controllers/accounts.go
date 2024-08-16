@@ -31,7 +31,7 @@ func accountToApi(mAcc *models.Account) *ledgerV1.Account {
 
 	reservedBalanceAmt := decimal.Zero
 	if mAcc.ReservedBalance.Valid {
-		reservedBalanceAmt = mAcc.Balance.Decimal
+		reservedBalanceAmt = mAcc.ReservedBalance.Decimal
 	}
 
 	reservedBalance := toMoneyInt(mAcc.Currency, reservedBalanceAmt)
