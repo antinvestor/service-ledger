@@ -223,6 +223,8 @@ func (t *transactionRepository) IsConflict(ctx context.Context, transaction2 *mo
 // Transact creates the input transaction in the DB
 func (t *transactionRepository) Transact(ctx context.Context, transaction *models.Transaction) (*models.Transaction, utility.ApplicationLedgerError) {
 
+	log := t.service.L()
+	log.WithField("transaction", transaction).Info("Starting transaction")
 	// Check if a transaction with Reference already exists
 	existingTransaction, err := t.GetByID(ctx, transaction.ID)
 	if err != nil && !errors.Is(err, utility.ErrorTransactionNotFound) {
@@ -230,6 +232,8 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 	}
 
 	if existingTransaction != nil {
+
+		log.WithField("transaction", transaction).Info("Existing transaction")
 		// Check if the transaction entries are different
 		// and conflicts with the existing entries
 		isConflict, err1 := t.IsConflict(ctx, transaction)
@@ -240,6 +244,8 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 			// The conflicting transactions are denied
 			return nil, utility.ErrorTransactionIsConfilicting
 		}
+
+		log.WithField("transaction", transaction).WithField("type", transaction.TransactionType).Info("Transaction not conflicting")
 		// Otherwise the transaction is just a duplicate
 		// The exactly duplicate transactions are ignored
 		return existingTransaction, nil
@@ -249,6 +255,8 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 	if err != nil {
 		return nil, err
 	}
+
+	log.WithField("accounts", accountsMap).Info("found transacting accounts")
 
 	// Add transaction Entries in one go to succeed or fail all
 	for _, line := range transaction.Entries {
@@ -263,10 +271,14 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 		}
 	}
 
+	log.WithField("entries", transaction.Entries).Info("Transaction entries cleaned")
+
 	err0 := t.service.DB(ctx, false).Create(&transaction).Error
 	if err0 != nil {
 		return nil, utility.ErrorSystemFailure.Override(err0)
 	}
+
+	log.WithField("transaction", transaction).Info("transaction created")
 
 	return t.GetByID(ctx, transaction.ID)
 }

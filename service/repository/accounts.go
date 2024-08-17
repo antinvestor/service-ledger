@@ -142,7 +142,10 @@ func (a *accountRepository) Search(ctx context.Context, query string) (<-chan an
 
 		rawQuery, aerr := NewSearchRawQuery(ctx, query)
 		if aerr != nil {
-			resultChannel <- aerr
+			select {
+			case resultChannel <- aerr:
+			case <-ctx.Done():
+			}
 			return nil
 		}
 
@@ -155,10 +158,16 @@ func (a *accountRepository) Search(ctx context.Context, query string) (<-chan an
 				Raw(fmt.Sprintf(`%s WHERE %s`, constAccountQuery, sqlQuery.sql), sqlQuery.args...).Rows()
 			if err != nil {
 				if frame.DBErrorIsRecordNotFound(err) {
-					resultChannel <- utility.ErrorLedgerNotFound
+					select {
+					case resultChannel <- utility.ErrorLedgerNotFound:
+					case <-ctx.Done():
+					}
 					return nil
 				}
-				resultChannel <- utility.ErrorSystemFailure.Override(err).Extend("Query execution error")
+				select {
+				case resultChannel <- utility.ErrorSystemFailure.Override(err).Extend("Query execution error"):
+				case <-ctx.Done():
+				}
 				return nil
 			}
 
@@ -170,7 +179,10 @@ func (a *accountRepository) Search(ctx context.Context, query string) (<-chan an
 					&acc.LedgerID, &acc.LedgerType, &acc.CreatedAt, &acc.ModifiedAt, &acc.Version, &acc.TenantID,
 					&acc.PartitionID, &acc.AccessID, &acc.DeletedAt)
 				if err != nil {
-					resultChannel <- utility.ErrorSystemFailure.Override(err)
+					select {
+					case resultChannel <- utility.ErrorSystemFailure.Override(err).Extend("Query binding error"):
+					case <-ctx.Done():
+					}
 					return nil
 				}
 				accountList = append(accountList, &acc)
@@ -178,12 +190,19 @@ func (a *accountRepository) Search(ctx context.Context, query string) (<-chan an
 
 			err = rows.Close()
 			if err != nil {
-				resultChannel <- err
+				select {
+				case resultChannel <- utility.ErrorSystemFailure.Override(err).Extend("Query closure error"):
+				case <-ctx.Done():
+				}
 				return nil
 			}
 
 			for _, acc := range accountList {
-				resultChannel <- acc
+				select {
+				case resultChannel <- acc:
+				case <-ctx.Done():
+					return nil
+				}
 			}
 			if sqlQuery.next(len(accountList)) {
 				return nil
