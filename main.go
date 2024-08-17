@@ -3,8 +3,8 @@ package main
 import (
 	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
 	"github.com/antinvestor/service-ledger/config"
-	"github.com/antinvestor/service-ledger/controllers"
-	"github.com/antinvestor/service-ledger/models"
+	"github.com/antinvestor/service-ledger/service/handlers"
+	"github.com/antinvestor/service-ledger/service/models"
 	"github.com/bufbuild/protovalidate-go"
 	_ "github.com/golang-migrate/migrate/source/file"
 	protovalidateinterceptor "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
@@ -83,7 +83,7 @@ func main() {
 		grpc.ChainStreamInterceptor(streamInterceptors...),
 	)
 
-	implementation := &controllers.LedgerServer{
+	implementation := &handlers.LedgerServer{
 		Service: service,
 	}
 
