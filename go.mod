@@ -3,6 +3,7 @@ module github.com/antinvestor/service-ledger
 go 1.22
 
 require (
+	github.com/antinvestor/apis/go/common v1.20.5
 	github.com/antinvestor/apis/go/ledger v1.23.1
 	github.com/bufbuild/protovalidate-go v0.6.4
 	github.com/docker/docker v27.1.2+incompatible
@@ -11,6 +12,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/pitabwire/frame v1.21.5
 	github.com/pkg/errors v0.9.1
+	github.com/rs/xid v1.5.0
 	github.com/shopspring/decimal v1.4.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.9.0
@@ -32,7 +34,6 @@ require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/Microsoft/hcsshim v0.11.5 // indirect
 	github.com/alitto/pond v1.9.1 // indirect
-	github.com/antinvestor/apis/go/common v1.20.5 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/containerd/containerd v1.7.18 // indirect
@@ -86,7 +87,6 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/rs/cors v1.8.3 // indirect
-	github.com/rs/xid v1.5.0 // indirect
 	github.com/shirou/gopsutil/v3 v3.23.12 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/stoewer/go-strcase v1.3.0 // indirect
