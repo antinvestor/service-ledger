@@ -2,12 +2,12 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/antinvestor/service-ledger/service/models"
 	"github.com/antinvestor/service-ledger/service/utility"
 	"github.com/pitabwire/frame"
 	"golang.org/x/text/currency"
-	"strings"
 )
 
 const constAccountQuery = `WITH current_balance_summary AS (
@@ -81,48 +81,54 @@ func (a *accountRepository) ListByID(ctx context.Context, ids ...string) (map[st
 		return nil, utility.ErrorAccountsNotFound.Extend("No Accounts were specified")
 	}
 
-	for _, id := range ids {
-		if id == "" {
-			return nil, utility.ErrorUnspecifiedID
-		}
-	}
-
-	placeholders := make([]string, 0, len(ids))
-	params := make([]interface{}, 0, len(ids))
-	count := 1
-	for _, id := range ids {
-		params = append(params, id)
-		placeholders = append(placeholders, fmt.Sprintf("$%d", count))
-		count++
-	}
-	placeholderString := strings.Join(placeholders, ",")
-
 	accountsMap := map[string]*models.Account{}
 
-	rows, err := a.service.DB(ctx, true).Raw(
-		fmt.Sprintf(`%s WHERE a.id IN (%s)`, constAccountQuery, placeholderString),
-		params...).Rows()
+	queryMap := map[string]any{
+		"query": map[string]any{
+			"must": map[string]any{
+				"fields": []map[string]any{
+					{
+						"id": map[string]any{
+							"in": ids,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	queryBytes, err := json.Marshal(queryMap)
 	if err != nil {
-		if frame.DBErrorIsRecordNotFound(err) {
-			return nil, utility.ErrorLedgerNotFound
-		}
-		return nil, utility.ErrorSystemFailure.Override(err)
+		return nil, utility.ErrorSystemFailure.Override(err).Extend("Json marshalling error")
 	}
 
-	defer rows.Close()
+	query := string(queryBytes)
 
-	for rows.Next() {
-		acc := models.Account{}
-		if err := rows.Scan(&acc.ID, &acc.Currency, &acc.Data, &acc.Balance, &acc.UnClearedBalance, &acc.ReservedBalance, &acc.LedgerID, &acc.LedgerType,
-			&acc.CreatedAt, &acc.ModifiedAt, &acc.Version, &acc.TenantID, &acc.PartitionID,
-			&acc.AccessID, &acc.DeletedAt); err != nil {
-			return nil, utility.ErrorSystemFailure.Override(err)
-		}
-
-		accountsMap[acc.ID] = &acc
+	resultChannel, err := a.Search(ctx, query)
+	if err != nil {
+		return nil, utility.ErrorSystemFailure.Override(err).Extend(fmt.Sprintf("db query error [%s]", query))
 	}
 
-	return accountsMap, nil
+	for {
+		select {
+		case result, ok := <-resultChannel:
+			if !ok {
+				return accountsMap, nil
+			}
+
+			switch v := result.(type) {
+			case *models.Account:
+				accountsMap[v.ID] = v
+			case error:
+				return nil, utility.ErrorSystemFailure.Override(v)
+			default:
+				return nil, utility.ErrorBadDataSupplied.Extend(fmt.Sprintf(" unsupported type supplied %v", v))
+			}
+
+		case <-ctx.Done():
+			return nil, utility.ErrorSystemFailure.Override(ctx.Err())
+		}
+	}
 }
 
 func (a *accountRepository) Search(ctx context.Context, query string) (<-chan any, error) {
@@ -152,7 +158,7 @@ func (a *accountRepository) Search(ctx context.Context, query string) (<-chan an
 					resultChannel <- utility.ErrorLedgerNotFound
 					return nil
 				}
-				resultChannel <- utility.ErrorSystemFailure.Override(err)
+				resultChannel <- utility.ErrorSystemFailure.Override(err).Extend("Query execution error")
 				return nil
 			}
 

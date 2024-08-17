@@ -10,7 +10,6 @@ import (
 	"github.com/pitabwire/frame"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
-	"log"
 	"strings"
 	"time"
 )
@@ -161,7 +160,7 @@ func (t *transactionRepository) SearchEntries(ctx context.Context, query string)
 // Validate checks all issues around transaction are satisfied
 func (t *transactionRepository) Validate(ctx context.Context, txn *models.Transaction) (map[string]*models.Account, utility.ApplicationLedgerError) {
 
-	if ledgerV1.TransactionType_NORMAL.String() == txn.TransactionType {
+	if ledgerV1.TransactionType_NORMAL.String() == txn.TransactionType || ledgerV1.TransactionType_REVERSAL.String() == txn.TransactionType {
 		// Skip if the transaction is invalid
 		// by validating the amount values
 		if !txn.IsZeroSum() {
@@ -202,7 +201,6 @@ func (t *transactionRepository) Validate(ctx context.Context, txn *models.Transa
 		}
 
 		if !strings.EqualFold(txn.Currency, account.Currency) {
-			t.service.L().Println(fmt.Sprintf("Account %s has differing currency of %s to transaction currency of %s", entry.AccountID, account.Currency, txn.Currency))
 			return nil, utility.ErrorTransactionAccountsDifferCurrency.Extend(fmt.Sprintf("Account %s has differing currency of %s to transaction currency of %s", entry.AccountID, account.Currency, txn.Currency))
 		}
 	}
@@ -226,9 +224,9 @@ func (t *transactionRepository) IsConflict(ctx context.Context, transaction2 *mo
 func (t *transactionRepository) Transact(ctx context.Context, transaction *models.Transaction) (*models.Transaction, utility.ApplicationLedgerError) {
 
 	// Check if a transaction with Reference already exists
-	existingTransaction, err1 := t.GetByID(ctx, transaction.ID)
-	if err1 != nil && !errors.Is(err1, utility.ErrorTransactionNotFound) {
-		return nil, err1
+	existingTransaction, err := t.GetByID(ctx, transaction.ID)
+	if err != nil && !errors.Is(err, utility.ErrorTransactionNotFound) {
+		return nil, err
 	}
 
 	if existingTransaction != nil {
@@ -239,7 +237,6 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 			return nil, err1
 		}
 		if isConflict {
-			log.Printf(" Transaction %s has conflicts", transaction.ID)
 			// The conflicting transactions are denied
 			return nil, utility.ErrorTransactionIsConfilicting
 		}
@@ -248,9 +245,9 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 		return existingTransaction, nil
 	}
 
-	accountsMap, err1 := t.Validate(ctx, transaction)
-	if err1 != nil {
-		return nil, err1
+	accountsMap, err := t.Validate(ctx, transaction)
+	if err != nil {
+		return nil, err
 	}
 
 	// Add transaction Entries in one go to succeed or fail all
@@ -266,9 +263,9 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 		}
 	}
 
-	err := t.service.DB(ctx, false).Create(&transaction).Error
-	if err != nil {
-		return nil, utility.ErrorSystemFailure.Override(err)
+	err0 := t.service.DB(ctx, false).Create(&transaction).Error
+	if err0 != nil {
+		return nil, utility.ErrorSystemFailure.Override(err0)
 	}
 
 	return t.GetByID(ctx, transaction.ID)
@@ -344,8 +341,6 @@ func (t *transactionRepository) Reverse(ctx context.Context, id string) (*models
 	if err1 != nil {
 		return nil, err1
 	}
-
-	t.service.L().WithField("txn", reversalTxn).Info("Initiating reverse transaction")
 
 	if ledgerV1.TransactionType_NORMAL.String() != reversalTxn.TransactionType {
 		return nil, utility.ErrorTransactionTypeNotReversible.Extend(fmt.Sprintf(" supplied type : %s", reversalTxn.TransactionType))

@@ -31,6 +31,10 @@ func sqlComparisonOp(op string) string {
 		return "IS"
 	case "isnot":
 		return "IS NOT"
+	case "in":
+		return "IN"
+	case "notin":
+		return "NOT IN"
 	}
 	return "="
 }
