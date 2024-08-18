@@ -58,10 +58,13 @@ func (ledgerSrv *LedgerServer) SearchLedgers(request *ledgerV1.SearchRequest, se
 			}
 
 			switch v := result.(type) {
-			case *models.Ledger:
-				if err = server.Send(ledgerToApi(v)); err != nil {
-					return err
+			case []*models.Ledger:
+				for _, ledger := range v {
+					if err = server.Send(ledgerToApi(ledger)); err != nil {
+						return err
+					}
 				}
+
 			case error:
 				return v
 			default:

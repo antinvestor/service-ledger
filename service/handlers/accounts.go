@@ -71,10 +71,13 @@ func (ledgerSrv *LedgerServer) SearchAccounts(
 			}
 
 			switch v := result.(type) {
-			case *models.Account:
-				if err = server.Send(accountToApi(v)); err != nil {
-					return err
+			case []*models.Account:
+				for _, acc := range v {
+					if err = server.Send(accountToApi(acc)); err != nil {
+						return err
+					}
 				}
+
 			case error:
 				return v
 			default:

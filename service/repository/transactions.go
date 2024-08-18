@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
 	"github.com/antinvestor/service-ledger/service/models"
@@ -10,6 +11,7 @@ import (
 	"github.com/pitabwire/frame"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
+	"gorm.io/gorm"
 	"strings"
 	"time"
 )
@@ -52,40 +54,52 @@ func (t *transactionRepository) Search(ctx context.Context, query string) (<-cha
 
 		rawQuery, err := NewSearchRawQuery(ctx, query)
 		if err != nil {
-			resultChannel <- err
-			return nil
+			return frame.SafeChannelWrite(ctx, resultChannel, err)
 		}
 
 		sqlQuery := rawQuery.ToQueryConditions()
 		var transactionList []*models.Transaction
 
-		conditions := append([]interface{}{sqlQuery.sql}, sqlQuery.args...)
-
 		for sqlQuery.canLoad() {
 
-			result := service.DB(ctx, true).Offset(sqlQuery.offset).Limit(sqlQuery.batchSize).
-				Preload("Entries").Find(&transactionList, conditions...)
+			result := service.DB(ctx, true).Where(sqlQuery.sql, sqlQuery.args...).Offset(sqlQuery.offset).
+				Limit(sqlQuery.batchSize).Find(&transactionList)
 			err1 := result.Error
 			if err1 != nil {
 				if frame.DBErrorIsRecordNotFound(err1) {
-					resultChannel <- utility.ErrorLedgerNotFound
-					return nil
+					return frame.SafeChannelWrite(ctx, resultChannel, utility.ErrorLedgerNotFound)
 				}
-				resultChannel <- utility.ErrorSystemFailure.Override(err)
+				return frame.SafeChannelWrite(ctx, resultChannel, utility.ErrorSystemFailure.Override(err))
 			}
 
-			if result.RowsAffected == 0 {
-				break // No more rows
+			if len(transactionList) > 0 {
+
+				var transactionIds []string
+				for _, transaction := range transactionList {
+					transactionIds = append(transactionIds, transaction.GetID())
+				}
+
+				entriesMap, err2 := t.SearchEntriesByTransactionID(ctx, transactionIds...)
+				if err2 != nil {
+					if frame.DBErrorIsRecordNotFound(err2) {
+						return frame.SafeChannelWrite(ctx, resultChannel, utility.ErrorLedgerNotFound)
+					}
+					return frame.SafeChannelWrite(ctx, resultChannel, utility.ErrorSystemFailure.Override(err))
+				}
+
+				for _, transaction := range transactionList {
+					transaction.Entries = entriesMap[transaction.GetID()]
+				}
 			}
 
-			for _, transaction := range transactionList {
-				resultChannel <- transaction
+			err1 = frame.SafeChannelWrite(ctx, resultChannel, transactionList)
+			if err1 != nil {
+				return err1
 			}
 
 			if sqlQuery.next(len(transactionList)) {
 				return nil
 			}
-
 		}
 
 		return nil
@@ -101,6 +115,64 @@ func (t *transactionRepository) Search(ctx context.Context, query string) (<-cha
 
 }
 
+func (t *transactionRepository) SearchEntriesByTransactionID(ctx context.Context, transactionIDs ...string) (map[string][]*models.TransactionEntry, error) {
+
+	entriesMap := make(map[string][]*models.TransactionEntry)
+
+	queryMap := map[string]any{
+		"query": map[string]any{
+			"must": map[string]any{
+				"fields": []map[string]any{
+					{
+						"transaction_id": map[string][]string{
+							"in": transactionIDs,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	queryBytes, err := json.Marshal(queryMap)
+	if err != nil {
+		return nil, utility.ErrorSystemFailure.Override(err).Extend("Json marshalling error")
+	}
+
+	query := string(queryBytes)
+
+	resultChannel, err := t.SearchEntries(ctx, query)
+	if err != nil {
+		return nil, utility.ErrorSystemFailure.Override(err).Extend(fmt.Sprintf("db query error [%s]", query))
+	}
+
+	for {
+		select {
+		case result, ok := <-resultChannel:
+			if !ok {
+				return entriesMap, nil
+			}
+
+			switch v := result.(type) {
+			case []*models.TransactionEntry:
+
+				for _, entry := range v {
+
+					entriesMap[entry.TransactionID] = append(entriesMap[entry.TransactionID], entry)
+				}
+
+			case error:
+				return nil, utility.ErrorSystemFailure.Override(v)
+			default:
+				return nil, utility.ErrorBadDataSupplied.Extend(fmt.Sprintf(" unsupported type supplied %v", v))
+			}
+
+		case <-ctx.Done():
+			return nil, utility.ErrorSystemFailure.Override(ctx.Err())
+		}
+	}
+
+}
+
 func (t *transactionRepository) SearchEntries(ctx context.Context, query string) (<-chan any, error) {
 
 	resultChannel := make(chan any)
@@ -111,32 +183,30 @@ func (t *transactionRepository) SearchEntries(ctx context.Context, query string)
 
 		rawQuery, aerr := NewSearchRawQuery(ctx, query)
 		if aerr != nil {
-			resultChannel <- aerr
-			return nil
+			return frame.SafeChannelWrite(ctx, resultChannel, aerr)
 		}
 
 		sqlQuery := rawQuery.ToQueryConditions()
 		var transactionEntriesList []*models.TransactionEntry
 
-		conditions := append([]interface{}{sqlQuery.sql}, sqlQuery.args...)
-
 		for sqlQuery.canLoad() {
 
-			result := service.DB(ctx, true).Offset(sqlQuery.offset).Limit(sqlQuery.batchSize).
-				Find(&transactionEntriesList, conditions)
+			result := service.DB(ctx, true).
+				Offset(sqlQuery.offset).Limit(sqlQuery.batchSize).
+				Where(sqlQuery.sql, sqlQuery.args...).
+				Find(&transactionEntriesList)
 
 			err1 := result.Error
 			if err1 != nil {
 				if frame.DBErrorIsRecordNotFound(err1) {
-					resultChannel <- utility.ErrorLedgerNotFound
-					return nil
+					return frame.SafeChannelWrite(ctx, resultChannel, utility.ErrorLedgerNotFound)
 				}
-				resultChannel <- utility.ErrorSystemFailure.Override(err1)
-				return nil
+				return frame.SafeChannelWrite(ctx, resultChannel, utility.ErrorSystemFailure.Override(err1))
 			}
 
-			for _, entry := range transactionEntriesList {
-				resultChannel <- entry
+			err1 = frame.SafeChannelWrite(ctx, resultChannel, transactionEntriesList)
+			if err1 != nil {
+				return err1
 			}
 
 			if sqlQuery.next(len(transactionEntriesList)) {
@@ -223,8 +293,6 @@ func (t *transactionRepository) IsConflict(ctx context.Context, transaction2 *mo
 // Transact creates the input transaction in the DB
 func (t *transactionRepository) Transact(ctx context.Context, transaction *models.Transaction) (*models.Transaction, utility.ApplicationLedgerError) {
 
-	log := t.service.L()
-	log.WithField("transaction", transaction).Info("Starting transaction")
 	// Check if a transaction with Reference already exists
 	existingTransaction, err := t.GetByID(ctx, transaction.ID)
 	if err != nil && !errors.Is(err, utility.ErrorTransactionNotFound) {
@@ -233,7 +301,6 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 
 	if existingTransaction != nil {
 
-		log.WithField("transaction", transaction).Info("Existing transaction")
 		// Check if the transaction entries are different
 		// and conflicts with the existing entries
 		isConflict, err1 := t.IsConflict(ctx, transaction)
@@ -245,7 +312,6 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 			return nil, utility.ErrorTransactionIsConfilicting
 		}
 
-		log.WithField("transaction", transaction).WithField("type", transaction.TransactionType).Info("Transaction not conflicting")
 		// Otherwise the transaction is just a duplicate
 		// The exactly duplicate transactions are ignored
 		return existingTransaction, nil
@@ -256,10 +322,9 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 		return nil, err
 	}
 
-	log.WithField("accounts", accountsMap).Info("found transacting accounts")
-
 	// Add transaction Entries in one go to succeed or fail all
 	for _, line := range transaction.Entries {
+		line.TransactionID = transaction.GetID()
 		account := accountsMap[line.AccountID]
 
 		line.Balance = decimal.NewNullDecimal(account.Balance.Decimal)
@@ -271,14 +336,21 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 		}
 	}
 
-	log.WithField("entries", transaction.Entries).Info("Transaction entries cleaned")
+	// Start a transaction
+	err0 := t.service.DB(ctx, false).Transaction(func(txDB *gorm.DB) error {
+		// Save the transaction without entries
+		if err3 := txDB.Omit("Entries").Create(&transaction).Error; err3 != nil {
+			return err3
+		}
 
-	err0 := t.service.DB(ctx, false).Create(&transaction).Error
+		// Save entries separately
+		return txDB.CreateInBatches(transaction.Entries, len(transaction.Entries)).Error
+
+	})
+
 	if err0 != nil {
 		return nil, utility.ErrorSystemFailure.Override(err0)
 	}
-
-	log.WithField("transaction", transaction).Info("transaction created")
 
 	return t.GetByID(ctx, transaction.ID)
 }
@@ -290,21 +362,58 @@ func (t *transactionRepository) GetByID(ctx context.Context, id string) (*models
 		return nil, utility.ErrorUnspecifiedReference
 	}
 
-	var transaction models.Transaction
+	queryMap := map[string]any{
+		"query": map[string]any{
+			"must": map[string]any{
+				"fields": []map[string]any{
+					{
+						"id": map[string]string{
+							"eq": id,
+						},
+					},
+				},
+			},
+		},
+	}
 
-	err := t.service.DB(ctx, true).
-		Preload("Entries").
-		First(&transaction, "id = ?", id).
-		Error
-
+	queryBytes, err := json.Marshal(queryMap)
 	if err != nil {
-		if frame.DBErrorIsRecordNotFound(err) {
-			return nil, utility.ErrorTransactionNotFound
-		}
+		return nil, utility.ErrorSystemFailure.Override(err).Extend("Json marshalling error")
+	}
+
+	query := string(queryBytes)
+
+	resultChannel, err := t.Search(ctx, query)
+	if err != nil {
 		return nil, utility.ErrorSystemFailure.Override(err)
 	}
 
-	return &transaction, nil
+	var transactions []*models.Transaction
+	for {
+		select {
+		case result, ok := <-resultChannel:
+
+			if !ok {
+				if len(transactions) > 0 {
+					return transactions[0], nil
+				}
+				return nil, utility.ErrorTransactionNotFound
+			}
+
+			switch v := result.(type) {
+			case []*models.Transaction:
+				transactions = append(transactions, v...)
+			case error:
+				return nil, utility.ErrorSystemFailure.Override(v)
+			default:
+				return nil, utility.ErrorBadDataSupplied.Extend(fmt.Sprintf(" unsupported type supplied %v", v))
+			}
+
+		case <-ctx.Done():
+			return nil, utility.ErrorSystemFailure.Override(ctx.Err())
+		}
+	}
+
 }
 
 // Update updates data of the given transaction

@@ -55,8 +55,7 @@ func (l *ledgerRepository) Search(ctx context.Context, query string) (<-chan any
 
 		rawQuery, err := NewSearchRawQuery(ctxI, query)
 		if err != nil {
-			resultChannel <- err
-			return nil
+			return frame.SafeChannelWrite(ctx, resultChannel, err)
 		}
 
 		sqlQuery := rawQuery.ToQueryConditions()
@@ -72,19 +71,18 @@ func (l *ledgerRepository) Search(ctx context.Context, query string) (<-chan any
 			errR := result.Error
 			if errR != nil {
 				if frame.DBErrorIsRecordNotFound(errR) {
-					resultChannel <- utility.ErrorLedgerNotFound
-					return nil
+					return frame.SafeChannelWrite(ctx, resultChannel, utility.ErrorLedgerNotFound)
 				}
-				resultChannel <- utility.ErrorSystemFailure.Override(errR)
-				return nil
+				return frame.SafeChannelWrite(ctx, resultChannel, utility.ErrorSystemFailure.Override(errR))
 			}
 
 			if result.RowsAffected == 0 {
 				break // No more rows
 			}
 
-			for _, entry := range ledgerList {
-				resultChannel <- entry
+			errR = frame.SafeChannelWrite(ctx, resultChannel, ledgerList)
+			if err != nil {
+				return err
 			}
 
 			if sqlQuery.next(len(ledgerList)) {

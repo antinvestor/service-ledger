@@ -88,7 +88,7 @@ func (a *accountRepository) ListByID(ctx context.Context, ids ...string) (map[st
 			"must": map[string]any{
 				"fields": []map[string]any{
 					{
-						"id": map[string]any{
+						"id": map[string][]string{
 							"in": ids,
 						},
 					},
@@ -117,8 +117,10 @@ func (a *accountRepository) ListByID(ctx context.Context, ids ...string) (map[st
 			}
 
 			switch v := result.(type) {
-			case *models.Account:
-				accountsMap[v.ID] = v
+			case []*models.Account:
+				for _, acc := range v {
+					accountsMap[acc.ID] = acc
+				}
 			case error:
 				return nil, utility.ErrorSystemFailure.Override(v)
 			default:
@@ -142,11 +144,7 @@ func (a *accountRepository) Search(ctx context.Context, query string) (<-chan an
 
 		rawQuery, aerr := NewSearchRawQuery(ctx, query)
 		if aerr != nil {
-			select {
-			case resultChannel <- aerr:
-			case <-ctx.Done():
-			}
-			return nil
+			return frame.SafeChannelWrite(ctx, resultChannel, aerr)
 		}
 
 		sqlQuery := rawQuery.ToQueryConditions()
@@ -158,17 +156,9 @@ func (a *accountRepository) Search(ctx context.Context, query string) (<-chan an
 				Raw(fmt.Sprintf(`%s WHERE %s`, constAccountQuery, sqlQuery.sql), sqlQuery.args...).Rows()
 			if err != nil {
 				if frame.DBErrorIsRecordNotFound(err) {
-					select {
-					case resultChannel <- utility.ErrorLedgerNotFound:
-					case <-ctx.Done():
-					}
-					return nil
+					return frame.SafeChannelWrite(ctx, resultChannel, utility.ErrorLedgerNotFound)
 				}
-				select {
-				case resultChannel <- utility.ErrorSystemFailure.Override(err).Extend("Query execution error"):
-				case <-ctx.Done():
-				}
-				return nil
+				return frame.SafeChannelWrite(ctx, resultChannel, utility.ErrorSystemFailure.Override(err).Extend("Query execution error"))
 			}
 
 			var accountList []*models.Account
@@ -179,31 +169,21 @@ func (a *accountRepository) Search(ctx context.Context, query string) (<-chan an
 					&acc.LedgerID, &acc.LedgerType, &acc.CreatedAt, &acc.ModifiedAt, &acc.Version, &acc.TenantID,
 					&acc.PartitionID, &acc.AccessID, &acc.DeletedAt)
 				if err != nil {
-					select {
-					case resultChannel <- utility.ErrorSystemFailure.Override(err).Extend("Query binding error"):
-					case <-ctx.Done():
-					}
-					return nil
+					return frame.SafeChannelWrite(ctx, resultChannel, utility.ErrorSystemFailure.Override(err).Extend("Query binding error"))
 				}
 				accountList = append(accountList, &acc)
 			}
 
 			err = rows.Close()
 			if err != nil {
-				select {
-				case resultChannel <- utility.ErrorSystemFailure.Override(err).Extend("Query closure error"):
-				case <-ctx.Done():
-				}
-				return nil
+				return frame.SafeChannelWrite(ctx, resultChannel, utility.ErrorSystemFailure.Override(err).Extend("Query closure error"))
 			}
 
-			for _, acc := range accountList {
-				select {
-				case resultChannel <- acc:
-				case <-ctx.Done():
-					return nil
-				}
+			err = frame.SafeChannelWrite(ctx, resultChannel, accountList)
+			if err != nil {
+				return err
 			}
+
 			if sqlQuery.next(len(accountList)) {
 				return nil
 			}

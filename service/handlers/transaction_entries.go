@@ -45,10 +45,13 @@ func (ledgerSrv *LedgerServer) SearchTransactionEntries(request *ledgerV1.Search
 			}
 
 			switch v := result.(type) {
-			case *models.TransactionEntry:
-				if err = server.Send(transactionEntryToApi(v)); err != nil {
-					return err
+			case []*models.TransactionEntry:
+				for _, entry := range v {
+					if err = server.Send(transactionEntryToApi(entry)); err != nil {
+						return err
+					}
 				}
+
 			case error:
 				return v
 			default:

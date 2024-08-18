@@ -29,8 +29,8 @@ func toSlice[T any](result <-chan any) ([]T, error) {
 	var resultSlice []T
 	for t := range result {
 		switch v := t.(type) {
-		case T:
-			resultSlice = append(resultSlice, v)
+		case []T:
+			resultSlice = append(resultSlice, v...)
 		case error:
 			return nil, v
 		}
