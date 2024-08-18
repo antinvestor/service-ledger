@@ -322,8 +322,6 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 		return nil, err
 	}
 
-	log := t.service.L()
-	log.WithField("transact", transaction).Info(" transact --  successfully obtained accounts map")
 	// Add transaction Entries in one go to succeed or fail all
 	for _, line := range transaction.Entries {
 
@@ -337,15 +335,13 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 			!line.Credit && (account.LedgerType == models.LEDGER_TYPE_LIABILITY || account.LedgerType == models.LEDGER_TYPE_INCOME || account.LedgerType == models.LEDGER_TYPE_CAPITAL) {
 			line.Amount = decimal.NewNullDecimal(line.Amount.Decimal.Neg())
 		}
-
-		log.WithField("entry", line).Info(" transact --  successfully cleaned entry")
 	}
 
 	// Start a transaction
 	err0 := t.service.DB(ctx, false).Transaction(func(txDB *gorm.DB) error {
 		// Save the transaction without entries
 		if err3 := txDB.Omit("Entries").Create(&transaction).Error; err3 != nil {
-			return err3
+			return utility.ErrorSystemFailure.Override(err3)
 		}
 
 		// Save entries separately
@@ -356,8 +352,6 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 	if err0 != nil {
 		return nil, utility.ErrorSystemFailure.Override(err0)
 	}
-
-	log.Info(" transact --  successfully saved transaction")
 
 	return t.GetByID(ctx, transaction.ID)
 }
