@@ -81,8 +81,8 @@ func (l *ledgerRepository) Search(ctx context.Context, query string) (<-chan any
 			}
 
 			errR = frame.SafeChannelWrite(ctx, resultChannel, ledgerList)
-			if err != nil {
-				return err
+			if errR != nil {
+				return errR
 			}
 
 			if sqlQuery.next(len(ledgerList)) {
