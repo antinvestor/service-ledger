@@ -184,8 +184,8 @@ func (a *accountRepository) Search(ctx context.Context, query string) (<-chan an
 				return err
 			}
 
-			if sqlQuery.next(len(accountList)) {
-				return nil
+			if sqlQuery.stop(len(accountList)) {
+				break
 			}
 		}
 		return nil

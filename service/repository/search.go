@@ -71,7 +71,7 @@ func (sq *SearchSQLQuery) canLoad() bool {
 	return sq.offset < sq.limit
 }
 
-func (sq *SearchSQLQuery) next(loadedCount int) bool {
+func (sq *SearchSQLQuery) stop(loadedCount int) bool {
 	sq.offset += loadedCount
 	if sq.offset+sq.batchSize > sq.limit {
 		sq.batchSize = sq.limit - sq.offset

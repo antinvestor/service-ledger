@@ -85,8 +85,8 @@ func (l *ledgerRepository) Search(ctx context.Context, query string) (<-chan any
 				return errR
 			}
 
-			if sqlQuery.next(len(ledgerList)) {
-				return nil
+			if sqlQuery.stop(len(ledgerList)) {
+				break
 			}
 		}
 

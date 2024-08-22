@@ -50,7 +50,7 @@ func (t *transactionRepository) Search(ctx context.Context, query string) (<-cha
 
 	service := t.service
 	job := service.NewJob(func(ctx context.Context) error {
-		defer close(resultChannel)
+		defer func() { close(resultChannel) }()
 
 		rawQuery, err := NewSearchRawQuery(ctx, query)
 		if err != nil {
@@ -97,8 +97,8 @@ func (t *transactionRepository) Search(ctx context.Context, query string) (<-cha
 				return err1
 			}
 
-			if sqlQuery.next(len(transactionList)) {
-				return nil
+			if sqlQuery.stop(len(transactionList)) {
+				break
 			}
 		}
 
@@ -209,8 +209,8 @@ func (t *transactionRepository) SearchEntries(ctx context.Context, query string)
 				return err1
 			}
 
-			if sqlQuery.next(len(transactionEntriesList)) {
-				return nil
+			if sqlQuery.stop(len(transactionEntriesList)) {
+				break
 			}
 		}
 
@@ -392,8 +392,10 @@ func (t *transactionRepository) GetByID(ctx context.Context, id string) (*models
 	var transactions []*models.Transaction
 	for {
 		select {
-		case result, ok := <-resultChannel:
+		case <-ctx.Done():
+			return nil, utility.ErrorSystemFailure.Override(ctx.Err())
 
+		case result, ok := <-resultChannel:
 			if !ok {
 				if len(transactions) > 0 {
 					return transactions[0], nil
@@ -407,11 +409,8 @@ func (t *transactionRepository) GetByID(ctx context.Context, id string) (*models
 			case error:
 				return nil, utility.ErrorSystemFailure.Override(v)
 			default:
-				return nil, utility.ErrorBadDataSupplied.Extend(fmt.Sprintf(" unsupported type supplied %v", v))
+				return nil, utility.ErrorBadDataSupplied.Extend(fmt.Sprintf("unsupported type supplied %v", v))
 			}
-
-		case <-ctx.Done():
-			return nil, utility.ErrorSystemFailure.Override(ctx.Err())
 		}
 	}
 
