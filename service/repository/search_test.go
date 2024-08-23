@@ -25,9 +25,9 @@ type SearchSuite struct {
 	ledger *models2.Ledger
 }
 
-func toSlice[T any](result <-chan any) ([]T, error) {
+func toSlice[T any](result frame.JobResultPipe) ([]T, error) {
 	var resultSlice []T
-	for t := range result {
+	for t := range result.ResultChan() {
 		switch v := t.(type) {
 		case []T:
 			resultSlice = append(resultSlice, v...)

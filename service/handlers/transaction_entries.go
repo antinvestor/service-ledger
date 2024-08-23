@@ -31,35 +31,34 @@ func (ledgerSrv *LedgerServer) SearchTransactionEntries(request *ledgerV1.Search
 	accountRepository := repository.NewAccountRepository(ledgerSrv.Service)
 	transactionRepository := repository.NewTransactionRepository(ledgerSrv.Service, accountRepository)
 
-	transactionEntriesChannel, err := transactionRepository.SearchEntries(ctx, request.GetQuery())
+	jobResult, err := transactionRepository.SearchEntries(ctx, request.GetQuery())
 	if err != nil {
 		return err
 	}
 
 	for {
-		select {
-		case result, ok := <-transactionEntriesChannel:
-			if !ok {
-				// Channel closed, stop processing
-				return nil
-			}
 
-			switch v := result.(type) {
-			case []*models.TransactionEntry:
-				for _, entry := range v {
-					if err = server.Send(transactionEntryToApi(entry)); err != nil {
-						return err
-					}
+		result, ok, err0 := jobResult.ReadResult(ctx)
+		if err0 != nil {
+			return utility.ErrorSystemFailure.Override(err0)
+		}
+
+		if !ok {
+			return nil
+		}
+
+		switch v := result.(type) {
+		case []*models.TransactionEntry:
+			for _, entry := range v {
+				if err = server.Send(transactionEntryToApi(entry)); err != nil {
+					return err
 				}
-
-			case error:
-				return v
-			default:
-				return utility.ErrorBadDataSupplied.Extend(fmt.Sprintf(" unsupported type supplied %v", v))
 			}
 
-		case <-ctx.Done():
-			return ctx.Err()
+		case error:
+			return v
+		default:
+			return utility.ErrorBadDataSupplied.Extend(fmt.Sprintf(" unsupported type supplied %v", v))
 		}
 	}
 

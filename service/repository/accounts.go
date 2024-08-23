@@ -43,7 +43,7 @@ LEFT JOIN current_balance_summary bs ON a.id = bs.account_id AND a.currency = bs
 type AccountRepository interface {
 	GetByID(ctx context.Context, id string) (*models.Account, utility.ApplicationLedgerError)
 	ListByID(ctx context.Context, ids ...string) (map[string]*models.Account, utility.ApplicationLedgerError)
-	Search(ctx context.Context, query string) (<-chan any, error)
+	Search(ctx context.Context, query string) (frame.JobResultPipe, error)
 	Create(ctx context.Context, ledger *models.Account) (*models.Account, utility.ApplicationLedgerError)
 	Update(ctx context.Context, id string, data map[string]string) (*models.Account, utility.ApplicationLedgerError)
 }
@@ -104,47 +104,43 @@ func (a *accountRepository) ListByID(ctx context.Context, ids ...string) (map[st
 
 	query := string(queryBytes)
 
-	resultChannel, err := a.Search(ctx, query)
+	jobResult, err := a.Search(ctx, query)
 	if err != nil {
 		return nil, utility.ErrorSystemFailure.Override(err).Extend(fmt.Sprintf("db query error [%s]", query))
 	}
 
 	for {
-		select {
-		case result, ok := <-resultChannel:
-			if !ok {
-				return accountsMap, nil
-			}
 
-			switch v := result.(type) {
-			case []*models.Account:
-				for _, acc := range v {
-					accountsMap[acc.ID] = acc
-				}
-			case error:
-				return nil, utility.ErrorSystemFailure.Override(v)
-			default:
-				return nil, utility.ErrorBadDataSupplied.Extend(fmt.Sprintf(" unsupported type supplied %v", v))
-			}
+		result, ok, err0 := jobResult.ReadResult(ctx)
+		if err0 != nil {
+			return nil, utility.ErrorSystemFailure.Override(err0)
+		}
 
-		case <-ctx.Done():
-			return nil, utility.ErrorSystemFailure.Override(ctx.Err())
+		if !ok {
+			return accountsMap, nil
+		}
+
+		switch v := result.(type) {
+		case []*models.Account:
+			for _, acc := range v {
+				accountsMap[acc.ID] = acc
+			}
+		case error:
+			return nil, utility.ErrorSystemFailure.Override(v)
+		default:
+			return nil, utility.ErrorBadDataSupplied.Extend(fmt.Sprintf(" unsupported type supplied %v", v))
 		}
 	}
 }
 
-func (a *accountRepository) Search(ctx context.Context, query string) (<-chan any, error) {
-
-	resultChannel := make(chan any)
+func (a *accountRepository) Search(ctx context.Context, query string) (frame.JobResultPipe, error) {
 
 	service := a.service
-	job := service.NewJob(func(ctx context.Context) error {
-
-		defer close(resultChannel)
+	job := service.NewJob(func(ctx context.Context, jobResult frame.JobResultPipe) error {
 
 		rawQuery, aerr := NewSearchRawQuery(ctx, query)
 		if aerr != nil {
-			return frame.SafeChannelWrite(ctx, resultChannel, aerr)
+			return jobResult.WriteResult(ctx, aerr)
 		}
 
 		sqlQuery := rawQuery.ToQueryConditions()
@@ -156,9 +152,9 @@ func (a *accountRepository) Search(ctx context.Context, query string) (<-chan an
 				Raw(fmt.Sprintf(`%s WHERE %s`, constAccountQuery, sqlQuery.sql), sqlQuery.args...).Rows()
 			if err != nil {
 				if frame.DBErrorIsRecordNotFound(err) {
-					return frame.SafeChannelWrite(ctx, resultChannel, utility.ErrorLedgerNotFound)
+					return jobResult.WriteResult(ctx, utility.ErrorLedgerNotFound)
 				}
-				return frame.SafeChannelWrite(ctx, resultChannel, utility.ErrorSystemFailure.Override(err).Extend("Query execution error"))
+				return jobResult.WriteResult(ctx, utility.ErrorSystemFailure.Override(err).Extend("Query execution error"))
 			}
 
 			var accountList []*models.Account
@@ -169,17 +165,17 @@ func (a *accountRepository) Search(ctx context.Context, query string) (<-chan an
 					&acc.LedgerID, &acc.LedgerType, &acc.CreatedAt, &acc.ModifiedAt, &acc.Version, &acc.TenantID,
 					&acc.PartitionID, &acc.AccessID, &acc.DeletedAt)
 				if err != nil {
-					return frame.SafeChannelWrite(ctx, resultChannel, utility.ErrorSystemFailure.Override(err).Extend("Query binding error"))
+					return jobResult.WriteResult(ctx, utility.ErrorSystemFailure.Override(err).Extend("Query binding error"))
 				}
 				accountList = append(accountList, &acc)
 			}
 
 			err = rows.Close()
 			if err != nil {
-				return frame.SafeChannelWrite(ctx, resultChannel, utility.ErrorSystemFailure.Override(err).Extend("Query closure error"))
+				return jobResult.WriteResult(ctx, utility.ErrorSystemFailure.Override(err).Extend("Query closure error"))
 			}
 
-			err = frame.SafeChannelWrite(ctx, resultChannel, accountList)
+			err = jobResult.WriteResult(ctx, accountList)
 			if err != nil {
 				return err
 			}
@@ -197,7 +193,7 @@ func (a *accountRepository) Search(ctx context.Context, query string) (<-chan an
 		return nil, err
 	}
 
-	return resultChannel, nil
+	return job, nil
 }
 
 // Update persists an existing account in the ledger if it is existent

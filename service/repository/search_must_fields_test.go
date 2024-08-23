@@ -19,9 +19,9 @@ func (ss *SearchSuite) TestSearchAccountsWithMustFields() {
             }
         }
     }`
-	resultChannel, err := ss.accDB.Search(ctx, query)
+	jobResult, err := ss.accDB.Search(ctx, query)
 	assert.NoError(t, err)
-	accounts, err := toSlice[*models.Account](resultChannel)
+	accounts, err := toSlice[*models.Account](jobResult)
 
 	if err != nil {
 		ss.Errorf(err, "Error querying must fields")
@@ -42,9 +42,9 @@ func (ss *SearchSuite) TestSearchAccountsWithMustFields() {
         }
     }`
 
-	resultChannel, err = ss.accDB.Search(ctx, query)
+	jobResult, err = ss.accDB.Search(ctx, query)
 	assert.NoError(t, err)
-	accounts, err = toSlice[*models.Account](resultChannel)
+	accounts, err = toSlice[*models.Account](jobResult)
 
 	if err != nil {
 		ss.Errorf(err, "Error querying must fields")

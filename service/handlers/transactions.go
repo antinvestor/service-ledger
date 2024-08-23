@@ -117,36 +117,36 @@ func (ledgerSrv *LedgerServer) SearchTransactions(request *ledgerV1.SearchReques
 	accountRepository := repository.NewAccountRepository(ledgerSrv.Service)
 	transactionRepository := repository.NewTransactionRepository(ledgerSrv.Service, accountRepository)
 
-	transactionChannel, err := transactionRepository.Search(ctx, request.GetQuery())
+	jobResult, err := transactionRepository.Search(ctx, request.GetQuery())
 	if err != nil {
 		return err
 	}
 
 	for {
-		select {
-		case result, ok := <-transactionChannel:
-			if !ok {
-				// Channel closed, stop processing
-				return nil
-			}
 
-			switch v := result.(type) {
-			case []*models.Transaction:
-				for _, transaction := range v {
-					if err = server.Send(transactionToApi(transaction)); err != nil {
-						return err
-					}
-				}
-
-			case error:
-				return v
-			default:
-				return utility.ErrorBadDataSupplied.Extend(fmt.Sprintf(" unsupported type supplied %v", v))
-			}
-
-		case <-ctx.Done():
-			return ctx.Err()
+		result, ok, err0 := jobResult.ReadResult(ctx)
+		if err0 != nil {
+			return utility.ErrorSystemFailure.Override(err0)
 		}
+
+		if !ok {
+			return nil
+		}
+
+		switch v := result.(type) {
+		case []*models.Transaction:
+			for _, transaction := range v {
+				if err = server.Send(transactionToApi(transaction)); err != nil {
+					return err
+				}
+			}
+
+		case error:
+			return v
+		default:
+			return utility.ErrorBadDataSupplied.Extend(fmt.Sprintf(" unsupported type supplied %v", v))
+		}
+
 	}
 }
 

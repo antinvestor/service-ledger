@@ -21,8 +21,8 @@ const DefaultTimestamLayout = "2006-01-02T15:04:05.999999999"
 
 type TransactionRepository interface {
 	GetByID(ctx context.Context, id string) (*models.Transaction, utility.ApplicationLedgerError)
-	Search(ctx context.Context, query string) (<-chan any, error)
-	SearchEntries(ctx context.Context, query string) (<-chan any, error)
+	Search(ctx context.Context, query string) (frame.JobResultPipe, error)
+	SearchEntries(ctx context.Context, query string) (frame.JobResultPipe, error)
 	Validate(ctx context.Context, transaction *models.Transaction) (map[string]*models.Account, utility.ApplicationLedgerError)
 	IsConflict(ctx context.Context, transaction2 *models.Transaction) (bool, utility.ApplicationLedgerError)
 	Transact(ctx context.Context, transaction *models.Transaction) (*models.Transaction, utility.ApplicationLedgerError)
@@ -44,20 +44,20 @@ func NewTransactionRepository(service *frame.Service, accountRepo AccountReposit
 	}
 }
 
-func (t *transactionRepository) Search(ctx context.Context, query string) (<-chan any, error) {
+func (t *transactionRepository) Search(ctx context.Context, query string) (frame.JobResultPipe, error) {
 
 	resultChannel := make(chan any)
 
 	service := t.service
 	logger := service.L()
-	job := service.NewJob(func(ctx context.Context) error {
+	job := service.NewJob(func(ctx context.Context, jobResult frame.JobResultPipe) error {
 		defer func() { close(resultChannel) }()
 
 		logger.WithField("query", query).Info("just created channel")
 		rawQuery, err := NewSearchRawQuery(ctx, query)
 		if err != nil {
 			logger.WithError(err).Info("create query error")
-			return frame.SafeChannelWrite(ctx, resultChannel, err)
+			return jobResult.WriteResult(ctx, err)
 		}
 
 		sqlQuery := rawQuery.ToQueryConditions()
@@ -74,7 +74,7 @@ func (t *transactionRepository) Search(ctx context.Context, query string) (<-cha
 
 				logger.WithError(err1).Info("error querying transactions")
 
-				return frame.SafeChannelWrite(ctx, resultChannel, utility.ErrorSystemFailure.Override(err))
+				return jobResult.WriteResult(ctx, utility.ErrorSystemFailure.Override(err))
 			}
 
 			if len(transactionList) > 0 {
@@ -91,7 +91,7 @@ func (t *transactionRepository) Search(ctx context.Context, query string) (<-cha
 				entriesMap, err2 := t.SearchEntriesByTransactionID(ctx, transactionIds...)
 				if err2 != nil {
 					logger.WithError(err2).Error("could not query for entries")
-					return frame.SafeChannelWrite(ctx, resultChannel, utility.ErrorSystemFailure.Override(err))
+					return jobResult.WriteResult(ctx, utility.ErrorSystemFailure.Override(err))
 				}
 
 				for _, transaction := range transactionList {
@@ -102,7 +102,7 @@ func (t *transactionRepository) Search(ctx context.Context, query string) (<-cha
 			}
 
 			logger.Info("writing transactions to channel")
-			err1 = frame.SafeChannelWrite(ctx, resultChannel, transactionList)
+			err1 = jobResult.WriteResult(ctx, transactionList)
 			if err1 != nil {
 				logger.WithError(err1).Info("error writing to channel")
 				return err1
@@ -126,7 +126,7 @@ func (t *transactionRepository) Search(ctx context.Context, query string) (<-cha
 		return nil, err
 	}
 
-	return resultChannel, nil
+	return job, nil
 
 }
 
@@ -155,50 +155,48 @@ func (t *transactionRepository) SearchEntriesByTransactionID(ctx context.Context
 
 	query := string(queryBytes)
 
-	resultChannel, err := t.SearchEntries(ctx, query)
+	jobResult, err := t.SearchEntries(ctx, query)
 	if err != nil {
 		return nil, utility.ErrorSystemFailure.Override(err).Extend(fmt.Sprintf("db query error [%s]", query))
 	}
 
 	for {
-		select {
-		case result, ok := <-resultChannel:
-			if !ok {
-				return entriesMap, nil
-			}
 
-			switch v := result.(type) {
-			case []*models.TransactionEntry:
-
-				for _, entry := range v {
-
-					entriesMap[entry.TransactionID] = append(entriesMap[entry.TransactionID], entry)
-				}
-
-			case error:
-				return nil, utility.ErrorSystemFailure.Override(v)
-			default:
-				return nil, utility.ErrorBadDataSupplied.Extend(fmt.Sprintf(" unsupported type supplied %v", v))
-			}
-
-		case <-ctx.Done():
-			return nil, utility.ErrorSystemFailure.Override(ctx.Err())
+		result, ok, err0 := jobResult.ReadResult(ctx)
+		if err0 != nil {
+			return nil, utility.ErrorSystemFailure.Override(err0)
 		}
+
+		if !ok {
+			return entriesMap, nil
+		}
+
+		switch v := result.(type) {
+		case []*models.TransactionEntry:
+
+			for _, entry := range v {
+
+				entriesMap[entry.TransactionID] = append(entriesMap[entry.TransactionID], entry)
+			}
+
+		case error:
+			return nil, utility.ErrorSystemFailure.Override(v)
+		default:
+			return nil, utility.ErrorBadDataSupplied.Extend(fmt.Sprintf(" unsupported type supplied %v", v))
+		}
+
 	}
 
 }
 
-func (t *transactionRepository) SearchEntries(ctx context.Context, query string) (<-chan any, error) {
-
-	resultChannel := make(chan any)
+func (t *transactionRepository) SearchEntries(ctx context.Context, query string) (frame.JobResultPipe, error) {
 
 	service := t.service
-	job := service.NewJob(func(ctx context.Context) error {
-		defer close(resultChannel)
+	job := service.NewJob(func(ctx context.Context, jobResult frame.JobResultPipe) error {
 
-		rawQuery, aerr := NewSearchRawQuery(ctx, query)
-		if aerr != nil {
-			return frame.SafeChannelWrite(ctx, resultChannel, aerr)
+		rawQuery, err := NewSearchRawQuery(ctx, query)
+		if err != nil {
+			return jobResult.WriteResult(ctx, err)
 		}
 
 		sqlQuery := rawQuery.ToQueryConditions()
@@ -206,20 +204,15 @@ func (t *transactionRepository) SearchEntries(ctx context.Context, query string)
 
 		for sqlQuery.canLoad() {
 
-			result := service.DB(ctx, true).
-				Offset(sqlQuery.offset).Limit(sqlQuery.batchSize).
-				Where(sqlQuery.sql, sqlQuery.args...).
-				Find(&transactionEntriesList)
+			result := service.DB(ctx, true).Offset(sqlQuery.offset).Limit(sqlQuery.batchSize).
+				Where(sqlQuery.sql, sqlQuery.args...).Find(&transactionEntriesList)
 
 			err1 := result.Error
 			if err1 != nil {
-				if frame.DBErrorIsRecordNotFound(err1) {
-					return frame.SafeChannelWrite(ctx, resultChannel, utility.ErrorLedgerNotFound)
-				}
-				return frame.SafeChannelWrite(ctx, resultChannel, utility.ErrorSystemFailure.Override(err1))
+				return jobResult.WriteResult(ctx, utility.ErrorSystemFailure.Override(err1))
 			}
 
-			err1 = frame.SafeChannelWrite(ctx, resultChannel, transactionEntriesList)
+			err1 = jobResult.WriteResult(ctx, transactionEntriesList)
 			if err1 != nil {
 				return err1
 			}
@@ -238,7 +231,7 @@ func (t *transactionRepository) SearchEntries(ctx context.Context, query string)
 		return nil, err
 	}
 
-	return resultChannel, nil
+	return job, nil
 
 }
 
@@ -399,34 +392,35 @@ func (t *transactionRepository) GetByID(ctx context.Context, id string) (*models
 
 	query := string(queryBytes)
 
-	resultChannel, err := t.Search(ctx, query)
+	jobResult, err := t.Search(ctx, query)
 	if err != nil {
 		return nil, utility.ErrorSystemFailure.Override(err)
 	}
 
 	var transactions []*models.Transaction
 	for {
-		select {
-		case <-ctx.Done():
-			return nil, utility.ErrorSystemFailure.Override(ctx.Err())
 
-		case result, ok := <-resultChannel:
-			if !ok {
-				if len(transactions) > 0 {
-					return transactions[0], nil
-				}
-				return nil, utility.ErrorTransactionNotFound
-			}
-
-			switch v := result.(type) {
-			case []*models.Transaction:
-				transactions = append(transactions, v...)
-			case error:
-				return nil, utility.ErrorSystemFailure.Override(v)
-			default:
-				return nil, utility.ErrorBadDataSupplied.Extend(fmt.Sprintf("unsupported type supplied %v", v))
-			}
+		result, ok, err0 := jobResult.ReadResult(ctx)
+		if err0 != nil {
+			return nil, utility.ErrorSystemFailure.Override(err0)
 		}
+
+		if !ok {
+			if len(transactions) > 0 {
+				return transactions[0], nil
+			}
+			return nil, utility.ErrorTransactionNotFound
+		}
+
+		switch v := result.(type) {
+		case []*models.Transaction:
+			transactions = append(transactions, v...)
+		case error:
+			return nil, utility.ErrorSystemFailure.Override(v)
+		default:
+			return nil, utility.ErrorBadDataSupplied.Extend(fmt.Sprintf("unsupported type supplied %v", v))
+		}
+
 	}
 
 }

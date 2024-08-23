@@ -57,36 +57,36 @@ func (ledgerSrv *LedgerServer) SearchAccounts(
 
 	accountsRepo := repository.NewAccountRepository(ledgerSrv.Service)
 
-	accountsChannel, err := accountsRepo.Search(ctx, request.GetQuery())
+	jobResult, err := accountsRepo.Search(ctx, request.GetQuery())
 	if err != nil {
 		return err
 	}
 
 	for {
-		select {
-		case result, ok := <-accountsChannel:
-			if !ok {
-				// Channel closed, stop processing
-				return nil
-			}
 
-			switch v := result.(type) {
-			case []*models.Account:
-				for _, acc := range v {
-					if err = server.Send(accountToApi(acc)); err != nil {
-						return err
-					}
-				}
-
-			case error:
-				return v
-			default:
-				return utility.ErrorBadDataSupplied.Extend(fmt.Sprintf(" unsupported type supplied %v", v))
-			}
-
-		case <-ctx.Done():
-			return ctx.Err()
+		result, ok, err0 := jobResult.ReadResult(ctx)
+		if err0 != nil {
+			return utility.ErrorSystemFailure.Override(err0)
 		}
+
+		if !ok {
+			return nil
+		}
+
+		switch v := result.(type) {
+		case []*models.Account:
+			for _, acc := range v {
+				if err = server.Send(accountToApi(acc)); err != nil {
+					return err
+				}
+			}
+
+		case error:
+			return v
+		default:
+			return utility.ErrorBadDataSupplied.Extend(fmt.Sprintf(" unsupported type supplied %v", v))
+		}
+
 	}
 
 }

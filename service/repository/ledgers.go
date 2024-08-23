@@ -9,7 +9,7 @@ import (
 
 type LedgerRepository interface {
 	GetByID(ctx context.Context, id string) (*models.Ledger, utility.ApplicationLedgerError)
-	Search(ctx context.Context, query string) (<-chan any, error)
+	Search(ctx context.Context, query string) (frame.JobResultPipe, error)
 	Create(ctx context.Context, ledger *models.Ledger) (*models.Ledger, utility.ApplicationLedgerError)
 	Update(ctx context.Context, ledger *models.Ledger) (*models.Ledger, utility.ApplicationLedgerError)
 }
@@ -45,17 +45,17 @@ func (l *ledgerRepository) GetByID(ctx context.Context, id string) (*models.Ledg
 	return lg, nil
 }
 
-func (l *ledgerRepository) Search(ctx context.Context, query string) (<-chan any, error) {
+func (l *ledgerRepository) Search(ctx context.Context, query string) (frame.JobResultPipe, error) {
 
 	resultChannel := make(chan any)
 
 	service := l.service
-	job := service.NewJob(func(ctxI context.Context) error {
+	job := service.NewJob(func(ctxI context.Context, jobResult frame.JobResultPipe) error {
 		defer close(resultChannel)
 
 		rawQuery, err := NewSearchRawQuery(ctxI, query)
 		if err != nil {
-			return frame.SafeChannelWrite(ctx, resultChannel, err)
+			return jobResult.WriteResult(ctx, err)
 		}
 
 		sqlQuery := rawQuery.ToQueryConditions()
@@ -71,16 +71,16 @@ func (l *ledgerRepository) Search(ctx context.Context, query string) (<-chan any
 			errR := result.Error
 			if errR != nil {
 				if frame.DBErrorIsRecordNotFound(errR) {
-					return frame.SafeChannelWrite(ctx, resultChannel, utility.ErrorLedgerNotFound)
+					return jobResult.WriteResult(ctx, utility.ErrorLedgerNotFound)
 				}
-				return frame.SafeChannelWrite(ctx, resultChannel, utility.ErrorSystemFailure.Override(errR))
+				return jobResult.WriteResult(ctx, utility.ErrorSystemFailure.Override(errR))
 			}
 
 			if result.RowsAffected == 0 {
 				break // No more rows
 			}
 
-			errR = frame.SafeChannelWrite(ctx, resultChannel, ledgerList)
+			errR = jobResult.WriteResult(ctx, ledgerList)
 			if errR != nil {
 				return errR
 			}
@@ -99,7 +99,7 @@ func (l *ledgerRepository) Search(ctx context.Context, query string) (<-chan any
 		return nil, err
 	}
 
-	return resultChannel, nil
+	return job, nil
 
 }
 
