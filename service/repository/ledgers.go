@@ -47,11 +47,8 @@ func (l *ledgerRepository) GetByID(ctx context.Context, id string) (*models.Ledg
 
 func (l *ledgerRepository) Search(ctx context.Context, query string) (frame.JobResultPipe, error) {
 
-	resultChannel := make(chan any)
-
 	service := l.service
 	job := service.NewJob(func(ctxI context.Context, jobResult frame.JobResultPipe) error {
-		defer close(resultChannel)
 
 		rawQuery, err := NewSearchRawQuery(ctxI, query)
 		if err != nil {

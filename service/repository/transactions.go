@@ -46,12 +46,9 @@ func NewTransactionRepository(service *frame.Service, accountRepo AccountReposit
 
 func (t *transactionRepository) Search(ctx context.Context, query string) (frame.JobResultPipe, error) {
 
-	resultChannel := make(chan any)
-
 	service := t.service
 	logger := service.L()
 	job := service.NewJob(func(ctx context.Context, jobResult frame.JobResultPipe) error {
-		defer func() { close(resultChannel) }()
 
 		logger.WithField("query", query).Info("just created channel")
 		rawQuery, err := NewSearchRawQuery(ctx, query)
