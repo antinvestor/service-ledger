@@ -49,11 +49,14 @@ func (t *transactionRepository) Search(ctx context.Context, query string) (<-cha
 	resultChannel := make(chan any)
 
 	service := t.service
+	logger := service.L()
 	job := service.NewJob(func(ctx context.Context) error {
 		defer func() { close(resultChannel) }()
 
+		logger.WithField("query", query).Info("just created channel")
 		rawQuery, err := NewSearchRawQuery(ctx, query)
 		if err != nil {
+			logger.WithError(err).Info("create query error")
 			return frame.SafeChannelWrite(ctx, resultChannel, err)
 		}
 
@@ -62,46 +65,58 @@ func (t *transactionRepository) Search(ctx context.Context, query string) (<-cha
 
 		for sqlQuery.canLoad() {
 
+			logger.WithField("query", sqlQuery).Info("loading data")
+
 			result := service.DB(ctx, true).Where(sqlQuery.sql, sqlQuery.args...).Offset(sqlQuery.offset).
 				Limit(sqlQuery.batchSize).Find(&transactionList)
 			err1 := result.Error
 			if err1 != nil {
-				if frame.DBErrorIsRecordNotFound(err1) {
-					return frame.SafeChannelWrite(ctx, resultChannel, utility.ErrorLedgerNotFound)
-				}
+
+				logger.WithError(err1).Info("error querying transactions")
+
 				return frame.SafeChannelWrite(ctx, resultChannel, utility.ErrorSystemFailure.Override(err))
 			}
 
 			if len(transactionList) > 0 {
+
+				logger.WithField("transactions", transactionList).Info("found transactions")
 
 				var transactionIds []string
 				for _, transaction := range transactionList {
 					transactionIds = append(transactionIds, transaction.GetID())
 				}
 
+				logger.WithField("transation ids", transactionIds).Info("transaction id list")
+
 				entriesMap, err2 := t.SearchEntriesByTransactionID(ctx, transactionIds...)
 				if err2 != nil {
-					if frame.DBErrorIsRecordNotFound(err2) {
-						return frame.SafeChannelWrite(ctx, resultChannel, utility.ErrorLedgerNotFound)
-					}
+					logger.WithError(err2).Error("could not query for entries")
 					return frame.SafeChannelWrite(ctx, resultChannel, utility.ErrorSystemFailure.Override(err))
 				}
 
 				for _, transaction := range transactionList {
+
 					transaction.Entries = entriesMap[transaction.GetID()]
+					logger.WithField("transaction", transaction).WithField("transaction entries", transaction.Entries).Info("found some entries for transaction")
 				}
 			}
 
+			logger.Info("writing transactions to channel")
 			err1 = frame.SafeChannelWrite(ctx, resultChannel, transactionList)
 			if err1 != nil {
+				logger.WithError(err1).Info("error writing to channel")
 				return err1
 			}
 
+			logger.Info("successfully wrote to channel")
 			if sqlQuery.stop(len(transactionList)) {
+
+				logger.Info("successfully stopped operation")
 				break
 			}
 		}
 
+		logger.Info("exiting transaction search")
 		return nil
 
 	})
