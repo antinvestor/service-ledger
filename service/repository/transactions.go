@@ -47,13 +47,10 @@ func NewTransactionRepository(service *frame.Service, accountRepo AccountReposit
 func (t *transactionRepository) Search(ctx context.Context, query string) (frame.JobResultPipe, error) {
 
 	service := t.service
-	logger := service.L()
 	job := service.NewJob(func(ctx context.Context, jobResult frame.JobResultPipe) error {
 
-		logger.WithField("query", query).Info("just created channel")
 		rawQuery, err := NewSearchRawQuery(ctx, query)
 		if err != nil {
-			logger.WithError(err).Info("create query error")
 			return jobResult.WriteResult(ctx, err)
 		}
 
@@ -62,58 +59,43 @@ func (t *transactionRepository) Search(ctx context.Context, query string) (frame
 
 		for sqlQuery.canLoad() {
 
-			logger.WithField("query", sqlQuery).Info("loading data")
-
 			result := service.DB(ctx, true).Where(sqlQuery.sql, sqlQuery.args...).Offset(sqlQuery.offset).
 				Limit(sqlQuery.batchSize).Find(&transactionList)
 			err1 := result.Error
 			if err1 != nil {
-
-				logger.WithError(err1).Info("error querying transactions")
 
 				return jobResult.WriteResult(ctx, utility.ErrorSystemFailure.Override(err))
 			}
 
 			if len(transactionList) > 0 {
 
-				logger.WithField("transactions", transactionList).Info("found transactions")
-
 				var transactionIds []string
 				for _, transaction := range transactionList {
 					transactionIds = append(transactionIds, transaction.GetID())
 				}
 
-				logger.WithField("transation ids", transactionIds).Info("transaction id list")
-
 				entriesMap, err2 := t.SearchEntriesByTransactionID(ctx, transactionIds...)
 				if err2 != nil {
-					logger.WithError(err2).Error("could not query for entries")
 					return jobResult.WriteResult(ctx, utility.ErrorSystemFailure.Override(err))
 				}
 
 				for _, transaction := range transactionList {
-
-					transaction.Entries = entriesMap[transaction.GetID()]
-					logger.WithField("transaction", transaction).WithField("transaction entries", transaction.Entries).Info("found some entries for transaction")
+					entries, ok := entriesMap[transaction.GetID()]
+					if ok {
+						transaction.Entries = entries
+					}
 				}
 			}
 
-			logger.Info("writing transactions to channel")
 			err1 = jobResult.WriteResult(ctx, transactionList)
 			if err1 != nil {
-				logger.WithError(err1).Info("error writing to channel")
 				return err1
 			}
 
-			logger.Info("successfully wrote to channel")
 			if sqlQuery.stop(len(transactionList)) {
-
-				logger.Info("successfully stopped operation")
 				break
 			}
 		}
-
-		logger.Info("exiting transaction search")
 		return nil
 
 	})
@@ -150,17 +132,26 @@ func (t *transactionRepository) SearchEntriesByTransactionID(ctx context.Context
 		return nil, utility.ErrorSystemFailure.Override(err).Extend("Json marshalling error")
 	}
 
+	logger := t.service.L()
+
 	query := string(queryBytes)
+
+	logger.WithField("query", query).Info("Query from database")
 
 	jobResult, err := t.SearchEntries(ctx, query)
 	if err != nil {
+		logger.WithError(err).Info("could not query for entries")
+
 		return nil, utility.ErrorSystemFailure.Override(err).Extend(fmt.Sprintf("db query error [%s]", query))
 	}
 
 	for {
 
+		logger.Info("reading results")
+
 		result, ok, err0 := jobResult.ReadResult(ctx)
 		if err0 != nil {
+			logger.WithError(err).Info("could not read results")
 			return nil, utility.ErrorSystemFailure.Override(err0)
 		}
 
@@ -168,12 +159,18 @@ func (t *transactionRepository) SearchEntriesByTransactionID(ctx context.Context
 			return entriesMap, nil
 		}
 
+		logger.WithField("result", result).Info("found transaction entry")
 		switch v := result.(type) {
 		case []*models.TransactionEntry:
 
 			for _, entry := range v {
 
-				entriesMap[entry.TransactionID] = append(entriesMap[entry.TransactionID], entry)
+				entries, ok0 := entriesMap[entry.TransactionID]
+				if !ok0 {
+					entries = make([]*models.TransactionEntry, 0)
+				}
+
+				entriesMap[entry.TransactionID] = append(entries, entry)
 			}
 
 		case error:
@@ -189,6 +186,8 @@ func (t *transactionRepository) SearchEntriesByTransactionID(ctx context.Context
 func (t *transactionRepository) SearchEntries(ctx context.Context, query string) (frame.JobResultPipe, error) {
 
 	service := t.service
+	logger := service.L()
+
 	job := service.NewJob(func(ctx context.Context, jobResult frame.JobResultPipe) error {
 
 		rawQuery, err := NewSearchRawQuery(ctx, query)
@@ -196,25 +195,35 @@ func (t *transactionRepository) SearchEntries(ctx context.Context, query string)
 			return jobResult.WriteResult(ctx, err)
 		}
 
+		logger.WithField("query", rawQuery).Info("utilizing query")
+
 		sqlQuery := rawQuery.ToQueryConditions()
 		var transactionEntriesList []*models.TransactionEntry
 
 		for sqlQuery.canLoad() {
+
+			logger.WithField("query", sqlQuery).Info("querying database for entries")
 
 			result := service.DB(ctx, true).Offset(sqlQuery.offset).Limit(sqlQuery.batchSize).
 				Where(sqlQuery.sql, sqlQuery.args...).Find(&transactionEntriesList)
 
 			err1 := result.Error
 			if err1 != nil {
+				logger.WithError(err).Info("somehow failed to query entry")
 				return jobResult.WriteResult(ctx, utility.ErrorSystemFailure.Override(err1))
 			}
+
+			logger.WithField("entries", transactionEntriesList).Info("found some entries")
 
 			err1 = jobResult.WriteResult(ctx, transactionEntriesList)
 			if err1 != nil {
 				return err1
 			}
 
+			logger.Info("piped results")
+
 			if sqlQuery.stop(len(transactionEntriesList)) {
+				logger.Info("exiting query results")
 				break
 			}
 		}
