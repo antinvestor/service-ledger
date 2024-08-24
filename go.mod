@@ -12,7 +12,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/pitabwire/frame v1.23.2
 	github.com/pkg/errors v0.9.1
-	github.com/rs/xid v1.5.0
+	github.com/rs/xid v1.6.0
 	github.com/shopspring/decimal v1.4.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.9.0
