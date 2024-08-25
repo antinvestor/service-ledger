@@ -361,14 +361,14 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 	//	return nil, utility.ErrorSystemFailure.Override(err0)
 	//}
 
-	// Save entries separately
-	err0 := service.DB(ctx, false).Model(&models.TransactionEntry{}).CreateInBatches(transaction.Entries, len(transaction.Entries)).Error
+	// Save the transaction without entries
+	err0 := service.DB(ctx, false).Model(&models.Transaction{}).Omit("Entries").Create(&transaction).Error
 	if err0 != nil {
 		return nil, utility.ErrorSystemFailure.Override(err0)
 	}
 
-	// Save the transaction without entries
-	err0 = service.DB(ctx, false).Model(&models.Transaction{}).Omit("Entries").Create(&transaction).Error
+	// Save entries separately
+	err0 = service.DB(ctx, false).Model(&models.TransactionEntry{}).CreateInBatches(transaction.Entries, len(transaction.Entries)).Error
 	if err0 != nil {
 		return nil, utility.ErrorSystemFailure.Override(err0)
 	}
