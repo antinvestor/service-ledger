@@ -10,9 +10,9 @@ require (
 	github.com/golang-migrate/migrate v3.5.4+incompatible
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0
 	github.com/lib/pq v1.10.9
-	github.com/pitabwire/frame v1.23.2
+	github.com/pitabwire/frame v1.23.3
 	github.com/pkg/errors v0.9.1
-	github.com/rs/xid v1.5.0
+	github.com/rs/xid v1.6.0
 	github.com/shopspring/decimal v1.4.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.9.0
@@ -22,8 +22,6 @@ require (
 	google.golang.org/genproto v0.0.0-20240823204242-4ba0660f739c
 	google.golang.org/grpc v1.65.0
 	gorm.io/datatypes v1.2.1
-	gorm.io/gorm v1.25.11
-
 )
 
 require (
@@ -96,11 +94,11 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.49.0 // indirect
-	go.opentelemetry.io/otel v1.28.0 // indirect
+	go.opentelemetry.io/otel v1.29.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.19.0 // indirect
-	go.opentelemetry.io/otel/metric v1.28.0 // indirect
-	go.opentelemetry.io/otel/sdk v1.28.0 // indirect
-	go.opentelemetry.io/otel/trace v1.28.0 // indirect
+	go.opentelemetry.io/otel/metric v1.29.0 // indirect
+	go.opentelemetry.io/otel/sdk v1.29.0 // indirect
+	go.opentelemetry.io/otel/trace v1.29.0 // indirect
 	go.uber.org/mock v0.4.0 // indirect
 	gocloud.dev v0.37.0 // indirect
 	golang.org/x/crypto v0.26.0 // indirect
@@ -117,5 +115,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/mysql v1.5.6 // indirect
 	gorm.io/driver/postgres v1.5.9 // indirect
+	gorm.io/gorm v1.25.11 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 )

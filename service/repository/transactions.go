@@ -11,7 +11,6 @@ import (
 	"github.com/pitabwire/frame"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
-	"gorm.io/gorm"
 	"strings"
 	"time"
 )
@@ -186,7 +185,6 @@ func (t *transactionRepository) SearchEntriesByTransactionID(ctx context.Context
 func (t *transactionRepository) SearchEntries(ctx context.Context, query string) (frame.JobResultPipe, error) {
 
 	service := t.service
-	logger := service.L()
 
 	job := service.NewJob(func(ctx context.Context, jobResult frame.JobResultPipe) error {
 
@@ -195,35 +193,25 @@ func (t *transactionRepository) SearchEntries(ctx context.Context, query string)
 			return jobResult.WriteResult(ctx, err)
 		}
 
-		logger.WithField("query", rawQuery).Info("utilizing query")
-
 		sqlQuery := rawQuery.ToQueryConditions()
 		var transactionEntriesList []*models.TransactionEntry
 
 		for sqlQuery.canLoad() {
-
-			logger.WithField("query", sqlQuery).Info("querying database for entries")
 
 			result := service.DB(ctx, true).Offset(sqlQuery.offset).Limit(sqlQuery.batchSize).
 				Where(sqlQuery.sql, sqlQuery.args...).Find(&transactionEntriesList)
 
 			err1 := result.Error
 			if err1 != nil {
-				logger.WithError(err).Info("somehow failed to query entry")
 				return jobResult.WriteResult(ctx, utility.ErrorSystemFailure.Override(err1))
 			}
-
-			logger.WithField("entries", transactionEntriesList).Info("found some entries")
 
 			err1 = jobResult.WriteResult(ctx, transactionEntriesList)
 			if err1 != nil {
 				return err1
 			}
 
-			logger.Info("piped results")
-
 			if sqlQuery.stop(len(transactionEntriesList)) {
-				logger.Info("exiting query results")
 				break
 			}
 		}
@@ -351,22 +339,36 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 		}
 	}
 
-	// Start a transaction
-	err0 := t.service.DB(ctx, false).Transaction(func(txDB *gorm.DB) error {
-		// Save the transaction without entries
-		if err3 := txDB.Model(&models.Transaction{}).Omit("Entries").Create(&transaction).Error; err3 != nil {
-			return err3
-		}
+	service := t.service
 
-		// Save entries separately
-		if err3 := txDB.Model(&models.TransactionEntry{}).CreateInBatches(transaction.Entries, len(transaction.Entries)).Error; err3 != nil {
-			return err3
-		}
+	//// Start a transaction
+	//err0 := service.DB(ctx, false).Transaction(func(txDB *gorm.DB) error {
+	//	// Save the transaction without entries
+	//	if err3 := txDB.Model(&models.Transaction{}).Omit("Entries").Create(&transaction).Error; err3 != nil {
+	//		return err3
+	//	}
+	//
+	//	// Save entries separately
+	//	if err3 := txDB.Model(&models.TransactionEntry{}).CreateInBatches(transaction.Entries, len(transaction.Entries)).Error; err3 != nil {
+	//		return err3
+	//	}
+	//
+	//	return nil
+	//
+	//})
+	//
+	//if err0 != nil {
+	//	return nil, utility.ErrorSystemFailure.Override(err0)
+	//}
 
-		return nil
+	// Save entries separately
+	err0 := service.DB(ctx, false).Model(&models.TransactionEntry{}).CreateInBatches(transaction.Entries, len(transaction.Entries)).Error
+	if err0 != nil {
+		return nil, utility.ErrorSystemFailure.Override(err0)
+	}
 
-	})
-
+	// Save the transaction without entries
+	err0 = service.DB(ctx, false).Model(&models.Transaction{}).Omit("Entries").Create(&transaction).Error
 	if err0 != nil {
 		return nil, utility.ErrorSystemFailure.Override(err0)
 	}
