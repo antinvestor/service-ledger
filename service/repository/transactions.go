@@ -11,6 +11,7 @@ import (
 	"github.com/pitabwire/frame"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
+	"gorm.io/gorm"
 	"strings"
 	"time"
 )
@@ -243,6 +244,14 @@ func (t *transactionRepository) Validate(ctx context.Context, txn *models.Transa
 			return nil, utility.ErrorTransactionHasInvalidDrCrEntry
 		}
 
+	} else {
+
+		if ledgerV1.TransactionType_RESERVATION.String() == txn.TransactionType {
+			if len(txn.Entries) != 1 {
+				return nil, utility.ErrorTransactionHasInvalidDrCrEntry
+			}
+		}
+
 	}
 
 	accountIdSet := map[string]bool{}
@@ -296,18 +305,19 @@ func (t *transactionRepository) IsConflict(ctx context.Context, transaction2 *mo
 func (t *transactionRepository) Transact(ctx context.Context, transaction *models.Transaction) (*models.Transaction, utility.ApplicationLedgerError) {
 
 	// Check if a transaction with Reference already exists
-	existingTransaction, err := t.GetByID(ctx, transaction.ID)
-	if err != nil && !errors.Is(err, utility.ErrorTransactionNotFound) {
-		return nil, err
+	existingTransaction, aerr := t.GetByID(ctx, transaction.ID)
+	if aerr != nil && !errors.Is(aerr, utility.ErrorTransactionNotFound) {
+		return nil, aerr
 	}
 
 	if existingTransaction != nil {
 
+		isConflict := false
 		// Check if the transaction entries are different
 		// and conflicts with the existing entries
-		isConflict, err1 := t.IsConflict(ctx, transaction)
-		if err1 != nil {
-			return nil, err1
+		isConflict, aerr = t.IsConflict(ctx, transaction)
+		if aerr != nil {
+			return nil, aerr
 		}
 		if isConflict {
 			// The conflicting transactions are denied
@@ -319,9 +329,9 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 		return existingTransaction, nil
 	}
 
-	accountsMap, err := t.Validate(ctx, transaction)
-	if err != nil {
-		return nil, err
+	accountsMap, aerr := t.Validate(ctx, transaction)
+	if aerr != nil {
+		return nil, aerr
 	}
 
 	// Add transaction Entries in one go to succeed or fail all
@@ -339,38 +349,27 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 		}
 	}
 
-	service := t.service
+	// Start a transaction
+	err := t.service.DB(ctx, false).Transaction(func(txDB *gorm.DB) error {
+		// Save the transaction without entries
+		err := txDB.Model(&models.Transaction{}).
+			Create(&transaction).Error
+		if err != nil {
+			return err
+		}
 
-	//// Start a transaction
-	//err0 := service.DB(ctx, false).Transaction(func(txDB *gorm.DB) error {
-	//	// Save the transaction without entries
-	//	if err3 := txDB.Model(&models.Transaction{}).Omit("Entries").Create(&transaction).Error; err3 != nil {
-	//		return err3
-	//	}
-	//
-	//	// Save entries separately
-	//	if err3 := txDB.Model(&models.TransactionEntry{}).CreateInBatches(transaction.Entries, len(transaction.Entries)).Error; err3 != nil {
-	//		return err3
-	//	}
-	//
-	//	return nil
-	//
-	//})
-	//
-	//if err0 != nil {
-	//	return nil, utility.ErrorSystemFailure.Override(err0)
-	//}
+		// Save entries separately
+		err = txDB.Model(&models.TransactionEntry{}).
+			CreateInBatches(transaction.Entries, len(transaction.Entries)).Error
+		if err != nil {
+			return err
+		}
 
-	// Save the transaction without entries
-	err0 := service.DB(ctx, false).Model(&models.Transaction{}).Omit("Entries").Create(&transaction).Error
-	if err0 != nil {
-		return nil, utility.ErrorSystemFailure.Override(err0)
-	}
+		return nil
+	})
 
-	// Save entries separately
-	err0 = service.DB(ctx, false).Model(&models.TransactionEntry{}).CreateInBatches(transaction.Entries, len(transaction.Entries)).Error
-	if err0 != nil {
-		return nil, utility.ErrorSystemFailure.Override(err0)
+	if err != nil {
+		return nil, utility.ErrorSystemFailure.Override(err)
 	}
 
 	return t.GetByID(ctx, transaction.ID)
