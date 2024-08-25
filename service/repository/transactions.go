@@ -254,6 +254,10 @@ func (t *transactionRepository) Validate(ctx context.Context, txn *models.Transa
 
 	}
 
+	if len(txn.Entries) == 0 {
+		return nil, utility.ErrorTransactionEntriesNotFound
+	}
+
 	accountIdSet := map[string]bool{}
 	for _, entry := range txn.Entries {
 		accountIdSet[entry.AccountID] = true
@@ -351,6 +355,7 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 
 	// Start a transaction
 	err := t.service.DB(ctx, false).Transaction(func(txDB *gorm.DB) error {
+
 		// Save the transaction without entries
 		err := txDB.Model(&models.Transaction{}).
 			Create(&transaction).Error

@@ -73,7 +73,7 @@ var (
 	ErrorAccountWithReferenceExists = NewApplicationError(23, "An account with the given reference exists")
 
 	ErrorTransactionNotFound               = NewApplicationError(31, "Transaction with reference/id not found")
-	ErrorTransactionEntriesNotFound        = NewApplicationError(32, "Transaction with reference/id has no entries not found")
+	ErrorTransactionEntriesNotFound        = NewApplicationError(32, "Transaction no entries found")
 	ErrorTransactionEntryHasZeroAmount     = NewApplicationError(33, "Transaction entry has zero amount")
 	ErrorTransactionAccountsDifferCurrency = NewApplicationError(34, "Transaction accounts have different currencies")
 	ErrorTransactionAlreadyExists          = NewApplicationError(35, "Transaction with reference/id already exists")
