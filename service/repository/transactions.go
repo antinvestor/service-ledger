@@ -363,13 +363,22 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 			return err
 		}
 
-		// Save entries separately
-		err = txDB.Model(&models.TransactionEntry{}).
-			CreateInBatches(transaction.Entries, len(transaction.Entries)).Error
-		if err != nil {
-			return err
-		}
+		if len(transaction.Entries) == 1 {
 
+			// Save entries separately
+			err = txDB.Model(&models.TransactionEntry{}).
+				Create(transaction.Entries[0]).Error
+			if err != nil {
+				return err
+			}
+		} else {
+			// Save entries separately
+			err = txDB.Model(&models.TransactionEntry{}).
+				CreateInBatches(transaction.Entries, len(transaction.Entries)).Error
+			if err != nil {
+				return err
+			}
+		}
 		return nil
 	})
 
