@@ -357,27 +357,15 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 	err := t.service.DB(ctx, false).Transaction(func(txDB *gorm.DB) error {
 
 		// Save the transaction without entries
-		err := txDB.Model(&models.Transaction{}).
-			Create(&transaction).Error
+		err := txDB.Create(&transaction).Error
 		if err != nil {
 			return err
 		}
 
-		if len(transaction.Entries) == 1 {
-
-			// Save entries separately
-			err = txDB.Model(&models.TransactionEntry{}).
-				Create(transaction.Entries[0]).Error
-			if err != nil {
-				return err
-			}
-		} else {
-			// Save entries separately
-			err = txDB.Model(&models.TransactionEntry{}).
-				CreateInBatches(transaction.Entries, len(transaction.Entries)).Error
-			if err != nil {
-				return err
-			}
+		// Save entries separately
+		err = txDB.CreateInBatches(transaction.Entries, len(transaction.Entries)).Error
+		if err != nil {
+			return err
 		}
 		return nil
 	})
