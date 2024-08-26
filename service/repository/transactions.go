@@ -11,7 +11,6 @@ import (
 	"github.com/pitabwire/frame"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
-	"gorm.io/gorm"
 	"strings"
 	"time"
 )
@@ -353,26 +352,25 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 		}
 	}
 
+	logger := t.service.L().WithField("transaction", transaction)
 	// Start a transaction
-	err := t.service.DB(ctx, false).Transaction(func(txDB *gorm.DB) error {
-
-		// Save the transaction without entries
-		err := txDB.Create(&transaction).Error
-		if err != nil {
-			return err
-		}
-
-		// Save entries separately
-		err = txDB.CreateInBatches(transaction.Entries, len(transaction.Entries)).Error
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-
+	// Save the transaction without entries
+	logger.Info("Attempting to create a new transaction")
+	err := t.service.DB(ctx, false).Create(&transaction).Error
 	if err != nil {
+		logger.WithError(err).Info("Failed to create a new transaction")
 		return nil, utility.ErrorSystemFailure.Override(err)
 	}
+	logger.Info("Completed creating a new transaction")
+
+	logger.Info("Create transaction entries for the transaction")
+	// Save entries separately
+	err = t.service.DB(ctx, false).CreateInBatches(transaction.Entries, len(transaction.Entries)).Error
+	if err != nil {
+		logger.WithError(err).Info("Failed to create transaction entries")
+		return nil, utility.ErrorSystemFailure.Override(err)
+	}
+	logger.Info("Completed creating transaction entries")
 
 	return t.GetByID(ctx, transaction.ID)
 }
