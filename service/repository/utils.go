@@ -4,6 +4,8 @@ import (
 	"github.com/antinvestor/service-ledger/service/models"
 )
 
+const SystemBatchSize = 30
+
 // Orderedentries implements sort.Interface for []*TransactionEntry based on
 // the AccountID and Amount fields.
 type Orderedentries []models.TransactionEntry

@@ -20,8 +20,6 @@ var (
 	SearchNamespaceTransactionEntries = "transaction_entries"
 )
 
-const SystemBatchSize = 30
-
 // SearchEngine is the interface for all search operations
 type SearchEngine struct {
 	service   *frame.Service
