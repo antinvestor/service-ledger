@@ -351,26 +351,8 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 		}
 	}
 
-	// Begin transaction
-	tx := t.service.DB(ctx, false).Begin()
-
-	// Save the transaction
-	err := tx.Create(&transaction).Error
-	if err != nil {
-		tx.Rollback() // Rollback on error
-		return nil, utility.ErrorSystemFailure.Override(err)
-	}
-
-	if len(transaction.Entries) > 0 {
-		// Loop over entries and set TransactionID
-		err = tx.CreateInBatches(transaction.Entries, len(transaction.Entries)).Error
-		if err != nil {
-			tx.Rollback() // Rollback on error
-			return nil, utility.ErrorSystemFailure.Override(err)
-		}
-	}
-
-	err = tx.Commit().Error
+	// Create the transaction and its entries
+	err := t.service.DB(ctx, false).Create(&transaction).Error
 	if err != nil {
 		return nil, utility.ErrorSystemFailure.Override(err)
 	}

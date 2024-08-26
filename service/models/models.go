@@ -35,7 +35,7 @@ type Transaction struct {
 	Data            datatypes.JSONMap   `gorm:"index:,type:gin,option:jsonb_path_ops" json:"data"`
 	ClearedAt       *time.Time          `gorm:"type:timestamp" json:"cleared_at"`
 	TransactedAt    *time.Time          `gorm:"type:timestamp" json:"transacted_at"`
-	Entries         []*TransactionEntry `gorm:"-" json:"entries"`
+	Entries         []*TransactionEntry `gorm:"foreignKey:TransactionID" json:"entries"`
 }
 
 // TransactionEntry represents a transaction line in a ledger
