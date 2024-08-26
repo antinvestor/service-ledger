@@ -4,6 +4,7 @@ import (
 	"github.com/shopspring/decimal"
 	"google.golang.org/genproto/googleapis/type/money"
 	"math/big"
+	"time"
 )
 
 func ToMoney(currency string, naive decimal.Decimal) money.Money {
@@ -25,4 +26,8 @@ func CompareMoney(a, b *money.Money) bool {
 		return false
 	}
 	return true
+}
+
+func IsValidTime(t *time.Time) bool {
+	return t != nil && !t.IsZero()
 }

@@ -1,7 +1,6 @@
 package repository_test
 
 import (
-	"database/sql"
 	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
 	models2 "github.com/antinvestor/service-ledger/service/models"
 	"github.com/antinvestor/service-ledger/service/repository"
@@ -67,12 +66,14 @@ func (ts *TransactionsModelSuite) SetupSuite() {
 func (ts *TransactionsModelSuite) TestIsZeroSum() {
 	t := ts.T()
 
+	timeNow := time.Now().UTC()
+
 	transaction := &models2.Transaction{
 		BaseModel:       frame.BaseModel{ID: "t001"},
 		Currency:        "UGX",
 		TransactionType: ledgerV1.TransactionType_NORMAL.String(),
-		TransactedAt:    sql.NullTime{Time: time.Now().UTC(), Valid: true},
-		ClearedAt:       sql.NullTime{Time: time.Now().UTC(), Valid: true},
+		TransactedAt:    &timeNow,
+		ClearedAt:       &timeNow,
 		Entries: []*models2.TransactionEntry{
 			{
 				AccountID: "a1",
@@ -97,12 +98,13 @@ func (ts *TransactionsModelSuite) TestIsZeroSum() {
 func (ts *TransactionsModelSuite) TestIsTrueDrCr() {
 	t := ts.T()
 
+	timeNow := time.Now().UTC()
 	transaction := &models2.Transaction{
 		BaseModel:       frame.BaseModel{ID: "t001"},
 		Currency:        "UGX",
 		TransactionType: ledgerV1.TransactionType_NORMAL.String(),
-		TransactedAt:    sql.NullTime{Time: time.Now().UTC(), Valid: true},
-		ClearedAt:       sql.NullTime{Time: time.Now().UTC(), Valid: true},
+		TransactedAt:    &timeNow,
+		ClearedAt:       &timeNow,
 		Entries: []*models2.TransactionEntry{
 			{
 				AccountID: "a1",
@@ -127,6 +129,7 @@ func (ts *TransactionsModelSuite) TestIsTrueDrCr() {
 func (ts *TransactionsModelSuite) TestIsConflict() {
 	t := ts.T()
 
+	timeNow := time.Now().UTC()
 	accountRepo := repository.NewAccountRepository(ts.service)
 
 	transactionRepository := repository.NewTransactionRepository(ts.service, accountRepo)
@@ -134,8 +137,8 @@ func (ts *TransactionsModelSuite) TestIsConflict() {
 		BaseModel:       frame.BaseModel{ID: "t0015"},
 		Currency:        "UGX",
 		TransactionType: ledgerV1.TransactionType_NORMAL.String(),
-		TransactedAt:    sql.NullTime{Time: time.Now().UTC(), Valid: true},
-		ClearedAt:       sql.NullTime{Time: time.Now().UTC(), Valid: true},
+		TransactedAt:    &timeNow,
+		ClearedAt:       &timeNow,
 		Entries: []*models2.TransactionEntry{
 			{
 				AccountID: "a1",
@@ -160,8 +163,8 @@ func (ts *TransactionsModelSuite) TestIsConflict() {
 	transaction = &models2.Transaction{
 		BaseModel:    frame.BaseModel{ID: "t0015"},
 		Currency:     "UGX",
-		TransactedAt: sql.NullTime{Time: time.Now().UTC(), Valid: true},
-		ClearedAt:    sql.NullTime{Time: time.Now().UTC(), Valid: true},
+		TransactedAt: &timeNow,
+		ClearedAt:    &timeNow,
 		Entries: []*models2.TransactionEntry{
 			{
 				AccountID: "a1",
@@ -184,8 +187,8 @@ func (ts *TransactionsModelSuite) TestIsConflict() {
 		BaseModel:       frame.BaseModel{ID: "t0015"},
 		Currency:        "UGX",
 		TransactionType: ledgerV1.TransactionType_NORMAL.String(),
-		TransactedAt:    sql.NullTime{Time: time.Now().UTC(), Valid: true},
-		ClearedAt:       sql.NullTime{Time: time.Now().UTC(), Valid: true},
+		TransactedAt:    &timeNow,
+		ClearedAt:       &timeNow,
 		Entries: []*models2.TransactionEntry{
 			{
 				AccountID: "b1",
@@ -207,6 +210,7 @@ func (ts *TransactionsModelSuite) TestIsConflict() {
 func (ts *TransactionsModelSuite) TestTransact() {
 	t := ts.T()
 
+	timeNow := time.Now().UTC()
 	accountRepo := repository.NewAccountRepository(ts.service)
 	transactionRepository := repository.NewTransactionRepository(ts.service, accountRepo)
 
@@ -214,8 +218,8 @@ func (ts *TransactionsModelSuite) TestTransact() {
 		BaseModel:       frame.BaseModel{ID: "t003"},
 		Currency:        "UGX",
 		TransactionType: ledgerV1.TransactionType_NORMAL.String(),
-		TransactedAt:    sql.NullTime{Time: time.Now().UTC(), Valid: true},
-		ClearedAt:       sql.NullTime{Time: time.Now().UTC(), Valid: true},
+		TransactedAt:    &timeNow,
+		ClearedAt:       &timeNow,
 		Entries: []*models2.TransactionEntry{
 			{
 				AccountID: "a1",
@@ -251,12 +255,13 @@ func (ts *TransactionsModelSuite) TestReserveTransaction() {
 	initialAcc, err := accountRepo.GetByID(ts.ctx, "a3")
 	assert.NoError(t, err)
 
+	timeNow := time.Now().UTC()
 	transaction := &models2.Transaction{
 		BaseModel:       frame.BaseModel{ID: "t031"},
 		Currency:        "UGX",
 		TransactionType: ledgerV1.TransactionType_RESERVATION.String(),
-		TransactedAt:    sql.NullTime{Time: time.Now().UTC(), Valid: true},
-		ClearedAt:       sql.NullTime{Time: time.Now().UTC(), Valid: true},
+		TransactedAt:    &timeNow,
+		ClearedAt:       &timeNow,
 		Entries: []*models2.TransactionEntry{
 			{
 				AccountID: "a3",
@@ -294,12 +299,13 @@ func (ts *TransactionsModelSuite) TestTransactBalanceCheck() {
 	initialAccMap, err := accountRepo.ListByID(ts.ctx, "a3", "a4")
 	assert.NoError(t, err)
 
+	timeNow := time.Now().UTC()
 	transaction := &models2.Transaction{
 		BaseModel:       frame.BaseModel{ID: "t008"},
 		Currency:        "UGX",
 		TransactionType: ledgerV1.TransactionType_NORMAL.String(),
-		TransactedAt:    sql.NullTime{Time: time.Now().UTC(), Valid: true},
-		ClearedAt:       sql.NullTime{Time: time.Now().UTC(), Valid: true},
+		TransactedAt:    &timeNow,
+		ClearedAt:       &timeNow,
 		Entries: []*models2.TransactionEntry{
 			{
 				AccountID: "a3",
@@ -333,12 +339,15 @@ func (ts *TransactionsModelSuite) TestDuplicateTransactions() {
 
 	accountRepo := repository.NewAccountRepository(ts.service)
 	transactionRepository := repository.NewTransactionRepository(ts.service, accountRepo)
+
+	timeNow := time.Now().UTC()
+
 	transaction := &models2.Transaction{
 		BaseModel:       frame.BaseModel{ID: "t005"},
 		Currency:        "UGX",
 		TransactionType: ledgerV1.TransactionType_NORMAL.String(),
-		TransactedAt:    sql.NullTime{Time: time.Now().UTC(), Valid: true},
-		ClearedAt:       sql.NullTime{Time: time.Now().UTC(), Valid: true},
+		TransactedAt:    &timeNow,
+		ClearedAt:       &timeNow,
 		Entries: []*models2.TransactionEntry{
 			{
 				AccountID: "a1",
@@ -373,12 +382,15 @@ func (ts *TransactionsModelSuite) TestTransactionReversal() {
 
 	accountRepo := repository.NewAccountRepository(ts.service)
 	transactionRepository := repository.NewTransactionRepository(ts.service, accountRepo)
+
+	timeNow := time.Now().UTC()
+
 	transaction := &models2.Transaction{
 		BaseModel:       frame.BaseModel{ID: "t053"},
 		Currency:        "UGX",
 		TransactionType: ledgerV1.TransactionType_NORMAL.String(),
-		TransactedAt:    sql.NullTime{Time: time.Now().UTC(), Valid: true},
-		ClearedAt:       sql.NullTime{Time: time.Now().UTC(), Valid: true},
+		TransactedAt:    &timeNow,
+		ClearedAt:       &timeNow,
 		Entries: []*models2.TransactionEntry{
 			{
 				AccountID: "a1",
@@ -416,11 +428,13 @@ func (ts *TransactionsModelSuite) TestUnClearedTransactions() {
 	initialAccMap, err := accountRepo.ListByID(ts.ctx, "b1", "b2")
 	assert.NoError(t, err)
 
+	timeNow := time.Now().UTC()
+
 	transaction := &models2.Transaction{
 		BaseModel:       frame.BaseModel{ID: "t051"},
 		Currency:        "UGX",
 		TransactionType: ledgerV1.TransactionType_NORMAL.String(),
-		TransactedAt:    sql.NullTime{Time: time.Now().UTC(), Valid: true},
+		TransactedAt:    &timeNow,
 		Entries: []*models2.TransactionEntry{
 			{
 				AccountID: "b1",
@@ -457,8 +471,9 @@ func (ts *TransactionsModelSuite) TestTransactWithBoundaryValues() {
 	t := ts.T()
 
 	accountRepo := repository.NewAccountRepository(ts.service)
-
 	transactionRepository := repository.NewTransactionRepository(ts.service, accountRepo)
+
+	timeNow := time.Now().UTC()
 
 	// In-boundary value transaction
 	boundaryValue := int64(9223372036854775807) // Max +ve for 2^64
@@ -466,8 +481,8 @@ func (ts *TransactionsModelSuite) TestTransactWithBoundaryValues() {
 		BaseModel:       frame.BaseModel{ID: "t004"},
 		Currency:        "UGX",
 		TransactionType: ledgerV1.TransactionType_NORMAL.String(),
-		TransactedAt:    sql.NullTime{Time: time.Now().UTC(), Valid: true},
-		ClearedAt:       sql.NullTime{Time: time.Now().UTC(), Valid: true},
+		TransactedAt:    &timeNow,
+		ClearedAt:       &timeNow,
 		Entries: []*models2.TransactionEntry{
 			{
 				AccountID: "a3",

@@ -1,7 +1,6 @@
 package repository_test
 
 import (
-	"database/sql"
 	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
 	models2 "github.com/antinvestor/service-ledger/service/models"
 	"github.com/antinvestor/service-ledger/service/repository"
@@ -81,13 +80,14 @@ func (ss *SearchSuite) SetupSuite() {
 	_, err = ss.accDB.Create(ss.ctx, acc2)
 	assert.Equal(t, nil, err, "Error creating test account")
 
+	timeNow := time.Now().UTC()
 	// Create test transactions
 	txn1 := &models2.Transaction{
 		BaseModel:       frame.BaseModel{ID: "txn1"},
 		Currency:        "UGX",
 		TransactionType: ledgerV1.TransactionType_NORMAL.String(),
-		TransactedAt:    sql.NullTime{Time: time.Now().UTC(), Valid: true},
-		ClearedAt:       sql.NullTime{Time: time.Now().UTC(), Valid: true},
+		TransactedAt:    &timeNow,
+		ClearedAt:       &timeNow,
 		Entries: []*models2.TransactionEntry{
 			{
 				AccountID: "acc1",
@@ -113,8 +113,8 @@ func (ss *SearchSuite) SetupSuite() {
 		BaseModel:       frame.BaseModel{ID: "txn2"},
 		Currency:        "UGX",
 		TransactionType: ledgerV1.TransactionType_NORMAL.String(),
-		TransactedAt:    sql.NullTime{Time: time.Now().UTC(), Valid: true},
-		ClearedAt:       sql.NullTime{Time: time.Now().UTC(), Valid: true},
+		TransactedAt:    &timeNow,
+		ClearedAt:       &timeNow,
 		Entries: []*models2.TransactionEntry{
 			{
 				AccountID: "acc1",
@@ -139,8 +139,8 @@ func (ss *SearchSuite) SetupSuite() {
 		BaseModel:       frame.BaseModel{ID: "txn3"},
 		Currency:        "UGX",
 		TransactionType: ledgerV1.TransactionType_NORMAL.String(),
-		TransactedAt:    sql.NullTime{Time: time.Now().UTC(), Valid: true},
-		ClearedAt:       sql.NullTime{Time: time.Now().UTC(), Valid: true},
+		TransactedAt:    &timeNow,
+		ClearedAt:       &timeNow,
 		Entries: []*models2.TransactionEntry{
 			{
 				AccountID: "acc1",

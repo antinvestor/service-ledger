@@ -1,10 +1,10 @@
 package models
 
 import (
-	"database/sql"
 	"github.com/pitabwire/frame"
 	"github.com/shopspring/decimal"
 	"gorm.io/datatypes"
+	"time"
 )
 
 // Ledger represents the hierarchy for organizing ledgers with information such as type, and JSON data
@@ -30,25 +30,25 @@ type Account struct {
 // Transaction represents a transaction in a ledger
 type Transaction struct {
 	frame.BaseModel
-	Currency        string              `gorm:"type:varchar(10)" json:"currency"`
+	Currency        string              `gorm:"type:varchar(10);not null" json:"currency"`
 	TransactionType string              `gorm:"type:varchar(50)" json:"transaction_type"`
 	Data            datatypes.JSONMap   `gorm:"index:,type:gin,option:jsonb_path_ops" json:"data"`
-	ClearedAt       sql.NullTime        `gorm:"type:timestamp;default:NULL" json:"cleared_at"`
-	TransactedAt    sql.NullTime        `gorm:"type:timestamp;default:NULL" json:"transacted_at"`
+	ClearedAt       *time.Time          `gorm:"type:timestamp" json:"cleared_at"`
+	TransactedAt    *time.Time          `gorm:"type:timestamp" json:"transacted_at"`
 	Entries         []*TransactionEntry `gorm:"-" json:"entries"`
 }
 
 // TransactionEntry represents a transaction line in a ledger
 type TransactionEntry struct {
 	frame.BaseModel
-	AccountID     string              `gorm:"type:varchar(50)" json:"account_id"`
-	TransactionID string              `gorm:"type:varchar(50)" json:"transaction_id"`
+	AccountID     string              `gorm:"type:varchar(50);not null;index" json:"account_id"`
+	TransactionID string              `gorm:"type:varchar(50);not null;index" json:"transaction_id"`
 	Currency      string              `gorm:"-" json:"currency"`
 	Amount        decimal.NullDecimal `gorm:"type:numeric" json:"amount"`
 	Credit        bool                `json:"credit"`
 	Balance       decimal.NullDecimal `gorm:"type:numeric"  json:"balance"`
-	ClearedAt     sql.NullTime        `gorm:"-" json:"cleared_at"`
-	TransactedAt  sql.NullTime        `gorm:"-" json:"transacted_at"`
+	ClearedAt     *time.Time          `gorm:"-" json:"cleared_at"`
+	TransactedAt  *time.Time          `gorm:"-" json:"transacted_at"`
 }
 
 func (t *TransactionEntry) Equal(ot TransactionEntry) bool {

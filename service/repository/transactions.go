@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
@@ -11,7 +10,6 @@ import (
 	"github.com/pitabwire/frame"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
-	"gorm.io/gorm"
 	"strings"
 	"time"
 )
@@ -353,25 +351,26 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 		}
 	}
 
-	// Start a transaction
-	err := t.service.DB(ctx, false).Debug().Transaction(func(txDB *gorm.DB) error {
+	// Begin transaction
+	tx := t.service.DB(ctx, false).Begin()
 
-		// Save the transaction without entries
-		err := txDB.Create(&transaction).Error
+	// Save the transaction
+	err := tx.Create(&transaction).Error
+	if err != nil {
+		tx.Rollback() // Rollback on error
+		return nil, utility.ErrorSystemFailure.Override(err)
+	}
+
+	if len(transaction.Entries) > 0 {
+		// Loop over entries and set TransactionID
+		err = tx.CreateInBatches(transaction.Entries, len(transaction.Entries)).Error
 		if err != nil {
-			return err
+			tx.Rollback() // Rollback on error
+			return nil, utility.ErrorSystemFailure.Override(err)
 		}
+	}
 
-		err = txDB.Transaction(func(txDB2 *gorm.DB) error {
-			// Save entries separately
-			return txDB2.CreateInBatches(transaction.Entries, SystemBatchSize).Error
-		})
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-
+	err = tx.Commit().Error
 	if err != nil {
 		return nil, utility.ErrorSystemFailure.Override(err)
 	}
@@ -453,8 +452,8 @@ func (t *transactionRepository) Update(ctx context.Context, txn *models.Transact
 		}
 	}
 
-	if !existingTransaction.ClearedAt.Valid {
-		if txn.ClearedAt.Valid {
+	if existingTransaction.ClearedAt == nil {
+		if txn.ClearedAt != nil {
 
 			accountsMap, err1 := t.Validate(ctx, existingTransaction)
 			if err1 != nil {
@@ -498,7 +497,9 @@ func (t *transactionRepository) Reverse(ctx context.Context, id string) (*models
 
 	reversalTxn.ID = fmt.Sprintf("%s_REVERSAL", reversalTxn.ID)
 	reversalTxn.TransactionType = ledgerV1.TransactionType_REVERSAL.String()
-	reversalTxn.TransactedAt = sql.NullTime{Time: time.Now(), Valid: true}
+
+	timeNow := time.Now()
+	reversalTxn.TransactedAt = &timeNow
 	reversalTxn.CreatedAt = time.Now()
 	reversalTxn.ModifiedAt = time.Now()
 

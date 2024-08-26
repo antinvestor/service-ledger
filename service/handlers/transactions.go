@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
 	"github.com/antinvestor/service-ledger/service/models"
@@ -27,17 +26,17 @@ func transactionToApi(mTxn *models.Transaction) *ledgerV1.Transaction {
 	trx := &ledgerV1.Transaction{
 		Reference: mTxn.ID,
 		Currency:  mTxn.Currency,
-		Cleared:   mTxn.ClearedAt.Valid,
+		Cleared:   utility.IsValidTime(mTxn.ClearedAt),
 		Data:      frame.DBPropertiesToMap(mTxn.Data),
 		Entries:   apiEntries}
 
-	if mTxn.TransactedAt.Valid {
-		trx.TransactedAt = mTxn.TransactedAt.Time.Format(repository.DefaultTimestamLayout)
+	if mTxn.TransactedAt != nil && !mTxn.TransactedAt.IsZero() {
+		trx.TransactedAt = mTxn.TransactedAt.Format(repository.DefaultTimestamLayout)
 	}
 
-	trx.Cleared = mTxn.ClearedAt.Valid
+	trx.Cleared = utility.IsValidTime(mTxn.ClearedAt)
 
-	trx.Type = ledgerV1.TransactionType(ledgerV1.TransactionType_value[string(mTxn.TransactionType)])
+	trx.Type = ledgerV1.TransactionType(ledgerV1.TransactionType_value[mTxn.TransactionType])
 
 	return trx
 }
@@ -59,8 +58,6 @@ func transactionFromApi(aTxn *ledgerV1.Transaction) (*models.Transaction, error)
 		Currency:        aTxn.GetCurrency(),
 		TransactionType: aTxn.GetType().String(),
 		Data:            frame.DBPropertiesFromMap(aTxn.Data),
-		ClearedAt:       sql.NullTime{Valid: false},
-		TransactedAt:    sql.NullTime{Valid: false},
 		Entries:         modelEntries,
 	}
 
@@ -74,16 +71,10 @@ func transactionFromApi(aTxn *ledgerV1.Transaction) (*models.Transaction, error)
 			return nil, err
 		}
 	}
-	transaction.TransactedAt = sql.NullTime{
-		Time:  transactedAt,
-		Valid: true,
-	}
+	transaction.TransactedAt = &transactedAt
 
 	if aTxn.Cleared {
-		transaction.ClearedAt = sql.NullTime{
-			Time:  transactedAt,
-			Valid: true,
-		}
+		transaction.ClearedAt = &transactedAt
 	}
 
 	return transaction, nil
