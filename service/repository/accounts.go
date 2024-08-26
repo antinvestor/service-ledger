@@ -212,7 +212,7 @@ func (a *accountRepository) Update(ctx context.Context, id string, data map[stri
 
 	err := a.service.DB(ctx, false).Save(&existingAccount).Error
 	if err != nil {
-		a.service.L().WithError(err).Error("could not save the account")
+		a.service.L(ctx).WithError(err).Error("could not save the account")
 		return nil, utility.ErrorSystemFailure.Override(err)
 	}
 	return existingAccount, nil
@@ -241,7 +241,7 @@ func (a *accountRepository) Create(ctx context.Context, account *models.Account)
 
 	err = a.service.DB(ctx, false).Save(account).Error
 	if err != nil {
-		a.service.L().WithError(err).Error("could not save the ledger")
+		a.service.L(ctx).WithError(err).Error("could not save the ledger")
 		return nil, utility.ErrorSystemFailure.Override(err)
 	}
 

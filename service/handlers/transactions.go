@@ -45,7 +45,7 @@ func transactionFromApi(aTxn *ledgerV1.Transaction) (*models.Transaction, error)
 	modelEntries := make([]*models.TransactionEntry, len(aTxn.Entries))
 	for index, mEntry := range aTxn.Entries {
 		modelEntries[index] = &models.TransactionEntry{
-			Credit:    mEntry.Credit,
+			Credit:    mEntry.GetCredit(),
 			AccountID: mEntry.GetAccount(),
 			Amount:    decimal.NewNullDecimal(utility.FromMoney(mEntry.GetAmount())),
 		}

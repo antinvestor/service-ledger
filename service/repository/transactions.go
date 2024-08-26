@@ -130,7 +130,7 @@ func (t *transactionRepository) SearchEntriesByTransactionID(ctx context.Context
 		return nil, utility.ErrorSystemFailure.Override(err).Extend("Json marshalling error")
 	}
 
-	logger := t.service.L()
+	logger := t.service.L(ctx)
 
 	query := string(queryBytes)
 
@@ -452,7 +452,7 @@ func (t *transactionRepository) Update(ctx context.Context, txn *models.Transact
 
 	err := t.service.DB(ctx, false).Save(&existingTransaction).Error
 	if err != nil {
-		t.service.L().WithError(err).Error("could not save the transaction")
+		t.service.L(ctx).WithError(err).Error("could not save the transaction")
 		return nil, utility.ErrorSystemFailure.Override(err)
 	}
 	return existingTransaction, nil

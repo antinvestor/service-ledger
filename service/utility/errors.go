@@ -48,7 +48,7 @@ func (e applicationLedgerError) Extend(Message string) ApplicationLedgerError {
 	return &applicationLedgerError{e.Code, e.CodeOffset, e.Message, Message}
 }
 
-// Extend default Message
+// Override default Message
 func (e applicationLedgerError) Override(errs ...error) ApplicationLedgerError {
 
 	errorStrings := make([]string, len(errs))

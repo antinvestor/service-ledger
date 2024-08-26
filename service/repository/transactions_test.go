@@ -377,7 +377,7 @@ func (ts *TransactionsModelSuite) TestDuplicateTransactions() {
 	assert.Equal(t, nil, err, "Error while checking for existing transaction")
 	assert.Equal(t, "t005", exists.ID, "Transaction should exist")
 }
-func (ts *TransactionsModelSuite) TestTransactionReversal() {
+func (ts *TransactionsModelSuite) TestTransactionReversaL() {
 	t := ts.T()
 
 	accountRepo := repository.NewAccountRepository(ts.service)

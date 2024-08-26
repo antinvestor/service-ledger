@@ -116,7 +116,7 @@ func (l *ledgerRepository) Update(ctx context.Context, lg *models.Ledger) (*mode
 
 	err := l.service.DB(ctx, false).Save(&existingLedger).Error
 	if err != nil {
-		l.service.L().WithError(err).Error("could not save the ledger")
+		l.service.L(ctx).WithError(err).Error("could not save the ledger")
 		return nil, utility.ErrorSystemFailure.Override(err)
 	}
 	return existingLedger, nil
@@ -137,7 +137,7 @@ func (l *ledgerRepository) Create(ctx context.Context, lg *models.Ledger) (*mode
 
 	err := l.service.DB(ctx, false).Save(lg).Error
 	if err != nil {
-		l.service.L().WithError(err).Error("could not save the ledger")
+		l.service.L(ctx).WithError(err).Error("could not save the ledger")
 		return nil, utility.ErrorSystemFailure.Override(err)
 	}
 
