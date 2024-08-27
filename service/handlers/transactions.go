@@ -83,19 +83,26 @@ func transactionFromApi(aTxn *ledgerV1.Transaction) (*models.Transaction, error)
 // CreateTransaction a new transaction
 func (ledgerSrv *LedgerServer) CreateTransaction(ctx context.Context, apiTransaction *ledgerV1.Transaction) (*ledgerV1.Transaction, error) {
 
+	logger := ledgerSrv.Service.L(ctx)
 	accountsRepo := repository.NewAccountRepository(ledgerSrv.Service)
 	transactionsDB := repository.NewTransactionRepository(ledgerSrv.Service, accountsRepo)
 
+	logger.WithField("transaction", apiTransaction).Info("received api transaction to create")
 	dbTransaction, err := transactionFromApi(apiTransaction)
 	if err != nil {
+		logger.WithError(err).Error(" could parse api transaction")
 		return nil, err
 	}
 
+	logger.Info("attempting to transact request")
 	// Otherwise, do transaction
 	transaction, err := transactionsDB.Transact(ctx, dbTransaction)
 	if err != nil {
+		logger.WithError(err).Error(" could not transact request")
 		return nil, err
 	}
+
+	logger.Info("successfully transacted request")
 
 	return transactionToApi(transaction), nil
 }
