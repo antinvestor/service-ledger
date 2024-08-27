@@ -7,7 +7,6 @@ import (
 	"github.com/antinvestor/service-ledger/service/models"
 	"github.com/bufbuild/protovalidate-go"
 	_ "github.com/golang-migrate/migrate/source/file"
-	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	protovalidateinterceptor "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 
@@ -60,7 +59,6 @@ func main() {
 	}
 
 	unaryInterceptors := []grpc.UnaryServerInterceptor{
-		logging.UnaryServerInterceptor(frame.LoggingInterceptor(log), frame.GetLoggingOptions()...),
 		protovalidateinterceptor.UnaryServerInterceptor(validator),
 		recovery.UnaryServerInterceptor(recovery.WithRecoveryHandlerContext(frame.RecoveryHandlerFun)),
 	}
@@ -70,7 +68,6 @@ func main() {
 	}
 
 	streamInterceptors := []grpc.StreamServerInterceptor{
-		logging.StreamServerInterceptor(frame.LoggingInterceptor(log), frame.GetLoggingOptions()...),
 		protovalidateinterceptor.StreamServerInterceptor(validator),
 		recovery.StreamServerInterceptor(recovery.WithRecoveryHandlerContext(frame.RecoveryHandlerFun)),
 	}

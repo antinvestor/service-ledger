@@ -306,34 +306,25 @@ func (t *transactionRepository) IsConflict(ctx context.Context, transaction2 *mo
 // Transact creates the input transaction in the DB
 func (t *transactionRepository) Transact(ctx context.Context, transaction *models.Transaction) (*models.Transaction, utility.ApplicationLedgerError) {
 
-	logger := t.service.L(ctx)
-	logger.WithField("transaction model", transaction).Info("transaction model")
 	// Check if a transaction with Reference already exists
 	existingTransaction, aerr := t.GetByID(ctx, transaction.ID)
 	if aerr != nil && !errors.Is(aerr, utility.ErrorTransactionNotFound) {
-		logger.WithError(aerr).Error("error getting existing transaction")
 		return nil, aerr
 	}
 
 	if existingTransaction != nil {
-
-		logger.WithField("transaction model", existingTransaction).Info("transaction model already exists")
 
 		isConflict := false
 		// Check if the transaction entries are different
 		// and conflicts with the existing entries
 		isConflict, aerr = t.IsConflict(ctx, transaction)
 		if aerr != nil {
-			logger.WithField("transaction model", transaction).WithError(aerr).Error(" error checking for transaction model conflict")
 			return nil, aerr
 		}
 		if isConflict {
-			logger.WithField("transaction model", transaction).Info("transaction model is conflicting an existing transaction")
 			// The conflicting transactions are denied
 			return nil, utility.ErrorTransactionIsConfilicting
 		}
-
-		logger.WithField("transaction model", transaction).Info("transaction model already exists")
 		// Otherwise the transaction is just a duplicate
 		// The exactly duplicate transactions are ignored
 		return existingTransaction, nil
@@ -341,15 +332,12 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 
 	accountsMap, aerr := t.Validate(ctx, transaction)
 	if aerr != nil {
-		logger.WithField("transaction model", transaction).WithError(aerr).Error("error validating transaction")
-
 		return nil, aerr
 	}
 
 	// Add transaction Entries in one go to succeed or fail all
 	for _, line := range transaction.Entries {
 
-		line.TransactionID = transaction.GetID()
 		account := accountsMap[line.AccountID]
 
 		line.Balance = decimal.NewNullDecimal(account.Balance.Decimal)
@@ -361,15 +349,11 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 		}
 	}
 
-	logger.WithField("transaction model", transaction).Info("attempting to create transaction model into db")
 	// Create the transaction and its entries
 	err := t.service.DB(ctx, false).Create(transaction).Error
 	if err != nil {
-		logger.WithField("transaction model", transaction).WithError(err).Error("error creating transaction model")
 		return nil, utility.ErrorSystemFailure.Override(err)
 	}
-
-	logger.WithField("transaction model", transaction).Info("transaction model created successfully")
 
 	return t.GetByID(ctx, transaction.ID)
 }
@@ -377,7 +361,6 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 // GetByID returns a transaction with the given Reference
 func (t *transactionRepository) GetByID(ctx context.Context, id string) (*models.Transaction, utility.ApplicationLedgerError) {
 
-	logger := t.service.L(ctx)
 	if id == "" {
 		return nil, utility.ErrorUnspecifiedReference
 	}
@@ -398,19 +381,13 @@ func (t *transactionRepository) GetByID(ctx context.Context, id string) (*models
 
 	queryBytes, err := json.Marshal(queryMap)
 	if err != nil {
-
-		logger.WithError(err).Info("could not marshal query map")
-
 		return nil, utility.ErrorSystemFailure.Override(err).Extend("Json marshalling error")
 	}
 
 	query := string(queryBytes)
 
-	logger.WithField("query", query).Info("query to obtain transaction")
-
 	jobResult, err := t.Search(ctx, query)
 	if err != nil {
-		logger.WithError(err).Info("could not search transaction")
 		return nil, utility.ErrorSystemFailure.Override(err)
 	}
 
@@ -420,19 +397,15 @@ func (t *transactionRepository) GetByID(ctx context.Context, id string) (*models
 
 		result, ok, err0 := jobResult.ReadResult(ctx)
 		if err0 != nil {
-			logger.WithError(err0).Error("error occurred reading transaction")
 			return nil, utility.ErrorSystemFailure.Override(err0)
 		}
 
 		if !ok {
-			logger.Info("result channel closed")
 			if terminalError != nil {
-				logger.WithError(terminalError).Error(" an error occurred reading transaction")
 				return nil, terminalError
 			}
 
 			if len(transactions) > 0 {
-				logger.WithField("transaction", transactions[0]).Info("transaction model found")
 				return transactions[0], nil
 			}
 
@@ -481,7 +454,7 @@ func (t *transactionRepository) Update(ctx context.Context, txn *models.Transact
 		}
 	}
 
-	err := t.service.DB(ctx, false).Save(&existingTransaction).Error
+	err := t.service.DB(ctx, false).Save(existingTransaction).Error
 	if err != nil {
 		t.service.L(ctx).WithError(err).Error("could not save the transaction")
 		return nil, utility.ErrorSystemFailure.Override(err)

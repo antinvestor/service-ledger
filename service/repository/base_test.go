@@ -59,8 +59,8 @@ func (bs *BaseTestSuite) SetupSuite() {
 	configLedger := config.LedgerConfig{
 		ConfigurationDefault: frame.ConfigurationDefault{
 			ServerPort:         "",
-			DatabasePrimaryURL: databaseUriStr,
-			DatabaseReplicaURL: databaseUriStr,
+			DatabasePrimaryURL: []string{databaseUriStr},
+			DatabaseReplicaURL: []string{databaseUriStr},
 		},
 	}
 

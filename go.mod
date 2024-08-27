@@ -1,6 +1,6 @@
 module github.com/antinvestor/service-ledger
 
-go 1.22
+go 1.23.0
 
 require (
 	github.com/antinvestor/apis/go/common v1.20.5
@@ -10,7 +10,7 @@ require (
 	github.com/golang-migrate/migrate v3.5.4+incompatible
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0
 	github.com/lib/pq v1.10.9
-	github.com/pitabwire/frame v1.24.3
+	github.com/pitabwire/frame v1.25.0
 	github.com/pkg/errors v0.9.1
 	github.com/rs/xid v1.6.0
 	github.com/shopspring/decimal v1.4.0
