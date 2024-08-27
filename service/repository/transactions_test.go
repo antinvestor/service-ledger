@@ -4,6 +4,7 @@ import (
 	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
 	models2 "github.com/antinvestor/service-ledger/service/models"
 	"github.com/antinvestor/service-ledger/service/repository"
+	"github.com/antinvestor/service-ledger/service/utility"
 	"github.com/pitabwire/frame"
 	"github.com/shopspring/decimal"
 	"sync"
@@ -287,7 +288,7 @@ func (ts *TransactionsModelSuite) TestReserveTransaction() {
 
 	assert.Equal(t, decimal.NewFromInt(0), finalAcc.Balance.Decimal.Sub(initialAcc.Balance.Decimal), "Reservation Balance should be consistent")
 
-	assert.Equal(t, decimal.NewFromInt(98), finalAcc.ReservedBalance.Decimal, "reserved balance should be consistent")
+	assert.Equal(t, utility.CleanDecimal(decimal.NewFromInt(98)), finalAcc.ReservedBalance.Decimal, "reserved balance should be consistent")
 }
 
 func (ts *TransactionsModelSuite) TestTransactBalanceCheck() {
@@ -329,8 +330,8 @@ func (ts *TransactionsModelSuite) TestTransactBalanceCheck() {
 	finalAccMap, err2 := accountRepo.ListByID(ts.ctx, "a3", "a4")
 	assert.NoError(t, err2)
 
-	assert.Equal(t, decimal.NewFromInt(51), finalAccMap["a3"].Balance.Decimal.Sub(initialAccMap["a3"].Balance.Decimal), "Debited Balance should be equal")
-	assert.Equal(t, decimal.NewFromInt(-51), finalAccMap["a4"].Balance.Decimal.Sub(initialAccMap["a4"].Balance.Decimal), "Credited Balance should be equal")
+	assert.Equal(t, utility.CleanDecimal(decimal.NewFromInt(51)), finalAccMap["a3"].Balance.Decimal.Sub(initialAccMap["a3"].Balance.Decimal), "Debited Balance should be equal")
+	assert.Equal(t, utility.CleanDecimal(decimal.NewFromInt(-51)), finalAccMap["a4"].Balance.Decimal.Sub(initialAccMap["a4"].Balance.Decimal), "Credited Balance should be equal")
 
 }
 
@@ -456,14 +457,14 @@ func (ts *TransactionsModelSuite) TestUnClearedTransactions() {
 	finalAccMap, err2 := accountRepo.ListByID(ts.ctx, "b1", "b2")
 	assert.NoError(t, err2)
 
-	assert.Equal(t, decimal.NewFromInt(0), finalAccMap["b1"].Balance.Decimal.Sub(initialAccMap["b1"].Balance.Decimal), "Debited Balance should be equal")
-	assert.Equal(t, decimal.NewFromInt(0), finalAccMap["b2"].Balance.Decimal.Sub(initialAccMap["b2"].Balance.Decimal), "Credited Balance should be equal")
+	assert.Equal(t, utility.CleanDecimal(decimal.NewFromFloat(0.0)), utility.CleanDecimal(finalAccMap["b1"].Balance.Decimal.Sub(initialAccMap["b1"].Balance.Decimal)), "Debited Balance should be equal")
+	assert.Equal(t, utility.CleanDecimal(decimal.NewFromInt(0)), utility.CleanDecimal(finalAccMap["b2"].Balance.Decimal.Sub(initialAccMap["b2"].Balance.Decimal)), "Credited Balance should be equal")
 
-	assert.Equal(t, decimal.NewFromInt(100), finalAccMap["b1"].UnClearedBalance.Decimal, "b1 Uncleared balance should be equal")
-	assert.Equal(t, decimal.NewFromInt(-100), finalAccMap["b2"].UnClearedBalance.Decimal, "b2 Uncleared balance should be equal")
+	assert.Equal(t, utility.CleanDecimal(decimal.NewFromInt(100)), utility.CleanDecimal(finalAccMap["b1"].UnClearedBalance.Decimal), "b1 Uncleared balance should be equal")
+	assert.Equal(t, utility.CleanDecimal(decimal.NewFromInt(-100)), utility.CleanDecimal(finalAccMap["b2"].UnClearedBalance.Decimal), "b2 Uncleared balance should be equal")
 
-	assert.Equal(t, decimal.NewFromInt(0), finalAccMap["b1"].ReservedBalance.Decimal, "b1 reserved balance should be zero")
-	assert.Equal(t, decimal.NewFromInt(0), finalAccMap["b2"].ReservedBalance.Decimal, "b2 reserved balance should be zero")
+	assert.Equal(t, utility.CleanDecimal(decimal.NewFromInt(0)), utility.CleanDecimal(finalAccMap["b1"].ReservedBalance.Decimal), "b1 reserved balance should be zero")
+	assert.Equal(t, utility.CleanDecimal(decimal.NewFromInt(0)), utility.CleanDecimal(finalAccMap["b2"].ReservedBalance.Decimal), "b2 reserved balance should be zero")
 
 }
 
@@ -476,7 +477,7 @@ func (ts *TransactionsModelSuite) TestTransactWithBoundaryValues() {
 	timeNow := time.Now().UTC()
 
 	// In-boundary value transaction
-	boundaryValue := int64(9223372036854775807) // Max +ve for 2^64
+	boundaryValue := utility.CleanDecimal(utility.MaxDecimalValue) // Max +ve for 2^64
 	transaction := &models2.Transaction{
 		BaseModel:       frame.BaseModel{ID: "t004"},
 		Currency:        "UGX",
@@ -487,12 +488,12 @@ func (ts *TransactionsModelSuite) TestTransactWithBoundaryValues() {
 			{
 				AccountID: "a3",
 				Credit:    false,
-				Amount:    decimal.NewNullDecimal(decimal.NewFromInt(boundaryValue)),
+				Amount:    decimal.NewNullDecimal(boundaryValue),
 			},
 			{
 				AccountID: "a4",
 				Credit:    true,
-				Amount:    decimal.NewNullDecimal(decimal.NewFromInt(boundaryValue)),
+				Amount:    decimal.NewNullDecimal(boundaryValue),
 			},
 		},
 		Data: map[string]interface{}{
@@ -501,9 +502,9 @@ func (ts *TransactionsModelSuite) TestTransactWithBoundaryValues() {
 		},
 	}
 	done, _ := transactionRepository.Transact(ts.ctx, transaction)
-	assert.NotEqual(t, nil, done, "Transaction should be created")
+	assert.NotNil(t, done, "Transaction should be created")
 	exists, err := transactionRepository.GetByID(ts.ctx, "t004")
-	assert.Equal(t, nil, err, "Error while checking for existing transaction")
+	assert.Nil(t, err, "Error while checking for existing transaction")
 	assert.Equal(t, "t004", exists.ID, "Transaction should exist")
 
 	// Out-of-boundary value transaction

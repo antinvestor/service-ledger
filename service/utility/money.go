@@ -3,16 +3,28 @@ package utility
 import (
 	"github.com/shopspring/decimal"
 	"google.golang.org/genproto/googleapis/type/money"
-	"math/big"
 	"time"
 )
 
-func ToMoney(currency string, naive decimal.Decimal) money.Money {
-	return money.Money{CurrencyCode: currency, Units: naive.IntPart(), Nanos: naive.Exponent()}
+const NanoSize = 1000000000
+
+var MaxDecimalValue = decimal.NewFromFloat(9999999999999999.99999999)
+
+func ToMoney(currency string, amount decimal.Decimal) money.Money {
+
+	amount = CleanDecimal(amount)
+
+	// Split the decimal value into units and nanos
+	units := amount.IntPart()
+	nanos := amount.Sub(decimal.NewFromInt(units)).Mul(decimal.NewFromInt(NanoSize)).IntPart()
+
+	return money.Money{CurrencyCode: currency, Units: units, Nanos: int32(nanos)}
 }
 
 func FromMoney(m *money.Money) (naive decimal.Decimal) {
-	return decimal.NewFromBigInt(new(big.Int).SetInt64(m.Units), m.Nanos)
+	units := decimal.NewFromInt(m.Units)
+	nanos := decimal.NewFromInt(int64(m.Nanos)).Div(decimal.NewFromInt(NanoSize))
+	return units.Add(nanos)
 }
 
 func CompareMoney(a, b *money.Money) bool {
@@ -26,6 +38,26 @@ func CompareMoney(a, b *money.Money) bool {
 		return false
 	}
 	return true
+}
+
+func CleanDecimal(d decimal.Decimal) decimal.Decimal {
+
+	truncatedStr := d.StringFixed(9)
+
+	// Convert the string back to a decimal
+	rounded, _ := decimal.NewFromString(truncatedStr)
+
+	// Check if the value fits within the range for NUMERIC(20,9)
+	// max allowed value for NUMERIC(28,9)
+	minValue := MaxDecimalValue.Neg() // min allowed value (negative of max)
+
+	if rounded.GreaterThan(MaxDecimalValue) {
+		return MaxDecimalValue
+	} else if rounded.LessThan(minValue) {
+		return minValue
+	}
+
+	return rounded
 }
 
 func IsValidTime(t *time.Time) bool {
