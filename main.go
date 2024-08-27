@@ -13,6 +13,8 @@ import (
 	"github.com/pitabwire/frame"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+
+	_ "net/http/pprof"
 )
 
 func main() {
