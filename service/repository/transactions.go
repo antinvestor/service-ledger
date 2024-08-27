@@ -363,7 +363,7 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 
 	logger.WithField("transaction model", transaction).Info("attempting to create transaction model into db")
 	// Create the transaction and its entries
-	err := t.service.DB(ctx, false).Create(&transaction).Error
+	err := t.service.DB(ctx, false).Create(transaction).Error
 	if err != nil {
 		logger.WithField("transaction model", transaction).WithError(err).Error("error creating transaction model")
 		return nil, utility.ErrorSystemFailure.Override(err)
