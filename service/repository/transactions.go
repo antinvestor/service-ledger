@@ -307,7 +307,7 @@ func (t *transactionRepository) IsConflict(ctx context.Context, transaction2 *mo
 func (t *transactionRepository) Transact(ctx context.Context, transaction *models.Transaction) (*models.Transaction, utility.ApplicationLedgerError) {
 
 	// Check if a transaction with Reference already exists
-	existingTransaction, aerr := t.GetByID(ctx, transaction.ID)
+	existingTransaction, aerr := t.GetByID(ctx, transaction.GetID())
 	if aerr != nil && !errors.Is(aerr, utility.ErrorTransactionNotFound) {
 		return nil, aerr
 	}
@@ -355,7 +355,7 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 		return nil, utility.ErrorSystemFailure.Override(err)
 	}
 
-	return t.GetByID(ctx, transaction.ID)
+	return t.GetByID(ctx, transaction.GetID())
 }
 
 // GetByID returns a transaction with the given Reference

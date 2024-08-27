@@ -42,14 +42,6 @@ func transactionToApi(mTxn *models.Transaction) *ledgerV1.Transaction {
 }
 
 func transactionFromApi(aTxn *ledgerV1.Transaction) (*models.Transaction, error) {
-	modelEntries := make([]*models.TransactionEntry, len(aTxn.Entries))
-	for index, mEntry := range aTxn.Entries {
-		modelEntries[index] = &models.TransactionEntry{
-			Credit:    mEntry.GetCredit(),
-			AccountID: mEntry.GetAccount(),
-			Amount:    decimal.NewNullDecimal(utility.FromMoney(mEntry.GetAmount())),
-		}
-	}
 
 	transaction := &models.Transaction{
 		BaseModel: frame.BaseModel{
@@ -58,7 +50,16 @@ func transactionFromApi(aTxn *ledgerV1.Transaction) (*models.Transaction, error)
 		Currency:        aTxn.GetCurrency(),
 		TransactionType: aTxn.GetType().String(),
 		Data:            frame.DBPropertiesFromMap(aTxn.Data),
-		Entries:         modelEntries,
+	}
+
+	for _, mEntry := range aTxn.Entries {
+		transaction.Entries = append(transaction.Entries, &models.TransactionEntry{
+			TransactionID: transaction.GetID(),
+			Credit:        mEntry.GetCredit(),
+			AccountID:     mEntry.GetAccount(),
+			Currency:      mEntry.GetAmount().GetCurrencyCode(),
+			Amount:        decimal.NewNullDecimal(utility.FromMoney(mEntry.GetAmount())),
+		})
 	}
 
 	var transactedAt time.Time
@@ -83,26 +84,19 @@ func transactionFromApi(aTxn *ledgerV1.Transaction) (*models.Transaction, error)
 // CreateTransaction a new transaction
 func (ledgerSrv *LedgerServer) CreateTransaction(ctx context.Context, apiTransaction *ledgerV1.Transaction) (*ledgerV1.Transaction, error) {
 
-	logger := ledgerSrv.Service.L(ctx)
 	accountsRepo := repository.NewAccountRepository(ledgerSrv.Service)
 	transactionsDB := repository.NewTransactionRepository(ledgerSrv.Service, accountsRepo)
 
-	logger.WithField("transaction", apiTransaction).Info("received api transaction to create")
 	dbTransaction, err := transactionFromApi(apiTransaction)
 	if err != nil {
-		logger.WithError(err).Error(" could parse api transaction")
 		return nil, err
 	}
 
-	logger.Info("attempting to transact request")
 	// Otherwise, do transaction
 	transaction, err := transactionsDB.Transact(ctx, dbTransaction)
 	if err != nil {
-		logger.WithError(err).Error(" could not transact request")
 		return nil, err
 	}
-
-	logger.Info("successfully transacted request")
 
 	return transactionToApi(transaction), nil
 }
