@@ -6,7 +6,7 @@ require (
 	github.com/antinvestor/apis/go/common v1.20.5
 	github.com/antinvestor/apis/go/ledger v1.23.1
 	github.com/bufbuild/protovalidate-go v0.6.4
-	github.com/docker/docker v27.1.2+incompatible
+	github.com/docker/docker v27.2.0+incompatible
 	github.com/golang-migrate/migrate v3.5.4+incompatible
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0
 	github.com/lib/pq v1.10.9
@@ -20,7 +20,7 @@ require (
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.33.0
 	golang.org/x/text v0.17.0
 	google.golang.org/genproto v0.0.0-20240827150818-7e3bb234dfed
-	google.golang.org/grpc v1.65.0
+	google.golang.org/grpc v1.66.0
 	gorm.io/datatypes v1.2.1
 )
 
