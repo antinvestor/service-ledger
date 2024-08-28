@@ -3,12 +3,13 @@ package utility
 import (
 	"github.com/shopspring/decimal"
 	"google.golang.org/genproto/googleapis/type/money"
+	"math"
 	"time"
 )
 
 const NanoSize = 1000000000
 
-var MaxDecimalValue = decimal.NewFromFloat(9999999999999999.99999999)
+var MaxDecimalValue = decimal.NewFromInt(math.MaxInt64).Add(decimal.New(999999999, -9))
 
 func ToMoney(currency string, amount decimal.Decimal) money.Money {
 
