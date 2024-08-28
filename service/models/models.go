@@ -44,9 +44,9 @@ type TransactionEntry struct {
 	AccountID     string              `gorm:"type:varchar(50);not null;index" json:"account_id"`
 	TransactionID string              `gorm:"type:varchar(50);not null;index" json:"transaction_id"`
 	Currency      string              `gorm:"-" json:"currency"`
-	Amount        decimal.NullDecimal `gorm:"type:numeric(28,9)" json:"amount"`
+	Amount        decimal.NullDecimal `gorm:"type:numeric(29,9)" json:"amount"`
 	Credit        bool                `json:"credit"`
-	Balance       decimal.NullDecimal `gorm:"type:numeric(28,9)"  json:"balance"`
+	Balance       decimal.NullDecimal `gorm:"type:numeric(29,9)"  json:"balance"`
 	ClearedAt     *time.Time          `gorm:"-" json:"cleared_at"`
 	TransactedAt  *time.Time          `gorm:"-" json:"transacted_at"`
 }
