@@ -41,6 +41,8 @@ github.com/alecthomas/units v0.0.0-20190717042225-c3de453c63f4/go.mod h1:ybxpYRF
 github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d/go.mod h1:rBZYJk541a8SKzHPHnH3zbiI+7dagKZ0cgpgrD7Fyho=
 github.com/antinvestor/apis/go/common v1.20.5 h1:xLoPxfdg1bZbrUtrUzX3uwebkoFspkymaLH5FQmk254=
 github.com/antinvestor/apis/go/common v1.20.5/go.mod h1:gHWwKojMI4Pfcn+HM0he59BwNF8vg8RSNUifCrVMQas=
+github.com/antinvestor/apis/go/common v1.23.5 h1:ADIfjW1DQ1ly3AAkhRvSP+KkAoufTRqXQqX2ktuDeaE=
+github.com/antinvestor/apis/go/common v1.23.5/go.mod h1:+DIhL/usDaxkiKZvCFt4mGSgdixlyuWDUF2+XXEpkbY=
 github.com/antinvestor/apis/go/ledger v1.23.1 h1:ipes4EbuTdoIorU8p5dzHHP6z6YBEiTHXQVr5v+La+4=
 github.com/antinvestor/apis/go/ledger v1.23.1/go.mod h1:oKOiJ9GDK/ILWgHLao4WTuUw7F+73wVNJ8d3oL06Naw=
 github.com/antinvestor/apis/go/ledger v1.23.5 h1:IcfLtdQhOZeFBVEubxYb/r4dGjrgXxjoNYKqcOQgc74=
