@@ -3,7 +3,7 @@ module github.com/antinvestor/service-ledger
 go 1.23.0
 
 require (
-	github.com/antinvestor/apis/go/common v1.20.5
+	github.com/antinvestor/apis/go/common v1.23.5
 	github.com/antinvestor/apis/go/ledger v1.23.5
 	github.com/bufbuild/protovalidate-go v0.6.5
 	github.com/docker/docker v27.2.0+incompatible
