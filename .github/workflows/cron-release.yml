@@ -100,7 +100,7 @@ jobs:
 
       - name: Publish the release
         if: needs.create-semver-tag.outputs.should_create_tag == 'true'
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.set_tag.outputs.final_tag }}  # Use the manually provided or automatically generated tag
           draft: false
