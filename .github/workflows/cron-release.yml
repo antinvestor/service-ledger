@@ -25,9 +25,9 @@ jobs:
                             | jq '.[] | select(.draft == true) | .id')
           echo "Draft release ID: $DRAFT_RELEASE"
           if [ -z "$DRAFT_RELEASE" ]; then
-            echo "::set-output name=draft_exists::false"
+            echo "draft_exists=false" >> $GITHUB_OUTPUT
           else
-            echo "::set-output name=draft_exists::true"
+            echo "draft_exists=true" >> $GITHUB_OUTPUT
           fi
 
   create-semver-tag:
@@ -43,9 +43,9 @@ jobs:
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "::set-output name=should_create_tag::true"
           elif [ "${{ needs.check-draft.outputs.draft_exists }}" == "true" ]; then
-            echo "::set-output name=should_create_tag::true"
+            echo "should_create_tag=true" >> $GITHUB_OUTPUT
           else
-            echo "::set-output name=should_create_tag::false"
+            echo "should_create_tag=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Skip job if no draft or manual trigger
@@ -62,7 +62,7 @@ jobs:
         if: steps.determine_tag.outputs.tag == ''
         uses: actions-ecosystem/action-bump-semver@v1
         with:
-          current_version: ${{ steps.determine_tag.outputs.tag }}
+          current_version: ${{ steps.get-latest-tag.outputs.tag }}
           level: patch  # Can be patch, minor, or major
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -77,7 +77,7 @@ jobs:
             FINAL_TAG="${{ steps.create_tag.outputs.new_tag }}"
           fi
           echo "Final tag: $FINAL_TAG"
-          echo "::set-output name=final_tag::$FINAL_TAG"
+          echo "final_tag=$FINAL_TAG" >> $GITHUB_OUTPUT
 
   publish-release:
     needs: create-semver-tag
