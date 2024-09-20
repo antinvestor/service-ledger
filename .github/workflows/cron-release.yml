@@ -1,0 +1,91 @@
+name: Create New Tag and Publish Release
+
+on:
+  schedule:
+    - cron: "0 0 */3 * *"  # Runs every day at midnight UTC
+  workflow_dispatch:
+    inputs:
+      custom_tag:
+        description: 'Optional tag to use for the release (e.g., v1.2.3)'
+        required: false
+
+jobs:
+  check-draft:
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v3
+
+      - name: Check if draft release exists
+        id: check_draft
+        run: |
+          DRAFT_RELEASE=$(curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                                -H "Accept: application/vnd.github.v3+json" \
+                                https://api.github.com/repos/${{ github.repository }}/releases \
+                            | jq '.[] | select(.draft == true) | .id')
+          echo "Draft release ID: $DRAFT_RELEASE"
+          if [ -z "$DRAFT_RELEASE" ]; then
+            echo "No draft release found. Exiting."
+            exit 0
+          else
+            echo "::set-output name=draft_exists::true"
+          fi
+
+  create-semver-tag:
+    needs: check-draft
+    if: steps.check_draft.outputs.draft_exists == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v3
+
+      - name: Determine tag to use
+        id: determine_tag
+        run: |
+          if [ "${{ github.event.inputs.custom_tag }}" ]; then
+            TAG="${{ github.event.inputs.custom_tag }}"
+            echo "Using manually specified tag: $TAG"
+          else
+            echo "No custom tag specified. Creating new tag based on semantic versioning."
+            TAG=""
+          fi
+          echo "::set-output name=tag::$TAG"
+
+      - name: Create new semantic version tag (if no custom tag provided)
+        id: create_tag
+        if: steps.determine_tag.outputs.tag == ''
+        uses: actions-ecosystem/action-create-semver-tag@v2
+        with:
+          tag_prefix: 'v'  # Prefix for version tag, e.g., v1.0.0
+          default_bump: 'patch'  # Can be patch, minor, or major
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set final tag (either custom or new)
+        id: set_tag
+        run: |
+          if [ "${{ steps.determine_tag.outputs.tag }}" ]; then
+            FINAL_TAG="${{ steps.determine_tag.outputs.tag }}"
+          else
+            FINAL_TAG="${{ steps.create_tag.outputs.new_tag }}"
+          fi
+          echo "Final tag: $FINAL_TAG"
+          echo "::set-output name=final_tag::$FINAL_TAG"
+
+  publish-release:
+    needs: create-semver-tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v3
+
+      - name: Publish the release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.set_tag.outputs.final_tag }}  # Use the manually provided or automatically generated tag
+          draft: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
