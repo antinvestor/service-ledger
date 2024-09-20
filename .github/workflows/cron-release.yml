@@ -2,7 +2,7 @@ name: Create New Tag and Publish Release
 
 on:
   schedule:
-    - cron: "0 0 */3 * *"  # Runs every day at midnight UTC
+    - cron: "0 0 */3 * *"  # Runs every 3 days at midnight UTC
   workflow_dispatch:
     inputs:
       custom_tag:
@@ -11,7 +11,6 @@ on:
 
 jobs:
   check-draft:
-
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repository
@@ -26,22 +25,36 @@ jobs:
                             | jq '.[] | select(.draft == true) | .id')
           echo "Draft release ID: $DRAFT_RELEASE"
           if [ -z "$DRAFT_RELEASE" ]; then
-            echo "No draft release found. Exiting."
-            exit 0
+            echo "::set-output name=draft_exists::false"
           else
             echo "::set-output name=draft_exists::true"
           fi
 
   create-semver-tag:
     needs: check-draft
-    if: steps.check_draft.outputs.draft_exists == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repository
         uses: actions/checkout@v3
 
+      - name: Set condition for creating a tag
+        id: should_create_tag
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "::set-output name=should_create_tag::true"
+          elif [ "${{ needs.check-draft.outputs.draft_exists }}" == "true" ]; then
+            echo "::set-output name=should_create_tag::true"
+          else
+            echo "::set-output name=should_create_tag::false"
+          fi
+
+      - name: Skip job if no draft or manual trigger
+        if: steps.should_create_tag.outputs.should_create_tag == 'false'
+        run: echo "No draft release or manual trigger. Skipping."
+
       - name: Determine tag to use
         id: determine_tag
+        if: steps.should_create_tag.outputs.should_create_tag == 'true'
         run: |
           if [ "${{ github.event.inputs.custom_tag }}" ]; then
             TAG="${{ github.event.inputs.custom_tag }}"
@@ -64,6 +77,7 @@ jobs:
 
       - name: Set final tag (either custom or new)
         id: set_tag
+        if: steps.should_create_tag.outputs.should_create_tag == 'true'
         run: |
           if [ "${{ steps.determine_tag.outputs.tag }}" ]; then
             FINAL_TAG="${{ steps.determine_tag.outputs.tag }}"
@@ -76,13 +90,16 @@ jobs:
   publish-release:
     needs: create-semver-tag
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - name: Check out the repository
         uses: actions/checkout@v3
 
+      - name: Skip job if no draft or manual trigger
+        if: needs.create-semver-tag.outputs.should_create_tag == 'false'
+        run: echo "Skipping release publishing as no new tag was created."
+
       - name: Publish the release
+        if: needs.create-semver-tag.outputs.should_create_tag == 'true'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.set_tag.outputs.final_tag }}  # Use the manually provided or automatically generated tag
