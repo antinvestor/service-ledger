@@ -54,17 +54,8 @@ jobs:
 
       - name: Determine tag to use
         id: get-latest-tag
-        uses: actions-ecosystem/action-get-latest-tag@v1
         if: steps.should_create_tag.outputs.should_create_tag == 'true'
-        run: |
-          if [ "${{ github.event.inputs.custom_tag }}" ]; then
-            TAG="${{ github.event.inputs.custom_tag }}"
-            echo "Using manually specified tag: $TAG"
-          else
-            echo "No custom tag specified. Creating new tag based on semantic versioning."
-            TAG=""
-          fi
-          echo "::set-output name=tag::$TAG"
+        uses: actions-ecosystem/action-get-latest-tag@v1
 
       - name: Create new semantic version tag (if no custom tag provided)
         id: create_tag
