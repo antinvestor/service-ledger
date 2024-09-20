@@ -3,8 +3,8 @@ module github.com/antinvestor/service-ledger
 go 1.23.0
 
 require (
-	github.com/antinvestor/apis/go/common v1.23.5
-	github.com/antinvestor/apis/go/ledger v1.23.5
+	github.com/antinvestor/apis/go/common v1.25.0
+	github.com/antinvestor/apis/go/ledger v1.25.0
 	github.com/bufbuild/protovalidate-go v0.6.5
 	github.com/docker/docker v27.2.1+incompatible
 	github.com/golang-migrate/migrate v3.5.4+incompatible
@@ -20,7 +20,7 @@ require (
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.33.0
 	golang.org/x/text v0.18.0
 	google.golang.org/genproto v0.0.0-20240903143218-8af14fe29dc1
-	google.golang.org/grpc v1.66.2
+	google.golang.org/grpc v1.67.0
 	gorm.io/datatypes v1.2.2
 )
 
@@ -104,7 +104,7 @@ require (
 	golang.org/x/crypto v0.26.0 // indirect
 	golang.org/x/exp v0.0.0-20240325151524-a685a6edb6d8 // indirect
 	golang.org/x/net v0.28.0 // indirect
-	golang.org/x/oauth2 v0.22.0 // indirect
+	golang.org/x/oauth2 v0.23.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/sys v0.24.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240716161551-93cc26a95ae9 // indirect
