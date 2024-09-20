@@ -53,7 +53,8 @@ jobs:
         run: echo "No draft release or manual trigger. Skipping."
 
       - name: Determine tag to use
-        id: determine_tag
+        id: get-latest-tag
+        uses: actions-ecosystem/action-get-latest-tag@v1
         if: steps.should_create_tag.outputs.should_create_tag == 'true'
         run: |
           if [ "${{ github.event.inputs.custom_tag }}" ]; then
@@ -68,10 +69,10 @@ jobs:
       - name: Create new semantic version tag (if no custom tag provided)
         id: create_tag
         if: steps.determine_tag.outputs.tag == ''
-        uses: actions-ecosystem/action-create-semver-tag@v2
+        uses: actions-ecosystem/action-bump-semver@v2
         with:
-          tag_prefix: 'v'  # Prefix for version tag, e.g., v1.0.0
-          default_bump: 'patch'  # Can be patch, minor, or major
+          current_version: ${{ steps.determine_tag.outputs.tag }}
+          level: patch  # Can be patch, minor, or major
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
