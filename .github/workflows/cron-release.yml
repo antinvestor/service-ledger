@@ -60,7 +60,7 @@ jobs:
       - name: Create new semantic version tag (if no custom tag provided)
         id: create_tag
         if: steps.determine_tag.outputs.tag == ''
-        uses: actions-ecosystem/action-bump-semver@v2
+        uses: actions-ecosystem/action-bump-semver@v1
         with:
           current_version: ${{ steps.determine_tag.outputs.tag }}
           level: patch  # Can be patch, minor, or major
