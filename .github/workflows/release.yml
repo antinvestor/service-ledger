@@ -1,4 +1,4 @@
-name: Release a new docker image from build
+name: Release a new artifacts
 
 on:
   create:

@@ -1,4 +1,4 @@
-name: Create New Tag and Publish Release
+name: Publish New Release
 
 on:
   schedule:
@@ -64,7 +64,7 @@ jobs:
 
       - name: Create new semantic version tag (if no custom tag provided)
         id: create_tag
-        if: steps.determine_tag.outputs.tag == ''
+        if: steps.get-latest-tag.outputs.tag == ''
         uses: actions-ecosystem/action-bump-semver@v1
         with:
           current_version: ${{ steps.get-latest-tag.outputs.tag }}
@@ -76,8 +76,8 @@ jobs:
         id: set_tag
         if: steps.should_create_tag.outputs.should_create_tag == 'true'
         run: |
-          if [ "${{ steps.determine_tag.outputs.tag }}" ]; then
-            FINAL_TAG="${{ steps.determine_tag.outputs.tag }}"
+          if [ "${{ steps.get-latest-tag.outputs.tag }}" ]; then
+            FINAL_TAG="${{ steps.get-latest-tag.outputs.tag }}"
           else
             FINAL_TAG="${{ steps.create_tag.outputs.new_tag }}"
           fi
