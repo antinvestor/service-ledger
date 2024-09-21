@@ -10,8 +10,10 @@ on:
         required: false
 
 jobs:
-  check-draft:
+  check-draft-exists:
     runs-on: ubuntu-latest
+    outputs:
+      draft_exists: ${{ steps.check_draft.outputs.draft_exists }}
     steps:
       - name: Check out the repository
         uses: actions/checkout@v4
@@ -31,8 +33,11 @@ jobs:
           fi
 
   create-semver-tag:
-    needs: check-draft
+    needs: check-draft-exists
     runs-on: ubuntu-latest
+    outputs:
+      should_create_tag: ${{ steps.should_create_tag.outputs.should_create_tag }}
+      final_tag: ${{ steps.set_tag.outputs.final_tag }}
     steps:
       - name: Check out the repository
         uses: actions/checkout@v4
@@ -41,8 +46,8 @@ jobs:
         id: should_create_tag
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "::set-output name=should_create_tag::true"
-          elif [ "${{ needs.check-draft.outputs.draft_exists }}" == "true" ]; then
+            echo "should_create_tag=true" >> $GITHUB_OUTPUT
+          elif [ "${{ needs.check-draft-exists.outputs.draft_exists }}" == "true" ]; then
             echo "should_create_tag=true" >> $GITHUB_OUTPUT
           else
             echo "should_create_tag=false" >> $GITHUB_OUTPUT
