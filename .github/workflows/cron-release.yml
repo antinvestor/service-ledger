@@ -88,18 +88,22 @@ jobs:
     needs: create-semver-tag
     runs-on: ubuntu-latest
     steps:
+      - env:
+          SHOULD_CREATE_TAG: ${{needs.create-semver-tag.outputs.should_create_tag}}
+          FINAL_TAG: ${{needs.create-semver-tag.outputs.final_tag}}
+
       - name: Check out the repository
         uses: actions/checkout@v4
 
       - name: Skip job if no draft or manual trigger
-        if: needs.create-semver-tag.outputs.should_create_tag == 'false'
+        if: SHOULD_CREATE_TAG == 'false'
         run: echo "Skipping release publishing as no new tag was created."
 
       - name: Publish the release
-        if: needs.create-semver-tag.outputs.should_create_tag == 'true'
+        if: SHOULD_CREATE_TAG == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.set_tag.outputs.final_tag }}  # Use the manually provided or automatically generated tag
+          tag_name: ${{ FINAL_TAG }}  # Use the manually provided or automatically generated tag
           draft: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
