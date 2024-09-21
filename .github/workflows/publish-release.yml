@@ -76,10 +76,10 @@ jobs:
         id: set_tag
         if: steps.should_create_tag.outputs.should_create_tag == 'true'
         run: |
-          if [ "${{ github.event.inputs.custom_tag }}" ]; then
-            FINAL_TAG="${{ github.event.inputs.custom_tag }}"
-          else
+          if [ "${{ steps.create_tag.outputs.new_version }}" ]; then
             FINAL_TAG="${{ steps.create_tag.outputs.new_version }}"
+          else
+            FINAL_TAG="${{ github.event.inputs.custom_tag }}"
           fi
           echo "Final tag: $FINAL_TAG"
           echo "final_tag=$FINAL_TAG" >> $GITHUB_OUTPUT
