@@ -30,7 +30,6 @@ jobs:
             echo "draft_exists=false" >> $GITHUB_OUTPUT
           else
             echo "draft_exists=true" >> $GITHUB_OUTPUT
-          fi
 
   create-semver-tag:
     needs: check-draft-exists
@@ -51,7 +50,6 @@ jobs:
             echo "should_create_tag=true" >> $GITHUB_OUTPUT
           else
             echo "should_create_tag=false" >> $GITHUB_OUTPUT
-          fi
 
       - name: Skip job if no draft or manual trigger
         if: steps.should_create_tag.outputs.should_create_tag == 'false'
@@ -64,7 +62,7 @@ jobs:
 
       - name: Create new semantic version tag (if no custom tag provided)
         id: create_tag
-        if: steps.get-latest-tag.outputs.tag == ''
+        if: steps.should_create_tag.outputs.should_create_tag == 'true' && (steps.get-latest-tag.outputs.tag == '' || steps.get-latest-tag.outputs.tag != '')
         uses: actions-ecosystem/action-bump-semver@v1
         with:
           current_version: ${{ steps.get-latest-tag.outputs.tag }}
@@ -74,12 +72,14 @@ jobs:
 
       - name: Set final tag (either custom or new)
         id: set_tag
-        if: steps.should_create_tag.outputs.should_create_tag == 'true'
         run: |
-          if [ "${{ steps.create_tag.outputs.new_version }}" ]; then
+          if [ "${{ github.event.inputs.custom_tag }}" ]; then
+            FINAL_TAG="${{ github.event.inputs.custom_tag }}"
+          elif [ "${{ steps.create_tag.outputs.new_version }}" ]; then
             FINAL_TAG="${{ steps.create_tag.outputs.new_version }}"
           else
-            FINAL_TAG="${{ github.event.inputs.custom_tag }}"
+            echo "Error: No custom tag or new version found"
+            exit 1
           fi
           echo "Final tag: $FINAL_TAG"
           echo "final_tag=$FINAL_TAG" >> $GITHUB_OUTPUT
