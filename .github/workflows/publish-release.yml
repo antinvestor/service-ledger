@@ -5,19 +5,9 @@ on:
     - cron: "0 0 */3 * *"  # Runs every 3 days at midnight UTC
   workflow_dispatch:
     inputs:
-      custom_level:
-        description: 'Optional semvar level to use}'
-        required: true
-        default: 'patch'
-        type: choice
-        options:
-          - major
-          - premajor
-          - minor
-          - preminor
-          - patch
-          - prepatch
-          - prerelease
+      custom_name:
+        description: 'Name for the release (e.g., v1.2.3 Fresh start)'
+        required: false
       custom_tag:
         description: 'Optional tag to use for the release (e.g., v1.2.3)'
         required: false
@@ -27,6 +17,10 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       draft_exists: ${{ steps.check_draft.outputs.draft_exists }}
+      draft_tag_name: ${{ steps.check_draft.outputs.draft_tag_name }}
+      draft_name: ${{ steps.check_draft.outputs.draft_name }}
+      draft_body: ${{ steps.check_draft.outputs.draft_body }}
+
     steps:
       - name: Check out the repository
         uses: actions/checkout@v4
@@ -38,85 +32,50 @@ jobs:
                                 -H "Accept: application/vnd.github.v3+json" \
                                 https://api.github.com/repos/${{ github.repository }}/releases)
           DRAFT_RELEASE_ID=$(echo $DRAFT_RELEASE | jq '.[] | select(.draft == true) | .id')
-          echo "\n\n-----------------------------------------------"
-          echo " $DRAFT_RELEASE "
-          echo " -----------------------------------------------\n\n"
+          DRAFT_RELEASE_TAG_NAME=$(echo $DRAFT_RELEASE | jq '.[] | select(.draft == true) | .tag_name')
+          DRAFT_RELEASE_NAME=$(echo $DRAFT_RELEASE | jq '.[] | select(.draft == true) | .name')
+          DRAFT_RELEASE_BODY=$(echo $DRAFT_RELEASE | jq '.[] | select(.draft == true) | .body')
+          echo "draft_tag_name=$DRAFT_RELEASE_TAG_NAME" >> $GITHUB_OUTPUT
+          echo "draft_name=$DRAFT_RELEASE_NAME" >> $GITHUB_OUTPUT
+          echo "draft_body=$DRAFT_RELEASE_BODY" >> $GITHUB_OUTPUT
           
           if [ -z "$DRAFT_RELEASE_ID" ]; then
-            echo "draft_exists=false" >> $GITHUB_OUTPUT
+            echo "No draft exists for automatic publishing"
+            exit 1
           else
             echo "draft_exists=true" >> $GITHUB_OUTPUT
 
-  create-semver-tag:
+  publish-release:
     needs: check-draft-exists
     runs-on: ubuntu-latest
-    outputs:
-      should_create_tag: ${{ steps.should_create_tag.outputs.should_create_tag }}
-      final_tag: ${{ steps.set_tag.outputs.final_tag }}
     steps:
+
       - name: Check out the repository
         uses: actions/checkout@v4
-
-      - name: Set condition for creating a tag
-        id: should_create_tag
-        run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "should_create_tag=true" >> $GITHUB_OUTPUT
-          elif [ "${{ needs.check-draft-exists.outputs.draft_exists }}" == "true" ]; then
-            echo "should_create_tag=true" >> $GITHUB_OUTPUT
-          else
-            echo "should_create_tag=false" >> $GITHUB_OUTPUT
-
-      - name: Skip job if no draft or manual trigger
-        if: steps.should_create_tag.outputs.should_create_tag == 'false'
-        run: echo "No draft release or manual trigger. Skipping."
-
-      - name: Determine tag to use
-        id: get-latest-tag
-        if: steps.should_create_tag.outputs.should_create_tag == 'true'
-        uses: actions-ecosystem/action-get-latest-tag@v1
-
-      - name: Create new semantic version tag (if no custom tag provided)
-        id: create_tag
-        if: steps.should_create_tag.outputs.should_create_tag == 'true' && (steps.get-latest-tag.outputs.tag == '' || steps.get-latest-tag.outputs.tag != '')
-        uses: actions-ecosystem/action-bump-semver@v1
-        with:
-          current_version: ${{ steps.get-latest-tag.outputs.tag }}
-          level: ${{ github.event.inputs.custom_level || 'patch' }}  # Can be patch, minor, or major
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set final tag (either custom or new)
         id: set_tag
         run: |
           if [ "${{ github.event.inputs.custom_tag }}" ]; then
             FINAL_TAG="${{ github.event.inputs.custom_tag }}"
-          elif [ "${{ steps.create_tag.outputs.new_version }}" ]; then
-            FINAL_TAG="${{ steps.create_tag.outputs.new_version }}"
+            FINAL_NAME="${{ github.event.inputs.custom_name || needs.check-draft-exists.outputs.draft_name }}"
+          else
+            FINAL_TAG="${{ needs.check-draft-exists.outputs.draft_tag_name }}"
+            FINAL_NAME="${{ needs.check-draft-exists.outputs.draft_name }}"
           else
             echo "Error: No custom tag or new version found"
             exit 1
           fi
           echo "Final tag: $FINAL_TAG"
           echo "final_tag=$FINAL_TAG" >> $GITHUB_OUTPUT
-
-  publish-release:
-    needs: create-semver-tag
-    runs-on: ubuntu-latest
-    steps:
-
-      - name: Check out the repository
-        uses: actions/checkout@v4
-
-      - name: Skip job if no draft or manual trigger
-        if: needs.create-semver-tag.outputs.should_create_tag == 'false'
-        run: echo "Skipping release publishing as no new tag was created."
+          echo "final_name=$FINAL_NAME" >> $GITHUB_OUTPUT
 
       - name: Publish the release
-        if: needs.create-semver-tag.outputs.should_create_tag == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.create-semver-tag.outputs.final_tag }}
+          tag_name: ${{ steps.set_tag.outputs.final_tag }}
+          name: ${{ steps.set_tag.outputs.final_name }}
+          body: ${{ needs.check-draft-exists.outputs.draft_body }}
           draft: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
