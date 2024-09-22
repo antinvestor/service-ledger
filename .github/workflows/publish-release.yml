@@ -5,6 +5,19 @@ on:
     - cron: "0 0 */3 * *"  # Runs every 3 days at midnight UTC
   workflow_dispatch:
     inputs:
+      custom_level:
+        description: 'Optional semvar level to use}'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - major
+          - premajor
+          - minor
+          - preminor
+          - patch
+          - prepatch
+          - prerelease
       custom_tag:
         description: 'Optional tag to use for the release (e.g., v1.2.3)'
         required: false
@@ -23,10 +36,13 @@ jobs:
         run: |
           DRAFT_RELEASE=$(curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
                                 -H "Accept: application/vnd.github.v3+json" \
-                                https://api.github.com/repos/${{ github.repository }}/releases \
-                            | jq '.[] | select(.draft == true) | .id')
-          echo "Draft release ID: $DRAFT_RELEASE"
-          if [ -z "$DRAFT_RELEASE" ]; then
+                                https://api.github.com/repos/${{ github.repository }}/releases)
+          DRAFT_RELEASE_ID=$(echo $DRAFT_RELEASE | jq '.[] | select(.draft == true) | .id')
+          echo "\n\n-----------------------------------------------"
+          echo " $DRAFT_RELEASE "
+          echo " -----------------------------------------------\n\n"
+          
+          if [ -z "$DRAFT_RELEASE_ID" ]; then
             echo "draft_exists=false" >> $GITHUB_OUTPUT
           else
             echo "draft_exists=true" >> $GITHUB_OUTPUT
@@ -66,7 +82,7 @@ jobs:
         uses: actions-ecosystem/action-bump-semver@v1
         with:
           current_version: ${{ steps.get-latest-tag.outputs.tag }}
-          level: patch  # Can be patch, minor, or major
+          level: ${{ github.event.inputs.custom_level || 'patch' }}  # Can be patch, minor, or major
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
