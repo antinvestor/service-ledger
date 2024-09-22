@@ -59,20 +59,17 @@ jobs:
         run: |
           if [ "${{ github.event.inputs.custom_tag }}" ]; then
             FINAL_TAG="${{ github.event.inputs.custom_tag }}"
-            FINAL_NAME="${{ github.event.inputs.custom_name || needs.check-draft-exists.outputs.draft_name }}"
           else
             FINAL_TAG="${{ needs.check-draft-exists.outputs.draft_tag_name }}"
-            FINAL_NAME="${{ needs.check-draft-exists.outputs.draft_name }}"
           fi
           echo "Final tag: $FINAL_TAG"
           echo "final_tag=$FINAL_TAG" >> $GITHUB_OUTPUT
-          echo "final_name=$FINAL_NAME" >> $GITHUB_OUTPUT
 
       - name: Publish the release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.set_tag.outputs.final_tag }}
-          name: ${{ steps.set_tag.outputs.final_name }}
+          name: ${{ needs.check-draft-exists.outputs.draft_name }}
           body: ${{ needs.check-draft-exists.outputs.draft_body }}
           draft: false
         env:
