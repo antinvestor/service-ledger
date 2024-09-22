@@ -63,9 +63,6 @@ jobs:
           else
             FINAL_TAG="${{ needs.check-draft-exists.outputs.draft_tag_name }}"
             FINAL_NAME="${{ needs.check-draft-exists.outputs.draft_name }}"
-          else
-            echo "Error: No custom tag or new version found"
-            exit 1
           fi
           echo "Final tag: $FINAL_TAG"
           echo "final_tag=$FINAL_TAG" >> $GITHUB_OUTPUT
