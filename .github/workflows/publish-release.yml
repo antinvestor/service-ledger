@@ -17,6 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       draft_exists: ${{ steps.check_draft.outputs.draft_exists }}
+      draft_id: ${{ steps.check_draft.outputs.draft_id }}
       draft_tag_name: ${{ steps.check_draft.outputs.draft_tag_name }}
       draft_name: ${{ steps.check_draft.outputs.draft_name }}
       draft_body: ${{ steps.check_draft.outputs.draft_body }}
@@ -35,6 +36,7 @@ jobs:
           DRAFT_RELEASE_TAG_NAME=$(echo $DRAFT_RELEASE | jq '.[] | select(.draft == true) | .tag_name')
           DRAFT_RELEASE_NAME=$(echo $DRAFT_RELEASE | jq '.[] | select(.draft == true) | .name')
           DRAFT_RELEASE_BODY=$(echo $DRAFT_RELEASE | jq '.[] | select(.draft == true) | .body')
+          echo "draft_id=$DRAFT_RELEASE_ID" >> $GITHUB_OUTPUT
           echo "draft_tag_name=$DRAFT_RELEASE_TAG_NAME" >> $GITHUB_OUTPUT
           echo "draft_name=$DRAFT_RELEASE_NAME" >> $GITHUB_OUTPUT
           echo "draft_body=$DRAFT_RELEASE_BODY" >> $GITHUB_OUTPUT
@@ -54,23 +56,9 @@ jobs:
       - name: Check out the repository
         uses: actions/checkout@v4
 
-      - name: Set final tag (either custom or new)
-        id: set_tag
-        run: |
-          if [ "${{ github.event.inputs.custom_tag }}" ]; then
-            FINAL_TAG="${{ github.event.inputs.custom_tag }}"
-          else
-            FINAL_TAG="${{ needs.check-draft-exists.outputs.draft_tag_name }}"
-          fi
-          echo "Final tag: $FINAL_TAG"
-          echo "final_tag=$FINAL_TAG" >> $GITHUB_OUTPUT
-
       - name: Publish the release
-        uses: softprops/action-gh-release@v2
+        uses: eregon/publish-release@v1
         with:
-          tag_name: ${{ steps.set_tag.outputs.final_tag }}
-          name: ${{ needs.check-draft-exists.outputs.draft_name }}
-          body: ${{ needs.check-draft-exists.outputs.draft_body }}
-          draft: false
+          release_id: ${{ needs.check-draft-exists.outputs.draft_id }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
