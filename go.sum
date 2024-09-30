@@ -51,6 +51,8 @@ github.com/antinvestor/apis/go/ledger v1.25.2 h1:LbtwR8jGxOUwA1LY/Cj8efLDWVVj8Yz
 github.com/antinvestor/apis/go/ledger v1.25.2/go.mod h1:aL3lYBWioAkB/lz7EaA9+KQKA7oMlcLVJPWj/6rpGtw=
 github.com/antinvestor/apis/go/ledger v1.25.4 h1:4x/7+8m5YmFguJwP7DgNvmdI1iHXWi9xfdayUk+UNY4=
 github.com/antinvestor/apis/go/ledger v1.25.4/go.mod h1:wSVZIqhF9EoeXx7z81WOs9nm6u7eMsWiBzIPEsCXmHw=
+github.com/antinvestor/apis/go/ledger v1.26.5 h1:WPsir2NS/Pysw6xfjIpMjFL3rgOMU+5kvjm6tu5RPn8=
+github.com/antinvestor/apis/go/ledger v1.26.5/go.mod h1:wSVZIqhF9EoeXx7z81WOs9nm6u7eMsWiBzIPEsCXmHw=
 github.com/antlr4-go/antlr/v4 v4.13.0 h1:lxCg3LAv+EUK6t1i0y1V6/SLeUi0eKEKdhQAlS8TVTI=
 github.com/antlr4-go/antlr/v4 v4.13.0/go.mod h1:pfChB/xh/Unjila75QW7+VU4TSnWnnk9UTnmpPaOR2g=
 github.com/apache/thrift v0.12.0/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=
