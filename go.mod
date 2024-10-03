@@ -3,7 +3,7 @@ module github.com/antinvestor/service-ledger
 go 1.23.0
 
 require (
-	github.com/antinvestor/apis/go/common v1.25.2
+	github.com/antinvestor/apis/go/common v1.28.0
 	github.com/antinvestor/apis/go/ledger v1.26.5
 	github.com/bufbuild/protovalidate-go v0.7.1
 	github.com/docker/docker v27.3.1+incompatible
@@ -20,7 +20,7 @@ require (
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.33.0
 	golang.org/x/text v0.18.0
 	google.golang.org/genproto v0.0.0-20240930140551-af27646dc61f
-	google.golang.org/grpc v1.67.0
+	google.golang.org/grpc v1.67.1
 	gorm.io/datatypes v1.2.2
 )
 

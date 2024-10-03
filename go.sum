@@ -45,6 +45,8 @@ github.com/antinvestor/apis/go/common v1.25.0 h1:UV0WSaXVaf/04QAadc6aiKKt2rl0oiK
 github.com/antinvestor/apis/go/common v1.25.0/go.mod h1:Ovax6WmQKEicvGZc3w4Bft1Gm2kz8KcyXyNvSDXmZDg=
 github.com/antinvestor/apis/go/common v1.25.2 h1:urEX87keYuaB1fXfbr9b9yYdI57dLikPi+U8vMTRcAA=
 github.com/antinvestor/apis/go/common v1.25.2/go.mod h1:6glWJofDab6cqTogMUs3RLBOyElXvmXlMP5oTPMkQ/4=
+github.com/antinvestor/apis/go/common v1.28.0 h1:A7Cb02gMgTngUP6++OP28es5PqKXZqQ/NPlGq0Sc+EQ=
+github.com/antinvestor/apis/go/common v1.28.0/go.mod h1:koMLCJsyilq6JGYJs+gOGzSMQqd0reLdt8ZY/NqJ/eI=
 github.com/antinvestor/apis/go/ledger v1.25.0 h1:spzL1z3Y3IR7VBCMSVs+lXVfjk67l3fEdhai/E355tI=
 github.com/antinvestor/apis/go/ledger v1.25.0/go.mod h1:K03UwppbHVC4hOgclefxGKJP3NFR1ZW+1PemEOKWgzs=
 github.com/antinvestor/apis/go/ledger v1.25.2 h1:LbtwR8jGxOUwA1LY/Cj8efLDWVVj8YztjRhRyRMzSms=
@@ -770,6 +772,8 @@ google.golang.org/grpc v1.32.0/go.mod h1:N36X2cJ7JwdamYAgDz+s+rVMFjt3numwzf/HckM
 google.golang.org/grpc v1.33.2/go.mod h1:JMHMWHQWaTccqQQlmk3MJZS+GWXOdAesneDmEnv2fbc=
 google.golang.org/grpc v1.67.0 h1:IdH9y6PF5MPSdAntIcpjQ+tXO41pcQsfZV2RxtQgVcw=
 google.golang.org/grpc v1.67.0/go.mod h1:1gLDyUQU7CTLJI90u3nXZ9ekeghjeM7pTDZlqFNg2AA=
+google.golang.org/grpc v1.67.1 h1:zWnc1Vrcno+lHZCOofnIMvycFcc0QRGIzm9dhnDX68E=
+google.golang.org/grpc v1.67.1/go.mod h1:1gLDyUQU7CTLJI90u3nXZ9ekeghjeM7pTDZlqFNg2AA=
 google.golang.org/grpc/examples v0.0.0-20240827003018-005b092ca3c2 h1:gEE9HZJ7gSyjRyjV6NNNbQ1ri9DkPhbGWei1/l7jT5o=
 google.golang.org/grpc/examples v0.0.0-20240827003018-005b092ca3c2/go.mod h1:ugV8UBFfO3EnZJ61kCZhbbW+DqqAzh2Q26Bg1w/JJaM=
 google.golang.org/protobuf v0.0.0-20200109180630-ec00e32a8dfd/go.mod h1:DFci5gLYBciE7Vtevhsrf46CRTquxDuWsQurQQe4oz8=
