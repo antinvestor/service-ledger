@@ -20,7 +20,7 @@ require (
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.33.0
 	golang.org/x/text v0.18.0
 	google.golang.org/genproto v0.0.0-20240930140551-af27646dc61f
-	google.golang.org/grpc v1.67.0
+	google.golang.org/grpc v1.67.1
 	gorm.io/datatypes v1.2.2
 )
 
