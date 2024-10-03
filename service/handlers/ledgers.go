@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	commonv1 "github.com/antinvestor/apis/go/common/v1"
 	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
 	"github.com/antinvestor/service-ledger/service/models"
 	"github.com/antinvestor/service-ledger/service/repository"
@@ -39,7 +40,7 @@ func ledgerFromApi(aLg *ledgerV1.Ledger) *models.Ledger {
 }
 
 // SearchLedgers for an ledger based on search request json query
-func (ledgerSrv *LedgerServer) SearchLedgers(request *ledgerV1.SearchRequest, server ledgerV1.LedgerService_SearchLedgersServer) error {
+func (ledgerSrv *LedgerServer) SearchLedgers(request *commonv1.SearchRequest, server ledgerV1.LedgerService_SearchLedgersServer) error {
 
 	ctx := server.Context()
 	ledgerRepository := repository.NewLedgerRepository(ledgerSrv.Service)

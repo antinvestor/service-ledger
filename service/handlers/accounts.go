@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	commonv1 "github.com/antinvestor/apis/go/common/v1"
 	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
 	"github.com/antinvestor/service-ledger/service/models"
 	"github.com/antinvestor/service-ledger/service/repository"
@@ -51,7 +52,7 @@ func accountFromApi(account *ledgerV1.Account) *models.Account {
 }
 
 func (ledgerSrv *LedgerServer) SearchAccounts(
-	request *ledgerV1.SearchRequest, server ledgerV1.LedgerService_SearchAccountsServer) error {
+	request *commonv1.SearchRequest, server ledgerV1.LedgerService_SearchAccountsServer) error {
 
 	ctx := server.Context()
 

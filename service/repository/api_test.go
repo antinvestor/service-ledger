@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/antinvestor/apis/go/common"
+	commonv1 "github.com/antinvestor/apis/go/common/v1"
 	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
 	"github.com/antinvestor/service-ledger/service/utility"
 	"github.com/docker/docker/api/types/container"
@@ -208,7 +209,7 @@ func (as *GrpcApiSuite) TestTransactions() {
 			}
 
 			accRef := result.GetEntries()[0].GetAccount()
-			accounts, err := as.lc.Client.SearchAccounts(as.ctx, &ledgerV1.SearchRequest{Query: fmt.Sprintf("{\"query\": {\"must\": { \"fields\": [{\"id\": {\"eq\": \"%s\"}}]}}}", accRef)})
+			accounts, err := as.lc.Client.SearchAccounts(as.ctx, &commonv1.SearchRequest{Query: fmt.Sprintf("{\"query\": {\"must\": { \"fields\": [{\"id\": {\"eq\": \"%s\"}}]}}}", accRef)})
 			assert.NoError(as.T(), err)
 
 			acc, err := accounts.Recv()
@@ -313,7 +314,7 @@ func (as *GrpcApiSuite) TestClearBalances() {
 				accRef = result.GetEntries()[0].GetAccount()
 			}
 
-			accounts, err := as.lc.Client.SearchAccounts(as.ctx, &ledgerV1.SearchRequest{Query: fmt.Sprintf("{\"query\": {\"must\": { \"fields\": [{\"id\": {\"eq\": \"%s\"}}]}}}", accRef)})
+			accounts, err := as.lc.Client.SearchAccounts(as.ctx, &commonv1.SearchRequest{Query: fmt.Sprintf("{\"query\": {\"must\": { \"fields\": [{\"id\": {\"eq\": \"%s\"}}]}}}", accRef)})
 			assert.NoError(as.T(), err)
 
 			acc, err := accounts.Recv()
@@ -420,7 +421,7 @@ func (as *GrpcApiSuite) TestReverseTransaction() {
 					as.T().Fatalf("Create Transaction () error = %v, wantErr %v", err, tt.wantErr)
 				}
 
-				accounts, err := as.lc.Client.SearchAccounts(as.ctx, &ledgerV1.SearchRequest{Query: fmt.Sprintf("{\"query\": {\"must\": { \"fields\": [{\"id\": {\"eq\": \"%s\"}}]}}}", debitAccRef)})
+				accounts, err := as.lc.Client.SearchAccounts(as.ctx, &commonv1.SearchRequest{Query: fmt.Sprintf("{\"query\": {\"must\": { \"fields\": [{\"id\": {\"eq\": \"%s\"}}]}}}", debitAccRef)})
 				assert.NoError(as.T(), err)
 
 				acc, err := accounts.Recv()
@@ -437,7 +438,7 @@ func (as *GrpcApiSuite) TestReverseTransaction() {
 				return
 			}
 
-			accounts, err := as.lc.Client.SearchAccounts(as.ctx, &ledgerV1.SearchRequest{Query: fmt.Sprintf("{\"query\": {\"must\": { \"fields\": [{\"id\": {\"eq\": \"%s\"}}]}}}", debitAccRef)})
+			accounts, err := as.lc.Client.SearchAccounts(as.ctx, &commonv1.SearchRequest{Query: fmt.Sprintf("{\"query\": {\"must\": { \"fields\": [{\"id\": {\"eq\": \"%s\"}}]}}}", debitAccRef)})
 			assert.NoError(as.T(), err)
 
 			acc, err := accounts.Recv()

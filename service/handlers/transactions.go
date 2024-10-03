@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	commonv1 "github.com/antinvestor/apis/go/common/v1"
 	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
 	"github.com/antinvestor/service-ledger/service/models"
 	"github.com/antinvestor/service-ledger/service/repository"
@@ -102,7 +103,7 @@ func (ledgerSrv *LedgerServer) CreateTransaction(ctx context.Context, apiTransac
 }
 
 // SearchTransactions for transactions based on details of the query json
-func (ledgerSrv *LedgerServer) SearchTransactions(request *ledgerV1.SearchRequest, server ledgerV1.LedgerService_SearchTransactionsServer) error {
+func (ledgerSrv *LedgerServer) SearchTransactions(request *commonv1.SearchRequest, server ledgerV1.LedgerService_SearchTransactionsServer) error {
 
 	ctx := server.Context()
 
