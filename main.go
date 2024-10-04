@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"github.com/antinvestor/apis/go/common"
 	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
 	"github.com/antinvestor/service-ledger/config"
 	"github.com/antinvestor/service-ledger/service/handlers"
@@ -9,11 +11,10 @@ import (
 	_ "github.com/golang-migrate/migrate/source/file"
 	protovalidateinterceptor "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
-
 	"github.com/pitabwire/frame"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
-
+	"google.golang.org/grpc/credentials/insecure"
 	_ "net/http/pprof"
 )
 
@@ -58,6 +59,7 @@ func main() {
 	validator, err := protovalidate.New()
 	if err != nil {
 		log.WithError(err).Fatal("could not load validator for proto messages")
+		return
 	}
 
 	unaryInterceptors := []grpc.UnaryServerInterceptor{
@@ -93,6 +95,20 @@ func main() {
 
 	grpcServerOpt := frame.GrpcServer(grpcServer)
 	serviceOptions = append(serviceOptions, grpcServerOpt)
+
+	proxyOptions := common.ProxyOptions{
+		GrpcServerEndpoint: fmt.Sprintf("localhost:%s", ledgerConfig.GrpcServerPort),
+		GrpcServerDialOpts: []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())},
+	}
+
+	proxyMux, err := ledgerV1.CreateProxyHandler(ctx, proxyOptions)
+	if err != nil {
+		log.WithError(err).Fatal("could not create the proxy handler")
+		return
+	}
+
+	proxyServerOpt := frame.HttpHandler(proxyMux)
+	serviceOptions = append(serviceOptions, proxyServerOpt)
 
 	service.Init(serviceOptions...)
 
