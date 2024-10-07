@@ -58,7 +58,7 @@ func (as *GrpcApiSuite) setupLedgerService(ctx context.Context) error {
 		ConfigModifier: func(config *container.Config) {
 			config.Env = []string{
 				"LOG_LEVEL=debug",
-				"SECURELY_RUN_SERVICE=false",
+				"RUN_SERVICE_SECURELY=false",
 				"HTTP_PORT=80",
 				"GRPC_PORT=50051",
 				fmt.Sprintf("DATABASE_URL=%s", as.postgresUri),
