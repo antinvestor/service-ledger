@@ -62,29 +62,17 @@ func main() {
 		return
 	}
 
-	unaryInterceptors := []grpc.UnaryServerInterceptor{
-		protovalidateinterceptor.UnaryServerInterceptor(validator),
-		recovery.UnaryServerInterceptor(recovery.WithRecoveryHandlerContext(frame.RecoveryHandlerFun)),
-	}
-
-	if ledgerConfig.SecurelyRunService {
-		unaryInterceptors = append([]grpc.UnaryServerInterceptor{service.UnaryAuthInterceptor(jwtAudience, ledgerConfig.Oauth2JwtVerifyIssuer)}, unaryInterceptors...)
-	}
-
-	streamInterceptors := []grpc.StreamServerInterceptor{
-		protovalidateinterceptor.StreamServerInterceptor(validator),
-		recovery.StreamServerInterceptor(recovery.WithRecoveryHandlerContext(frame.RecoveryHandlerFun)),
-	}
-
-	if ledgerConfig.SecurelyRunService {
-		streamInterceptors = append([]grpc.StreamServerInterceptor{service.StreamAuthInterceptor(jwtAudience, ledgerConfig.Oauth2JwtVerifyIssuer)}, streamInterceptors...)
-	} else {
-		log.Warn("service is running insecurely: secure by setting SECURELY_RUN_SERVICE=True")
-	}
-
 	grpcServer := grpc.NewServer(
-		grpc.ChainUnaryInterceptor(unaryInterceptors...),
-		grpc.ChainStreamInterceptor(streamInterceptors...),
+		grpc.ChainUnaryInterceptor(
+			protovalidateinterceptor.UnaryServerInterceptor(validator),
+			recovery.UnaryServerInterceptor(recovery.WithRecoveryHandlerContext(frame.RecoveryHandlerFun)),
+			service.UnaryAuthInterceptor(jwtAudience, ledgerConfig.Oauth2JwtVerifyIssuer),
+		),
+		grpc.ChainStreamInterceptor(
+			protovalidateinterceptor.StreamServerInterceptor(validator),
+			recovery.StreamServerInterceptor(recovery.WithRecoveryHandlerContext(frame.RecoveryHandlerFun)),
+			service.StreamAuthInterceptor(jwtAudience, ledgerConfig.Oauth2JwtVerifyIssuer),
+		),
 	)
 
 	implementation := &handlers.LedgerServer{
