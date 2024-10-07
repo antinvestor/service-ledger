@@ -27,7 +27,7 @@ services:
     environment:
       - LOG_LEVEL=debug
       - DATABASE_URL=postgres://ant:secret@ledger_db:5432/service_ledger?sslmode=disable
-      - SECURELY_RUN_SERVICE=false
+      - RUN_SERVICE_SECURELY=false
       - HTTP_PORT=80
       - GRPC_PORT=50051
     restart: unless-stopped
