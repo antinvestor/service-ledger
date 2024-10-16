@@ -10,7 +10,7 @@ require (
 	github.com/golang-migrate/migrate v3.5.4+incompatible
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0
 	github.com/lib/pq v1.10.9
-	github.com/pitabwire/frame v1.25.10
+	github.com/pitabwire/frame v1.25.11
 	github.com/pkg/errors v0.9.1
 	github.com/rs/xid v1.6.0
 	github.com/shopspring/decimal v1.4.0
@@ -77,7 +77,7 @@ require (
 	github.com/nats-io/nats.go v1.36.0 // indirect
 	github.com/nats-io/nkeys v0.4.7 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
-	github.com/nicksnyder/go-i18n/v2 v2.4.0 // indirect
+	github.com/nicksnyder/go-i18n/v2 v2.4.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0 // indirect
 	github.com/panjf2000/ants/v2 v2.10.0 // indirect

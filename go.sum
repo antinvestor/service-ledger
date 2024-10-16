@@ -388,6 +388,8 @@ github.com/nats-io/nuid v1.0.1 h1:5iA8DT8V7q8WK2EScv2padNa/rTESc1KdnPw4TC2paw=
 github.com/nats-io/nuid v1.0.1/go.mod h1:19wcPz3Ph3q0Jbyiqsd0kePYG7A95tJPxeL+1OSON2c=
 github.com/nicksnyder/go-i18n/v2 v2.4.0 h1:3IcvPOAvnCKwNm0TB0dLDTuawWEj+ax/RERNC+diLMM=
 github.com/nicksnyder/go-i18n/v2 v2.4.0/go.mod h1:nxYSZE9M0bf3Y70gPQjN9ha7XNHX7gMc814+6wVyEI4=
+github.com/nicksnyder/go-i18n/v2 v2.4.1 h1:zwzjtX4uYyiaU02K5Ia3zSkpJZrByARkRB4V3YPrr0g=
+github.com/nicksnyder/go-i18n/v2 v2.4.1/go.mod h1:++Pl70FR6Cki7hdzZRnEEqdc2dJt+SAGotyFg/SvZMk=
 github.com/oklog/oklog v0.3.2/go.mod h1:FCV+B7mhrz4o+ueLpx+KqkyXRGMWOYEvfiXtdGtbWGs=
 github.com/oklog/run v1.0.0/go.mod h1:dlhp/R75TPv97u0XWUtDeV/lRKWPKSdTuV0TZvrmrQA=
 github.com/olekukonko/tablewriter v0.0.0-20170122224234-a0225b3f23b5/go.mod h1:vsDQFd/mU46D+Z4whnwzcISnGGzXWMclvtLoiIKAKIo=
@@ -427,6 +429,8 @@ github.com/pitabwire/frame v1.25.9 h1:gq9Gikcpojmme5g7Ce5PJ8Tju3iPuN1twnwamxdWbl
 github.com/pitabwire/frame v1.25.9/go.mod h1:79VOrxTo6cs33xbJ9hFPWUvZe89wrJx/iPEcWFNP3Po=
 github.com/pitabwire/frame v1.25.10 h1:PAMx/+qKEPv/jE4VlkD9dg0SS7gwqKQSUlpOs4RXb/E=
 github.com/pitabwire/frame v1.25.10/go.mod h1:AcnoaNNKfO3ST7DV24K9m59B3hEhdCcmYXTl0bHZKDI=
+github.com/pitabwire/frame v1.25.11 h1:/uWcg71++fU7Xio2nnjorqgnlcPAMf6tZGPlS4UC1ks=
+github.com/pitabwire/frame v1.25.11/go.mod h1:4depju5GM/H9PNC8BpJ+2f6j666MkYb8UP1nQa+pDxg=
 github.com/pitabwire/natspubsub v0.1.7 h1:Qz7cyuhmGHBopegG1zlB1lqif6sTlwni0uc954FZv30=
 github.com/pitabwire/natspubsub v0.1.7/go.mod h1:i1bCGuooBz8pnT8MZsIgyT2qL6U8i/lq82M93bHyjTc=
 github.com/pkg/errors v0.8.0/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
