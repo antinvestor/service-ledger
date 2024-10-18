@@ -21,7 +21,7 @@ require (
 	golang.org/x/text v0.19.0
 	google.golang.org/genproto v0.0.0-20241015192408-796eee8c2d53
 	google.golang.org/grpc v1.67.1
-	gorm.io/datatypes v1.2.3
+	gorm.io/datatypes v1.2.4
 )
 
 require (
