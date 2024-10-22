@@ -10,7 +10,7 @@ require (
 	github.com/golang-migrate/migrate v3.5.4+incompatible
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0
 	github.com/lib/pq v1.10.9
-	github.com/pitabwire/frame v1.25.11
+	github.com/pitabwire/frame v1.25.13
 	github.com/pkg/errors v0.9.1
 	github.com/rs/xid v1.6.0
 	github.com/shopspring/decimal v1.4.0
@@ -64,7 +64,7 @@ require (
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect
-	github.com/klauspost/compress v1.17.9 // indirect
+	github.com/klauspost/compress v1.17.11 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
@@ -108,7 +108,7 @@ require (
 	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/sys v0.26.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240716161551-93cc26a95ae9 // indirect
-	google.golang.org/api v0.197.0 // indirect
+	google.golang.org/api v0.201.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20241015192408-796eee8c2d53 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241015192408-796eee8c2d53 // indirect
 	google.golang.org/protobuf v1.35.1 // indirect
