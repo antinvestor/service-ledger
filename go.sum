@@ -304,6 +304,8 @@ github.com/klauspost/compress v1.10.3/go.mod h1:aoV0uJVorq1K+umq18yTdKaF57EivdYs
 github.com/klauspost/compress v1.11.7/go.mod h1:aoV0uJVorq1K+umq18yTdKaF57EivdYsUV+/s2qKfXs=
 github.com/klauspost/compress v1.17.9 h1:6KIumPrER1LHsvBVuDa0r5xaG0Es51mhhB9BQB2qeMA=
 github.com/klauspost/compress v1.17.9/go.mod h1:Di0epgTjJY877eYKx5yC51cX2A2Vl2ibi7bDH9ttBbw=
+github.com/klauspost/compress v1.17.11 h1:In6xLpyWOi1+C7tXUUWv2ot1QvBjxevKAaI6IXrJmUc=
+github.com/klauspost/compress v1.17.11/go.mod h1:pMDklpSncoRMuLFrf1W9Ss9KT+0rH90U12bZKk7uwG0=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
 github.com/konsorten/go-windows-terminal-sequences v1.0.3/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
 github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515/go.mod h1:+0opPa2QZZtGFBFZlji/RkVcI2GknAs/DXo4wKdlNEc=
@@ -433,6 +435,8 @@ github.com/pitabwire/frame v1.25.10 h1:PAMx/+qKEPv/jE4VlkD9dg0SS7gwqKQSUlpOs4RXb
 github.com/pitabwire/frame v1.25.10/go.mod h1:AcnoaNNKfO3ST7DV24K9m59B3hEhdCcmYXTl0bHZKDI=
 github.com/pitabwire/frame v1.25.11 h1:/uWcg71++fU7Xio2nnjorqgnlcPAMf6tZGPlS4UC1ks=
 github.com/pitabwire/frame v1.25.11/go.mod h1:4depju5GM/H9PNC8BpJ+2f6j666MkYb8UP1nQa+pDxg=
+github.com/pitabwire/frame v1.25.13 h1:LPKay1zbGgHtwJhhnilH3hdn7/wzEEE9DE7pJFINU8I=
+github.com/pitabwire/frame v1.25.13/go.mod h1:j6u7Ks+PkrLEujqCfqFMUdrHJLTP+rtLafMLTqJTJzk=
 github.com/pitabwire/natspubsub v0.1.7 h1:Qz7cyuhmGHBopegG1zlB1lqif6sTlwni0uc954FZv30=
 github.com/pitabwire/natspubsub v0.1.7/go.mod h1:i1bCGuooBz8pnT8MZsIgyT2qL6U8i/lq82M93bHyjTc=
 github.com/pkg/errors v0.8.0/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
@@ -735,6 +739,8 @@ golang.org/x/xerrors v0.0.0-20240716161551-93cc26a95ae9/go.mod h1:NDW/Ps6MPRej6f
 google.golang.org/api v0.3.1/go.mod h1:6wY9I6uQWHQ8EM57III9mq/AjF+i8G65rmVagqKMtkk=
 google.golang.org/api v0.197.0 h1:x6CwqQLsFiA5JKAiGyGBjc2bNtHtLddhJCE2IKuhhcQ=
 google.golang.org/api v0.197.0/go.mod h1:AuOuo20GoQ331nq7DquGHlU6d+2wN2fZ8O0ta60nRNw=
+google.golang.org/api v0.201.0 h1:+7AD9JNM3tREtawRMu8sOjSbb8VYcYXJG/2eEOmfDu0=
+google.golang.org/api v0.201.0/go.mod h1:HVY0FCHVs89xIW9fzf/pBvOEm+OolHa86G/txFezyq4=
 google.golang.org/appengine v1.1.0/go.mod h1:EbEs0AVv82hx2wNQdGPgUI5lhzA/G0D9YwlJXL52JkM=
 google.golang.org/appengine v1.2.0/go.mod h1:xpcJRLb0r/rnEns0DIKYYv+WjYCduHsrkT7/EB5XEv4=
 google.golang.org/appengine v1.4.0/go.mod h1:xpcJRLb0r/rnEns0DIKYYv+WjYCduHsrkT7/EB5XEv4=
