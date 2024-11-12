@@ -13,14 +13,16 @@ COPY . .
 
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o /ledger_service .
 
-FROM scratch
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+FROM gcr.io/distroless/static:nonroot
+
+USER 65532:65532
+EXPOSE 80
+EXPOSE 50051
+
+WORKDIR /
+
 COPY --from=builder /ledger_service /ledger_service
 COPY --from=builder /migrations /migrations
-WORKDIR /
 
 # Run the ledger command by default when the container starts.
 ENTRYPOINT ["/ledger_service"]
-
-# Document that the service listens on port 7000 by default.
-EXPOSE 7000

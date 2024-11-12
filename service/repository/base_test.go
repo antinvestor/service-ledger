@@ -15,6 +15,8 @@ import (
 	"time"
 )
 
+const PostgresqlDbImage = "postgres:17"
+
 // StdoutLogConsumer is a LogConsumer that prints the log to stdout
 type StdoutLogConsumer struct{}
 
@@ -74,8 +76,7 @@ func (bs *BaseTestSuite) SetupSuite() {
 
 func (bs *BaseTestSuite) setupPostgres(ctx context.Context) (*tcPostgres.PostgresContainer, error) {
 
-	postgresContainer, err := tcPostgres.Run(ctx,
-		"postgres:16.3",
+	postgresContainer, err := tcPostgres.Run(ctx, PostgresqlDbImage,
 		tcPostgres.WithDatabase("service_ledger"),
 		tcPostgres.WithUsername("ant"),
 		tcPostgres.WithPassword("secret"),
