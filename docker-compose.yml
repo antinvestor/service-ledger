@@ -1,7 +1,7 @@
 
 services:
   ledger_db:
-    image: postgres:17.0
+    image: postgres:17.1
     environment:
       - POSTGRES_USER=ant
       - POSTGRES_PASSWORD=secret
