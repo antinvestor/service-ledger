@@ -4,7 +4,7 @@ go 1.23.0
 
 require (
 	github.com/antinvestor/apis/go/common v1.29.20
-	github.com/antinvestor/apis/go/ledger v1.29.14
+	github.com/antinvestor/apis/go/ledger v1.29.20
 	github.com/bufbuild/protovalidate-go v0.7.3
 	github.com/docker/docker v27.3.1+incompatible
 	github.com/golang-migrate/migrate v3.5.4+incompatible
@@ -55,7 +55,7 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/gax-go/v2 v2.13.0 // indirect
 	github.com/gorilla/handlers v1.5.2 // indirect
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.23.0 // indirect
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.24.0 // indirect
 	github.com/improbable-eng/grpc-web v0.15.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
