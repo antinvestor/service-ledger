@@ -5,7 +5,7 @@ go 1.23.0
 require (
 	github.com/antinvestor/apis/go/common v1.29.20
 	github.com/antinvestor/apis/go/ledger v1.29.20
-	github.com/bufbuild/protovalidate-go v0.8.0
+	github.com/bufbuild/protovalidate-go v0.8.2
 	github.com/docker/docker v27.4.1+incompatible
 	github.com/golang-migrate/migrate v3.5.4+incompatible
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.2.0
@@ -25,7 +25,7 @@ require (
 )
 
 require (
-	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.35.2-20241127180247-a33202765966.1 // indirect
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.1-20241127180247-a33202765966.1 // indirect
 	cel.dev/expr v0.18.0 // indirect
 	dario.cat/mergo v1.0.0 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
@@ -112,7 +112,7 @@ require (
 	google.golang.org/api v0.201.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20241219192143-6b3ec007d9bb // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241219192143-6b3ec007d9bb // indirect
-	google.golang.org/protobuf v1.36.0 // indirect
+	google.golang.org/protobuf v1.36.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/mysql v1.5.6 // indirect
 	gorm.io/driver/postgres v1.5.9 // indirect
