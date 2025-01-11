@@ -69,6 +69,8 @@ github.com/antinvestor/apis/go/ledger v1.29.14 h1:ZSKn2CXKbvRQOaoK8b9s5ehaM9VWSq
 github.com/antinvestor/apis/go/ledger v1.29.14/go.mod h1:Fdic4O+zW7UQcPEOBoHUCIzcXzOR8irCNzS1Nptfvck=
 github.com/antinvestor/apis/go/ledger v1.29.20 h1:9PYkEKDgPkMXEvIrl9/NXwkyG+jz4qizjmntgk9gDoI=
 github.com/antinvestor/apis/go/ledger v1.29.20/go.mod h1:pTxCnl7VyktIq1QLUoM7Z8RxWDP/df7BswG848Y44qA=
+github.com/antinvestor/apis/go/ledger v1.30.1 h1:A0JhMARsE5qck6zxWRM7rfEbt3YflrUApJokqSK7FtY=
+github.com/antinvestor/apis/go/ledger v1.30.1/go.mod h1:nvhwUUQ+R/Bf7jMy+wXg+ZQbnAlFV8vtzfRMdF0Gjm8=
 github.com/antlr4-go/antlr/v4 v4.13.0 h1:lxCg3LAv+EUK6t1i0y1V6/SLeUi0eKEKdhQAlS8TVTI=
 github.com/antlr4-go/antlr/v4 v4.13.0/go.mod h1:pfChB/xh/Unjila75QW7+VU4TSnWnnk9UTnmpPaOR2g=
 github.com/apache/thrift v0.12.0/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=
@@ -282,6 +284,8 @@ github.com/grpc-ecosystem/grpc-gateway/v2 v2.23.0 h1:ad0vkEBuk23VJzZR9nkLVG0YAoN
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.23.0/go.mod h1:igFoXX2ELCW06bol23DWPB5BEWfZISOzSP5K2sbLea0=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.24.0 h1:TmHmbvxPmaegwhDubVz0lICL0J5Ka2vwTzhoePEXsGE=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.24.0/go.mod h1:qztMSjm835F2bXf+5HKAPIS5qsmQDqZna/PgVt4rWtI=
+github.com/grpc-ecosystem/grpc-gateway/v2 v2.25.1 h1:VNqngBF40hVlDloBruUehVYC3ArSgIyScOAyMRqBxRg=
+github.com/grpc-ecosystem/grpc-gateway/v2 v2.25.1/go.mod h1:RBRO7fro65R6tjKzYgLAFo0t1QEXY1Dp+i/bvpRiqiQ=
 github.com/hashicorp/consul/api v1.3.0/go.mod h1:MmDNSzIMUjNpY/mQ398R4bk2FnqQLoPndWW5VkKPlCE=
 github.com/hashicorp/consul/sdk v0.3.0/go.mod h1:VKf9jXwCTEY1QZP2MOLRhb5i/I/ssyNV1vwHyQBF0x8=
 github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
