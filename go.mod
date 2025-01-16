@@ -3,7 +3,7 @@ module github.com/antinvestor/service-ledger
 go 1.23.0
 
 require (
-	github.com/antinvestor/apis/go/common v1.30.0
+	github.com/antinvestor/apis/go/common v1.30.5
 	github.com/antinvestor/apis/go/ledger v1.30.1
 	github.com/bufbuild/protovalidate-go v0.8.2
 	github.com/docker/docker v27.5.0+incompatible
@@ -25,7 +25,7 @@ require (
 )
 
 require (
-	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.1-20241127180247-a33202765966.1 // indirect
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.3-20241127180247-a33202765966.1 // indirect
 	cel.dev/expr v0.18.0 // indirect
 	dario.cat/mergo v1.0.0 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
@@ -105,7 +105,7 @@ require (
 	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/exp v0.0.0-20240325151524-a685a6edb6d8 // indirect
 	golang.org/x/net v0.33.0 // indirect
-	golang.org/x/oauth2 v0.24.0 // indirect
+	golang.org/x/oauth2 v0.25.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240716161551-93cc26a95ae9 // indirect
