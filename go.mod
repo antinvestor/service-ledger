@@ -4,7 +4,7 @@ go 1.23.0
 
 require (
 	github.com/antinvestor/apis/go/common v1.30.5
-	github.com/antinvestor/apis/go/ledger v1.30.1
+	github.com/antinvestor/apis/go/ledger v1.30.5
 	github.com/bufbuild/protovalidate-go v0.8.2
 	github.com/docker/docker v27.5.0+incompatible
 	github.com/golang-migrate/migrate v3.5.4+incompatible
@@ -110,7 +110,7 @@ require (
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240716161551-93cc26a95ae9 // indirect
 	google.golang.org/api v0.201.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250106144421-5f5ef82da422 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250115164207-1a7da9e5054f // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250106144421-5f5ef82da422 // indirect
 	google.golang.org/protobuf v1.36.3 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
