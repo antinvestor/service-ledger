@@ -20,13 +20,13 @@ require (
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.35.0
 	golang.org/x/text v0.21.0
 	google.golang.org/genproto v0.0.0-20250124145028-65684f501c47
-	google.golang.org/grpc v1.69.4
+	google.golang.org/grpc v1.70.0
 	gorm.io/datatypes v1.2.5
 )
 
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.3-20241127180247-a33202765966.1 // indirect
-	cel.dev/expr v0.18.0 // indirect
+	cel.dev/expr v0.19.0 // indirect
 	dario.cat/mergo v1.0.0 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24 // indirect
