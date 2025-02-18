@@ -89,6 +89,8 @@ github.com/antinvestor/apis/go/ledger v1.30.5 h1:Gi2jntDMW8kyPiX45sX89mAOptM5DR1
 github.com/antinvestor/apis/go/ledger v1.30.5/go.mod h1:86ei4+LrKIHRqUflrY1k7x5AwBuX4beXfE5s67B0fKs=
 github.com/antinvestor/apis/go/ledger v1.32.0 h1:nz7lczP9G26v+PMRvbppUHPPa91jgBbiBUEv/wARbD8=
 github.com/antinvestor/apis/go/ledger v1.32.0/go.mod h1:0WHOgzImLco5Wrn8MJ1ov8OsdTYZSmxKnyqUsEwVV7Y=
+github.com/antinvestor/apis/go/ledger v1.33.0 h1:nUi3vXMwpVjzPBIUSHa9tIJcclFt9zY8cdxL6lHn7vs=
+github.com/antinvestor/apis/go/ledger v1.33.0/go.mod h1:W2xqLFaMm4vL005sumcpuZ9k/HhgmPwQTtgNqgAMum0=
 github.com/antlr4-go/antlr/v4 v4.13.0 h1:lxCg3LAv+EUK6t1i0y1V6/SLeUi0eKEKdhQAlS8TVTI=
 github.com/antlr4-go/antlr/v4 v4.13.0/go.mod h1:pfChB/xh/Unjila75QW7+VU4TSnWnnk9UTnmpPaOR2g=
 github.com/apache/thrift v0.12.0/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=
@@ -976,6 +978,8 @@ google.golang.org/genproto/googleapis/api v0.0.0-20250115164207-1a7da9e5054f h1:
 google.golang.org/genproto/googleapis/api v0.0.0-20250115164207-1a7da9e5054f/go.mod h1:Ic02D47M+zbarjYYUlK57y316f2MoN0gjAwI3f2S95o=
 google.golang.org/genproto/googleapis/api v0.0.0-20250124145028-65684f501c47 h1:5iw9XJTD4thFidQmFVvx0wi4g5yOHk76rNRUxz1ZG5g=
 google.golang.org/genproto/googleapis/api v0.0.0-20250124145028-65684f501c47/go.mod h1:AfA77qWLcidQWywD0YgqfpJzf50w2VjzBml3TybHeJU=
+google.golang.org/genproto/googleapis/api v0.0.0-20250127172529-29210b9bc287 h1:A2ni10G3UlplFrWdCDJTl7D7mJ7GSRm37S+PDimaKRw=
+google.golang.org/genproto/googleapis/api v0.0.0-20250127172529-29210b9bc287/go.mod h1:iYONQfRdizDB8JJBybql13nArx91jcUk7zCXEsOofM4=
 google.golang.org/genproto/googleapis/rpc v0.0.0-20240924160255-9d4c2d233b61 h1:N9BgCIAUvn/M+p4NJccWPWb3BWh88+zyL0ll9HgbEeM=
 google.golang.org/genproto/googleapis/rpc v0.0.0-20240924160255-9d4c2d233b61/go.mod h1:UqMtugtsSgubUsoxbuAoiCXvqvErP7Gf0so0mK9tHxU=
 google.golang.org/genproto/googleapis/rpc v0.0.0-20240930140551-af27646dc61f h1:cUMEy+8oS78BWIH9OWazBkzbr090Od9tWBNtZHkOhf0=
