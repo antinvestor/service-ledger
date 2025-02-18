@@ -71,6 +71,8 @@ github.com/antinvestor/apis/go/common v1.30.0 h1:6Yp/wBN5A5LEEIgeEpjjuOe28nSBNgU
 github.com/antinvestor/apis/go/common v1.30.0/go.mod h1:AIYl5U4ORfG7X7OhKRY+V9LqJ8/cf+Il77+E0u7oCs4=
 github.com/antinvestor/apis/go/common v1.30.5 h1:HsCLzUPfxZD3ubDjvhh8FHdUqITQk/MmAXKqUtSksbc=
 github.com/antinvestor/apis/go/common v1.30.5/go.mod h1:+WjXS9JuxIQjdgF/8G9Qub9HhWsZzyqVZqY0IneURMM=
+github.com/antinvestor/apis/go/common v1.33.0 h1:4bnEg1yNWxKKxoAeEgFiY8HKEf2eBh62yOiJ0N1iT6I=
+github.com/antinvestor/apis/go/common v1.33.0/go.mod h1:U7Jv77pphx+lnsm7Us3EPVr/wenYO56GuLntIXoWh5I=
 github.com/antinvestor/apis/go/ledger v1.28.6 h1:urRvErYPwpHLuAPzaopVwd2eQ+b0AFdk+H9y65NkALY=
 github.com/antinvestor/apis/go/ledger v1.28.6/go.mod h1:jgau7qIfKbWJJD9GUlT1iHSmiR3lJ3MLs6UO32hHZoM=
 github.com/antinvestor/apis/go/ledger v1.29.0 h1:jwfSpm91soEkObPXdAnziR2uiCGDa/uLNs1d9Pjc6VU=
