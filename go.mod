@@ -8,7 +8,7 @@ require (
 	github.com/bufbuild/protovalidate-go v0.9.2
 	github.com/docker/docker v27.5.1+incompatible
 	github.com/golang-migrate/migrate v3.5.4+incompatible
-	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.0
+	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.1
 	github.com/lib/pq v1.10.9
 	github.com/pitabwire/frame v1.25.21
 	github.com/pkg/errors v0.9.1
