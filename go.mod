@@ -19,7 +19,7 @@ require (
 	github.com/testcontainers/testcontainers-go v0.36.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.36.0
 	golang.org/x/text v0.24.0
-	google.golang.org/genproto v0.0.0-20250324211829-b45e905df463
+	google.golang.org/genproto v0.0.0-20250404141209-ee84b53bf3d0
 	google.golang.org/grpc v1.71.1
 	gorm.io/datatypes v1.2.5
 )
@@ -113,9 +113,9 @@ require (
 	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240716161551-93cc26a95ae9 // indirect
 	google.golang.org/api v0.201.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250227231956-55c901821b1e // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250227231956-55c901821b1e // indirect
-	google.golang.org/protobuf v1.36.5 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250324211829-b45e905df463 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250324211829-b45e905df463 // indirect
+	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/mysql v1.5.6 // indirect
 	gorm.io/driver/postgres v1.5.9 // indirect
