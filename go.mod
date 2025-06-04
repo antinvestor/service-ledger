@@ -6,7 +6,7 @@ require (
 	github.com/antinvestor/apis/go/common v1.33.0
 	github.com/antinvestor/apis/go/ledger v1.33.0
 	github.com/bufbuild/protovalidate-go v0.9.2
-	github.com/docker/docker v28.1.1+incompatible
+	github.com/docker/docker v28.2.2+incompatible
 	github.com/golang-migrate/migrate v3.5.4+incompatible
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.1
 	github.com/lib/pq v1.10.9
@@ -35,6 +35,8 @@ require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
+	github.com/containerd/errdefs v1.0.0 // indirect
+	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/containerd/platforms v0.2.1 // indirect
 	github.com/cpuguy83/dockercfg v0.3.2 // indirect
