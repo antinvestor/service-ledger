@@ -6,7 +6,7 @@ require (
 	github.com/antinvestor/apis/go/common v1.33.0
 	github.com/antinvestor/apis/go/ledger v1.33.0
 	github.com/bufbuild/protovalidate-go v0.9.2
-	github.com/docker/docker v28.2.2+incompatible
+	github.com/docker/docker v28.3.0+incompatible
 	github.com/golang-migrate/migrate v3.5.4+incompatible
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.1
 	github.com/lib/pq v1.10.9
