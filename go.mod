@@ -8,7 +8,7 @@ require (
 	github.com/bufbuild/protovalidate-go v0.9.2
 	github.com/docker/docker v28.3.2+incompatible
 	github.com/golang-migrate/migrate v3.5.4+incompatible
-	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.1
+	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.2
 	github.com/lib/pq v1.10.9
 	github.com/pitabwire/frame v1.25.21
 	github.com/pkg/errors v0.9.1
@@ -25,8 +25,9 @@ require (
 )
 
 require (
-	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.5-20250130201111-63bb56e20495.1 // indirect
-	cel.dev/expr v0.23.0 // indirect
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.6-20250425153114-8976f5be98c1.1 // indirect
+	buf.build/go/protovalidate v0.12.0 // indirect
+	cel.dev/expr v0.23.1 // indirect
 	dario.cat/mergo v1.0.1 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20240806141605-e8a1dd7889d6 // indirect
@@ -54,7 +55,7 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/google/cel-go v0.23.2 // indirect
+	github.com/google/cel-go v0.25.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/gax-go/v2 v2.13.0 // indirect
 	github.com/gorilla/handlers v1.5.2 // indirect
