@@ -18,7 +18,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.37.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.37.0
-	golang.org/x/text v0.26.0
+	golang.org/x/text v0.27.0
 	google.golang.org/genproto v0.0.0-20250707201910-8d1bb00bc6a7
 	google.golang.org/grpc v1.73.0
 	gorm.io/datatypes v1.2.6
@@ -112,7 +112,7 @@ require (
 	golang.org/x/exp v0.0.0-20240325151524-a685a6edb6d8 // indirect
 	golang.org/x/net v0.41.0 // indirect
 	golang.org/x/oauth2 v0.28.0 // indirect
-	golang.org/x/sync v0.15.0 // indirect
+	golang.org/x/sync v0.16.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240716161551-93cc26a95ae9 // indirect
 	google.golang.org/api v0.201.0 // indirect
