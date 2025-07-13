@@ -19,7 +19,6 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 	"google.golang.org/genproto/googleapis/type/money"
 	"net"
-	"strconv"
 	"testing"
 	"time"
 )
@@ -50,12 +49,13 @@ func (as *GrpcApiSuite) setupDependencies(t *testing.T, dep *testdef.DependancyO
 	assert.NoError(t, err)
 
 	lc, err := ledgerV1.NewLedgerClient(ctx,
-		common.WithEndpoint(net.JoinHostPort(host, strconv.Itoa(port.Int()))),
+		common.WithEndpoint(net.JoinHostPort(host, port.Port())),
 		common.WithoutAuthentication(),
 	)
 	assert.NoError(t, err)
 
-	as.createInitialAccounts(ctx, lc)
+	err = as.createInitialAccounts(ctx, lc)
+	assert.NoError(t, err)
 
 	return ctx, lc, lContainer
 }
@@ -96,7 +96,7 @@ func (as *GrpcApiSuite) setupLedgerService(ctx context.Context, datastoreDS fram
 	return genericContainer, nil
 }
 
-func (as *GrpcApiSuite) createInitialAccounts(ctx context.Context, lc *ledgerV1.LedgerClient) {
+func (as *GrpcApiSuite) createInitialAccounts(ctx context.Context, lc *ledgerV1.LedgerClient) error {
 
 	ledgers := []*ledgerV1.Ledger{
 		{Reference: "ilAsset", Type: ledgerV1.LedgerType_ASSET},
@@ -116,16 +116,18 @@ func (as *GrpcApiSuite) createInitialAccounts(ctx context.Context, lc *ledgerV1.
 	for _, req := range ledgers {
 		_, err := lc.Client.CreateLedger(ctx, req)
 		if err != nil {
-			as.T().Fatalf("failed to create ledger container: %s", err)
+			return err
 		}
 	}
 
 	for _, req := range accounts {
 		_, err := lc.Client.CreateAccount(ctx, req)
 		if err != nil {
-			as.T().Fatalf("failed to create account container: %s", err)
+			return err
 		}
 	}
+
+	return nil
 }
 
 func toMoney(val int) *money.Money {
@@ -196,30 +198,30 @@ func (as *GrpcApiSuite) TestTransactions() {
 
 	as.WithTestDependancies(as.T(), func(t *testing.T, dep *testdef.DependancyOption) {
 
-		ctx, lc, lContainer := as.setupDependencies(as.T(), dep)
+		ctx, lc, lContainer := as.setupDependencies(t, dep)
 		defer lContainer.Terminate(ctx)
 
 		for _, tt := range testcases {
-			as.Run(tt.name, func() {
+			t.Run(tt.name, func(t *testing.T) {
 
 				result, err := lc.Client.CreateTransaction(ctx, tt.request)
 				if err != nil {
 					if !tt.wantErr {
-						as.T().Errorf("Create Transaction () error = %v, wantErr %v", err, tt.wantErr)
+						t.Errorf("Create Transaction () error = %v, wantErr %v", err, tt.wantErr)
 					}
 					return
 				}
 
 				accRef := result.GetEntries()[0].GetAccount()
 				accounts, err := lc.Client.SearchAccounts(ctx, &commonv1.SearchRequest{Query: fmt.Sprintf("{\"query\": {\"must\": { \"fields\": [{\"id\": {\"eq\": \"%s\"}}]}}}", accRef)})
-				assert.NoError(as.T(), err)
+				assert.NoError(t, err)
 
 				acc, err := accounts.Recv()
-				assert.NoError(as.T(), err)
+				assert.NoError(t, err)
 
-				assert.True(as.T(), utility.CompareMoney(tt.balance, acc.GetBalance()))
-				assert.True(as.T(), utility.CompareMoney(tt.reserve, acc.GetReservedBalance()))
-				assert.True(as.T(), utility.CompareMoney(tt.uncleared, acc.GetUnclearedBalance()))
+				assert.True(t, utility.CompareMoney(tt.balance, acc.GetBalance()))
+				assert.True(t, utility.CompareMoney(tt.reserve, acc.GetReservedBalance()))
+				assert.True(t, utility.CompareMoney(tt.uncleared, acc.GetUnclearedBalance()))
 
 			})
 		}
@@ -297,17 +299,17 @@ func (as *GrpcApiSuite) TestClearBalances() {
 
 	as.WithTestDependancies(as.T(), func(t *testing.T, dep *testdef.DependancyOption) {
 
-		ctx, lc, lContainer := as.setupDependencies(as.T(), dep)
+		ctx, lc, lContainer := as.setupDependencies(t, dep)
 		defer lContainer.Terminate(ctx)
 
 		for _, tt := range testcases {
-			as.Run(tt.name, func() {
+			t.Run(tt.name, func(t *testing.T) {
 				var accRef string
 				if tt.clearUpdate {
 					result, err := lc.Client.UpdateTransaction(ctx, tt.request)
 					if err != nil {
 						if !tt.wantErr {
-							as.T().Fatalf("Update Transaction () error = %v, wantErr %v", err, tt.wantErr)
+							t.Fatalf("Update Transaction () error = %v, wantErr %v", err, tt.wantErr)
 						}
 						return
 					}
@@ -316,7 +318,7 @@ func (as *GrpcApiSuite) TestClearBalances() {
 					result, err := lc.Client.CreateTransaction(ctx, tt.request)
 					if err != nil {
 						if !tt.wantErr {
-							as.T().Fatalf("Create Transaction () error = %v, wantErr %v", err, tt.wantErr)
+							t.Fatalf("Create Transaction () error = %v, wantErr %v", err, tt.wantErr)
 						}
 						return
 					}
@@ -324,14 +326,14 @@ func (as *GrpcApiSuite) TestClearBalances() {
 				}
 
 				accounts, err := lc.Client.SearchAccounts(ctx, &commonv1.SearchRequest{Query: fmt.Sprintf("{\"query\": {\"must\": { \"fields\": [{\"id\": {\"eq\": \"%s\"}}]}}}", accRef)})
-				assert.NoError(as.T(), err)
+				assert.NoError(t, err)
 
 				acc, err := accounts.Recv()
-				assert.NoError(as.T(), err)
+				assert.NoError(t, err)
 
-				assert.True(as.T(), utility.CompareMoney(tt.balance, acc.GetBalance()))
-				assert.True(as.T(), utility.CompareMoney(tt.reserve, acc.GetReservedBalance()))
-				assert.True(as.T(), utility.CompareMoney(tt.uncleared, acc.GetUnclearedBalance()))
+				assert.True(t, utility.CompareMoney(tt.balance, acc.GetBalance()))
+				assert.True(t, utility.CompareMoney(tt.reserve, acc.GetReservedBalance()))
+				assert.True(t, utility.CompareMoney(tt.uncleared, acc.GetUnclearedBalance()))
 
 			})
 		}
@@ -422,11 +424,11 @@ func (as *GrpcApiSuite) TestReverseTransaction() {
 
 	as.WithTestDependancies(as.T(), func(t *testing.T, dep *testdef.DependancyOption) {
 
-		ctx, lc, lContainer := as.setupDependencies(as.T(), dep)
+		ctx, lc, lContainer := as.setupDependencies(t, dep)
 		defer lContainer.Terminate(ctx)
 
 		for _, tt := range testcases {
-			as.Run(tt.name, func() {
+			t.Run(tt.name, func(t *testing.T) {
 
 				debitAccRef := tt.request.GetEntries()[0].GetAccount()
 				activeTx := tt.request
@@ -434,33 +436,33 @@ func (as *GrpcApiSuite) TestReverseTransaction() {
 				if tt.createTx {
 					_, err := lc.Client.CreateTransaction(ctx, activeTx)
 					if err != nil {
-						as.T().Fatalf("Create Transaction () error = %v, wantErr %v", err, tt.wantErr)
+						t.Fatalf("Create Transaction () error = %v, wantErr %v", err, tt.wantErr)
 					}
 
 					accounts, err := lc.Client.SearchAccounts(ctx, &commonv1.SearchRequest{Query: fmt.Sprintf("{\"query\": {\"must\": { \"fields\": [{\"id\": {\"eq\": \"%s\"}}]}}}", debitAccRef)})
-					assert.NoError(as.T(), err)
+					assert.NoError(t, err)
 
 					acc, err := accounts.Recv()
-					assert.NoError(as.T(), err)
+					assert.NoError(t, err)
 
-					assert.True(as.T(), utility.CompareMoney(tt.balance, acc.GetBalance()), " amounts don't match %s %s", tt.balanceAfter, acc.GetBalance())
+					assert.True(t, utility.CompareMoney(tt.balance, acc.GetBalance()), " amounts don't match %s %s", tt.balanceAfter, acc.GetBalance())
 				}
 
 				_, err := lc.Client.ReverseTransaction(ctx, activeTx)
 				if err != nil {
 					if !tt.wantErr {
-						as.T().Fatalf("Reverse Transaction () error = %v, wantErr %v", err, tt.wantErr)
+						t.Fatalf("Reverse Transaction () error = %v, wantErr %v", err, tt.wantErr)
 					}
 					return
 				}
 
 				accounts, err := lc.Client.SearchAccounts(ctx, &commonv1.SearchRequest{Query: fmt.Sprintf("{\"query\": {\"must\": { \"fields\": [{\"id\": {\"eq\": \"%s\"}}]}}}", debitAccRef)})
-				assert.NoError(as.T(), err)
+				assert.NoError(t, err)
 
 				acc, err := accounts.Recv()
-				assert.NoError(as.T(), err)
+				assert.NoError(t, err)
 
-				assert.True(as.T(), utility.CompareMoney(tt.balanceAfter, acc.GetBalance()), " amounts don't match %s %s", tt.balanceAfter, acc.GetBalance())
+				assert.True(t, utility.CompareMoney(tt.balanceAfter, acc.GetBalance()), " amounts don't match %s %s", tt.balanceAfter, acc.GetBalance())
 
 			})
 		}
