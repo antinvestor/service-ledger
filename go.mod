@@ -2,7 +2,7 @@ module github.com/antinvestor/service-ledger
 
 go 1.24.0
 
-toolchain go1.24.2
+toolchain go1.24.5
 
 require (
 	buf.build/go/protovalidate v0.13.1
