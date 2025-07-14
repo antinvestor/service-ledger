@@ -54,14 +54,14 @@ jobs:
           
           # Check if this is the default app or an integration
           if [[ "${{ matrix.app }}" == "apps/default" ]]; then
-            # Default app uses service-notification
-            IMAGE_NAME="service-notification"
+            # Default app uses repository name
+            IMAGE_NAME=${{ github.repository }}
           elif [[ "${{ matrix.app }}" == apps/integrations/* ]]; then
-            # Integration apps use integration-notification-<app name>
-            IMAGE_NAME="integration-notification-${APP_NAME}"
+            # Integration apps use <repo name>-integration-<app name>
+            IMAGE_NAME="${{ github.repository }}-integration-${APP_NAME}"
           else
             # Fallback for any other apps
-            IMAGE_NAME="service-notification-${APP_NAME}"
+            IMAGE_NAME="${{ github.repository }}-${APP_NAME}"
           fi
           
           echo "APP_NAME=$APP_NAME" >> $GITHUB_ENV
