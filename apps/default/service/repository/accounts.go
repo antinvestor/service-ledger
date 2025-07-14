@@ -131,6 +131,32 @@ func (a *accountRepository) ListByID(
 	}
 }
 
+func (a *accountRepository) searchAccounts(ctx context.Context, sqlQuery *SearchSQLQuery) ([]*models.Account, error) {
+	rows, err := a.service.DB(ctx, true).
+		Offset(sqlQuery.offset).Limit(sqlQuery.batchSize).
+		Raw(fmt.Sprintf(`%s WHERE %s`, constAccountQuery, sqlQuery.sql), sqlQuery.args...).Rows()
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var accountList []*models.Account
+	for rows.Next() {
+		acc := models.Account{}
+		err = rows.Scan(
+			&acc.ID, &acc.Currency, &acc.Data, &acc.Balance, &acc.UnClearedBalance, &acc.ReservedBalance,
+			&acc.LedgerID, &acc.LedgerType, &acc.CreatedAt, &acc.ModifiedAt, &acc.Version, &acc.TenantID,
+			&acc.PartitionID, &acc.AccessID, &acc.DeletedAt)
+		if err != nil {
+			return accountList, err
+		}
+		accountList = append(accountList, &acc)
+	}
+
+	return accountList, nil
+}
+
 func (a *accountRepository) Search(ctx context.Context, query string) (frame.JobResultPipe[[]*models.Account], error) {
 	service := a.service
 	job := frame.NewJob(func(ctx context.Context, jobResult frame.JobResultPipe[[]*models.Account]) error {
@@ -142,46 +168,20 @@ func (a *accountRepository) Search(ctx context.Context, query string) (frame.Job
 		sqlQuery := rawQuery.ToQueryConditions()
 
 		for sqlQuery.canLoad() {
-			rows, err := service.DB(ctx, true).
-				Offset(sqlQuery.offset).Limit(sqlQuery.batchSize).
-				Raw(fmt.Sprintf(`%s WHERE %s`, constAccountQuery, sqlQuery.sql), sqlQuery.args...).Rows()
-			if err != nil {
-				if frame.ErrorIsNoRows(err) {
+			accountList, dbErr := a.searchAccounts(ctx, sqlQuery)
+			if dbErr != nil {
+				if frame.ErrorIsNoRows(dbErr) {
 					return jobResult.WriteError(ctx, apperrors.ErrLedgerNotFound)
 				}
 				return jobResult.WriteError(
 					ctx,
-					apperrors.ErrSystemFailure.Override(err).Extend("Query execution error"),
+					apperrors.ErrSystemFailure.Override(dbErr).Extend("Query execution error"),
 				)
 			}
 
-			var accountList []*models.Account
-			for rows.Next() {
-				acc := models.Account{}
-				err = rows.Scan(
-					&acc.ID, &acc.Currency, &acc.Data, &acc.Balance, &acc.UnClearedBalance, &acc.ReservedBalance,
-					&acc.LedgerID, &acc.LedgerType, &acc.CreatedAt, &acc.ModifiedAt, &acc.Version, &acc.TenantID,
-					&acc.PartitionID, &acc.AccessID, &acc.DeletedAt)
-				if err != nil {
-					return jobResult.WriteError(
-						ctx,
-						apperrors.ErrSystemFailure.Override(err).Extend("Query binding error"),
-					)
-				}
-				accountList = append(accountList, &acc)
-			}
-
-			err = rows.Close()
-			if err != nil {
-				return jobResult.WriteError(
-					ctx,
-					apperrors.ErrSystemFailure.Override(err).Extend("Query closure error"),
-				)
-			}
-
-			err = jobResult.WriteResult(ctx, accountList)
-			if err != nil {
-				return err
+			dbErr = jobResult.WriteResult(ctx, accountList)
+			if dbErr != nil {
+				return dbErr
 			}
 
 			if sqlQuery.stop(len(accountList)) {

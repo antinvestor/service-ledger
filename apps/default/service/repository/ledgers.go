@@ -46,6 +46,29 @@ func (l *ledgerRepository) GetByID(ctx context.Context, id string) (*models.Ledg
 // Query constants for ledger repository.
 const constLedgerQuery = `SELECT id, parent_id, data FROM ledgers`
 
+func (l *ledgerRepository) searchLedgers(ctx context.Context, sqlQuery *SearchSQLQuery) ([]*models.Ledger, error) {
+	rows, err := l.service.DB(ctx, true).
+		Offset(sqlQuery.offset).Limit(sqlQuery.batchSize).
+		Raw(fmt.Sprintf(`%s WHERE %s`, constLedgerQuery, sqlQuery.sql), sqlQuery.args...).Rows()
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	ledgerList := make([]*models.Ledger, 0)
+	for rows.Next() {
+		ledger := new(models.Ledger)
+		errR := rows.Scan(&ledger.ID, &ledger.ParentID, &ledger.Data)
+		if errR != nil {
+			return ledgerList, errR
+		}
+		ledgerList = append(ledgerList, ledger)
+	}
+
+	return ledgerList, nil
+}
+
 func (l *ledgerRepository) Search(ctx context.Context, query string) (frame.JobResultPipe[[]*models.Ledger], error) {
 	service := l.service
 	job := frame.NewJob(func(ctxI context.Context, jobResult frame.JobResultPipe[[]*models.Ledger]) error {
@@ -54,28 +77,15 @@ func (l *ledgerRepository) Search(ctx context.Context, query string) (frame.JobR
 			return jobResult.WriteError(ctx, err)
 		}
 
-		var ledgerList []*models.Ledger
 		sqlQuery := rawQuery.ToQueryConditions()
 
 		for sqlQuery.canLoad() {
-			rows, err := service.DB(ctxI, true).
-				Offset(sqlQuery.offset).Limit(sqlQuery.batchSize).
-				Raw(fmt.Sprintf(`%s WHERE %s`, constLedgerQuery, sqlQuery.sql), sqlQuery.args...).Rows()
-			if err != nil {
-				if frame.ErrorIsNoRows(err) {
+			ledgerList, dbErr := l.searchLedgers(ctxI, sqlQuery)
+			if dbErr != nil {
+				if frame.ErrorIsNoRows(dbErr) {
 					return jobResult.WriteError(ctx, apperrors.ErrLedgerNotFound)
 				}
-				return jobResult.WriteError(ctx, apperrors.ErrSystemFailure.Override(err))
-			}
-
-			ledgerList = make([]*models.Ledger, 0)
-			for rows.Next() {
-				ledger := new(models.Ledger)
-				errR := rows.Scan(&ledger.ID, &ledger.ParentID, &ledger.Data)
-				if errR != nil {
-					return jobResult.WriteError(ctx, apperrors.ErrSystemFailure.Override(errR))
-				}
-				ledgerList = append(ledgerList, ledger)
+				return jobResult.WriteError(ctx, apperrors.ErrSystemFailure.Override(dbErr))
 			}
 
 			errR := jobResult.WriteResult(ctx, ledgerList)

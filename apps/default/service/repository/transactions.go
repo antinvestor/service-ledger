@@ -8,7 +8,7 @@ import (
 	"time"
 
 	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
-	models "github.com/antinvestor/service-ledger/apps/default/service/models"
+	"github.com/antinvestor/service-ledger/apps/default/service/models"
 	"github.com/antinvestor/service-ledger/internal/apperrors"
 	"github.com/pitabwire/frame"
 	"github.com/pkg/errors"
@@ -52,6 +52,41 @@ func NewTransactionRepository(service *frame.Service, accountRepo AccountReposit
 	}
 }
 
+func (t *transactionRepository) searchTransactions(
+	ctx context.Context,
+	sqlQuery *SearchSQLQuery,
+) ([]*models.Transaction, error) {
+	var transactionList []*models.Transaction
+
+	result := t.service.DB(ctx, true).Where(sqlQuery.sql, sqlQuery.args...).Offset(sqlQuery.offset).
+		Limit(sqlQuery.batchSize).Find(&transactionList)
+	err1 := result.Error
+	if err1 != nil {
+		return transactionList, err1
+	}
+
+	if len(transactionList) > 0 {
+		var transactionIDs []string
+		for _, transaction := range transactionList {
+			transactionIDs = append(transactionIDs, transaction.GetID())
+		}
+
+		entriesMap, err2 := t.SearchEntriesByTransactionID(ctx, transactionIDs...)
+		if err2 != nil {
+			return transactionList, err2
+		}
+
+		for _, transaction := range transactionList {
+			entries, ok := entriesMap[transaction.GetID()]
+			if ok {
+				transaction.Entries = entries
+			}
+		}
+	}
+
+	return transactionList, nil
+}
+
 func (t *transactionRepository) Search(
 	ctx context.Context,
 	query string,
@@ -64,38 +99,15 @@ func (t *transactionRepository) Search(
 		}
 
 		sqlQuery := rawQuery.ToQueryConditions()
-		var transactionList []*models.Transaction
 
 		for sqlQuery.canLoad() {
-			result := service.DB(ctx, true).Where(sqlQuery.sql, sqlQuery.args...).Offset(sqlQuery.offset).
-				Limit(sqlQuery.batchSize).Find(&transactionList)
-			err1 := result.Error
-			if err1 != nil {
-				return jobResult.WriteError(ctx, apperrors.ErrSystemFailure.Override(err1))
+			transactionList, dbErr := t.searchTransactions(ctx, sqlQuery)
+			if dbErr != nil {
+				return jobResult.WriteError(ctx, apperrors.ErrSystemFailure.Override(dbErr))
 			}
-
-			if len(transactionList) > 0 {
-				var transactionIDs []string
-				for _, transaction := range transactionList {
-					transactionIDs = append(transactionIDs, transaction.GetID())
-				}
-
-				entriesMap, err2 := t.SearchEntriesByTransactionID(ctx, transactionIDs...)
-				if err2 != nil {
-					return jobResult.WriteError(ctx, apperrors.ErrSystemFailure.Override(err2))
-				}
-
-				for _, transaction := range transactionList {
-					entries, ok := entriesMap[transaction.GetID()]
-					if ok {
-						transaction.Entries = entries
-					}
-				}
-			}
-
-			err1 = jobResult.WriteResult(ctx, transactionList)
-			if err1 != nil {
-				return err1
+			dbErr = jobResult.WriteResult(ctx, transactionList)
+			if dbErr != nil {
+				return dbErr
 			}
 
 			if sqlQuery.stop(len(transactionList)) {
