@@ -5,7 +5,7 @@ go 1.24.0
 toolchain go1.24.2
 
 require (
-	buf.build/go/protovalidate v0.12.0
+	buf.build/go/protovalidate v0.13.1
 	github.com/antinvestor/apis/go/common v1.36.3
 	github.com/antinvestor/apis/go/ledger v1.36.4
 	github.com/docker/docker v28.3.2+incompatible
