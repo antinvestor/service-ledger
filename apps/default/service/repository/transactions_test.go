@@ -8,7 +8,7 @@ import (
 
 	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
 	"github.com/antinvestor/service-ledger/apps/default/service/models"
-	repository2 "github.com/antinvestor/service-ledger/apps/default/service/repository"
+	repository "github.com/antinvestor/service-ledger/apps/default/service/repository"
 	"github.com/antinvestor/service-ledger/apps/default/tests"
 	"github.com/antinvestor/service-ledger/internal/utility"
 	_ "github.com/lib/pq"
@@ -16,6 +16,7 @@ import (
 	"github.com/pitabwire/frame/tests/testdef"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -25,51 +26,48 @@ type TransactionsModelSuite struct {
 }
 
 func (ts *TransactionsModelSuite) setupFixtures(ctx context.Context, svc *frame.Service) {
-
-	// Create test accounts.
-	ledgersDB := repository2.NewLedgerRepository(svc)
-	accountsDB := repository2.NewAccountRepository(svc)
-
-	lg1, err := ledgersDB.Create(ctx, &models.Ledger{Type: models.LEDGER_TYPE_ASSET})
-	if err != nil {
-		ts.Errorf(err, "Unable to create ledger for account")
-	}
-	lg2, err := ledgersDB.Create(ctx, &models.Ledger{Type: models.LEDGER_TYPE_INCOME})
-	if err != nil {
-		ts.Errorf(err, "Unable to create ledger 2 for account")
-	}
+	// Create test ledgers.
+	ledgersDB := repository.NewLedgerRepository(svc)
+	lg1, err := ledgersDB.Create(ctx, &models.Ledger{Type: models.LedgerTypeAsset})
+	ts.Require().NoError(err, "Unable to create ledger for account")
 	ts.ledger = lg1
-	_, err = accountsDB.Create(ctx, &models.Account{BaseModel: frame.BaseModel{ID: "a1"}, LedgerID: ts.ledger.ID, Currency: "UGX"})
-	if err != nil {
-		ts.Errorf(err, "Unable to create account")
-	}
-	_, err = accountsDB.Create(ctx, &models.Account{BaseModel: frame.BaseModel{ID: "a2"}, LedgerID: lg2.ID, Currency: "UGX"})
-	if err != nil {
-		ts.Errorf(err, "Unable to create account")
-	}
-	_, err = accountsDB.Create(ctx, &models.Account{BaseModel: frame.BaseModel{ID: "a3"}, LedgerID: ts.ledger.ID, Currency: "UGX"})
-	if err != nil {
-		ts.Errorf(err, "Unable to create account")
-	}
-	_, err = accountsDB.Create(ctx, &models.Account{BaseModel: frame.BaseModel{ID: "a4"}, LedgerID: ts.ledger.ID, Currency: "UGX"})
-	if err != nil {
-		ts.Errorf(err, "Unable to create account")
-	}
-	_, err = accountsDB.Create(ctx, &models.Account{BaseModel: frame.BaseModel{ID: "b1"}, LedgerID: ts.ledger.ID, Currency: "UGX"})
-	if err != nil {
-		ts.Errorf(err, "Unable to create account")
-	}
-	_, err = accountsDB.Create(ctx, &models.Account{BaseModel: frame.BaseModel{ID: "b2"}, LedgerID: ts.ledger.ID, Currency: "UGX"})
-	if err != nil {
-		ts.Errorf(err, "Unable to create account")
-	}
-
+	lg2, err := ledgersDB.Create(ctx, &models.Ledger{Type: models.LedgerTypeIncome})
+	ts.Require().NoError(err, "Unable to create ledger 2 for account")
+	_, err = repository.NewAccountRepository(svc).Create(
+		ctx,
+		&models.Account{BaseModel: frame.BaseModel{ID: "a1"}, LedgerID: ts.ledger.ID, Currency: "UGX"},
+	)
+	ts.Require().NoError(err, "Unable to create account")
+	_, err = repository.NewAccountRepository(svc).Create(
+		ctx,
+		&models.Account{BaseModel: frame.BaseModel{ID: "a2"}, LedgerID: lg2.ID, Currency: "UGX"},
+	)
+	ts.Require().NoError(err, "Unable to create account")
+	_, err = repository.NewAccountRepository(svc).Create(
+		ctx,
+		&models.Account{BaseModel: frame.BaseModel{ID: "a3"}, LedgerID: ts.ledger.ID, Currency: "UGX"},
+	)
+	ts.Require().NoError(err, "Unable to create account")
+	_, err = repository.NewAccountRepository(svc).Create(
+		ctx,
+		&models.Account{BaseModel: frame.BaseModel{ID: "a4"}, LedgerID: ts.ledger.ID, Currency: "UGX"},
+	)
+	ts.Require().NoError(err, "Unable to create account")
+	_, err = repository.NewAccountRepository(svc).Create(
+		ctx,
+		&models.Account{BaseModel: frame.BaseModel{ID: "b1"}, LedgerID: ts.ledger.ID, Currency: "UGX"},
+	)
+	ts.Require().NoError(err, "Unable to create account")
+	_, err = repository.NewAccountRepository(svc).Create(
+		ctx,
+		&models.Account{BaseModel: frame.BaseModel{ID: "b2"}, LedgerID: ts.ledger.ID, Currency: "UGX"},
+	)
+	ts.Require().NoError(err, "Unable to create account")
 }
 
 func (ts *TransactionsModelSuite) TestIsZeroSum() {
-	ts.WithTestDependancies(ts.T(), func(t *testing.T, dep *testdef.DependancyOption) {
-
-		svc, ctx := ts.CreateService(t, dep)
+	ts.WithTestDependancies(ts.T(), func(t *testing.T, _ *testdef.DependancyOption) {
+		svc, ctx := ts.CreateService(t, nil)
 		ts.setupFixtures(ctx, svc)
 
 		timeNow := time.Now().UTC()
@@ -94,18 +92,16 @@ func (ts *TransactionsModelSuite) TestIsZeroSum() {
 			},
 		}
 		valid := transaction.IsZeroSum()
-		assert.Equal(t, valid, true, "Transaction should be zero summed")
+		assert.True(t, valid, "Transaction should be zero summed")
 
 		transaction.Entries[0].Amount = decimal.NewNullDecimal(decimal.NewFromInt(200))
 		valid = transaction.IsZeroSum()
-		assert.Equal(t, valid, false, "Transaction should not be zero summed")
-
+		assert.False(t, valid, "Transaction should not be zero summed")
 	})
 }
 
 func (ts *TransactionsModelSuite) TestIsTrueDrCr() {
-	ts.WithTestDependancies(ts.T(), func(t *testing.T, dep *testdef.DependancyOption) {
-
+	ts.WithTestDependancies(ts.T(), func(t *testing.T, _ *testdef.DependancyOption) {
 		timeNow := time.Now().UTC()
 		transaction := &models.Transaction{
 			BaseModel:       frame.BaseModel{ID: "t001"},
@@ -127,25 +123,23 @@ func (ts *TransactionsModelSuite) TestIsTrueDrCr() {
 			},
 		}
 		valid := transaction.IsTrueDrCr()
-		assert.Equal(t, valid, true, "Transaction should contain one dr and other cr entries")
+		assert.True(t, valid, "Transaction should contain one dr and other cr entries")
 
 		transaction.Entries[0].Credit = true
 		valid = transaction.IsTrueDrCr()
-		assert.Equal(t, valid, false, "Transaction should fail DrCr test")
-
+		assert.False(t, valid, "Transaction should fail DrCr test")
 	})
 }
 
 func (ts *TransactionsModelSuite) TestIsConflict() {
-	ts.WithTestDependancies(ts.T(), func(t *testing.T, dep *testdef.DependancyOption) {
-
-		svc, ctx := ts.CreateService(t, dep)
+	ts.WithTestDependancies(ts.T(), func(t *testing.T, _ *testdef.DependancyOption) {
+		svc, ctx := ts.CreateService(t, nil)
 		ts.setupFixtures(ctx, svc)
 
 		timeNow := time.Now().UTC()
-		accountRepo := repository2.NewAccountRepository(svc)
+		accountRepo := repository.NewAccountRepository(svc)
 
-		transactionRepository := repository2.NewTransactionRepository(svc, accountRepo)
+		transactionRepository := repository.NewTransactionRepository(svc, accountRepo)
 		transaction := &models.Transaction{
 			BaseModel:       frame.BaseModel{ID: "t0015"},
 			Currency:        "UGX",
@@ -166,12 +160,12 @@ func (ts *TransactionsModelSuite) TestIsConflict() {
 			},
 		}
 		done, err := transactionRepository.Transact(ctx, transaction)
-		assert.NoError(t, err)
-		assert.NotEqual(t, nil, done, "Transaction should be created")
+		require.NoError(t, err)
+		require.NotNil(t, done, "Transaction should be created")
 
 		conflicts, err := transactionRepository.IsConflict(ctx, transaction)
-		assert.Equal(t, nil, err, "Error while checking for conflict transaction")
-		assert.Equal(t, false, conflicts, "Transaction should not conflict")
+		require.NoError(t, err, "Error while checking for conflict transaction")
+		assert.False(t, conflicts, "Transaction should not conflict")
 
 		transaction = &models.Transaction{
 			BaseModel:    frame.BaseModel{ID: "t0015"},
@@ -193,8 +187,8 @@ func (ts *TransactionsModelSuite) TestIsConflict() {
 		}
 
 		conflicts, err = transactionRepository.IsConflict(ctx, transaction)
-		assert.Equal(t, err, nil, "Error while checking for conflicting transaction")
-		assert.Equal(t, true, conflicts, "Transaction should conflict since amounts are different from first received")
+		require.NoError(t, err, "Error while checking for conflicting transaction")
+		assert.True(t, conflicts, "Transaction should conflict since amounts are different from first received")
 
 		transaction = &models.Transaction{
 			BaseModel:       frame.BaseModel{ID: "t0015"},
@@ -216,21 +210,19 @@ func (ts *TransactionsModelSuite) TestIsConflict() {
 			},
 		}
 		conflicts, err = transactionRepository.IsConflict(ctx, transaction)
-		assert.Equal(t, err, nil, "Error while checking for conflicting transaction")
-		assert.Equal(t, conflicts, true, "Transaction should conflict since accounts are different from first received")
-
+		require.NoError(t, err, "Error while checking for conflicting transaction")
+		assert.True(t, conflicts, "Transaction should conflict since accounts are different from first received")
 	})
 }
 
 func (ts *TransactionsModelSuite) TestTransact() {
-	ts.WithTestDependancies(ts.T(), func(t *testing.T, dep *testdef.DependancyOption) {
-
-		svc, ctx := ts.CreateService(t, dep)
+	ts.WithTestDependancies(ts.T(), func(t *testing.T, _ *testdef.DependancyOption) {
+		svc, ctx := ts.CreateService(t, nil)
 		ts.setupFixtures(ctx, svc)
 
 		timeNow := time.Now().UTC()
-		accountRepo := repository2.NewAccountRepository(svc)
-		transactionRepository := repository2.NewTransactionRepository(svc, accountRepo)
+		accountRepo := repository.NewAccountRepository(svc)
+		transactionRepository := repository.NewTransactionRepository(svc, accountRepo)
 
 		transaction := &models.Transaction{
 			BaseModel:       frame.BaseModel{ID: "t003"},
@@ -256,27 +248,25 @@ func (ts *TransactionsModelSuite) TestTransact() {
 			},
 		}
 		done, err := transactionRepository.Transact(ctx, transaction)
-		assert.NoError(t, err)
-		assert.NotEqual(t, nil, done, "Transaction should be created")
+		require.NoError(t, err)
+		require.NotNil(t, done, "Transaction should be created")
 
 		exists, err := transactionRepository.GetByID(ctx, "t003")
-		assert.Equal(t, nil, err, "Error while checking for existing transaction")
+		require.NoError(t, err, "Error while checking for existing transaction")
 		assert.Equal(t, "t003", exists.ID, "Transaction should exist")
-
 	})
 }
 
 func (ts *TransactionsModelSuite) TestReserveTransaction() {
-	ts.WithTestDependancies(ts.T(), func(t *testing.T, dep *testdef.DependancyOption) {
-
-		svc, ctx := ts.CreateService(t, dep)
+	ts.WithTestDependancies(ts.T(), func(t *testing.T, _ *testdef.DependancyOption) {
+		svc, ctx := ts.CreateService(t, nil)
 		ts.setupFixtures(ctx, svc)
 
-		accountRepo := repository2.NewAccountRepository(svc)
-		transactionRepository := repository2.NewTransactionRepository(svc, accountRepo)
+		accountRepo := repository.NewAccountRepository(svc)
+		transactionRepository := repository.NewTransactionRepository(svc, accountRepo)
 
 		initialAcc, err := accountRepo.GetByID(ctx, "a3")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		timeNow := time.Now().UTC()
 		transaction := &models.Transaction{
@@ -298,34 +288,42 @@ func (ts *TransactionsModelSuite) TestReserveTransaction() {
 			},
 		}
 		done, err := transactionRepository.Transact(ctx, transaction)
-		assert.NoError(t, err)
-		assert.NotEqual(t, nil, done, "Transaction should be created")
+		require.NoError(t, err)
+		require.NotNil(t, done, "Transaction should be created")
 
 		exists, err := transactionRepository.GetByID(ctx, "t031")
-		assert.Equal(t, nil, err, "Error while checking for existing transaction")
+		require.NoError(t, err, "Error while checking for existing transaction")
 		assert.Equal(t, "t031", exists.ID, "Transaction should exist")
 
 		finalAcc, err := accountRepo.GetByID(ctx, "a3")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
-		assert.Equal(t, decimal.NewFromInt(0), finalAcc.Balance.Decimal.Sub(initialAcc.Balance.Decimal), "Reservation Balance should be consistent")
+		assert.Equal(
+			t,
+			decimal.NewFromInt(0),
+			finalAcc.Balance.Decimal.Sub(initialAcc.Balance.Decimal),
+			"Reservation Balance should be consistent",
+		)
 
-		assert.Equal(t, utility.CleanDecimal(decimal.NewFromInt(98)), finalAcc.ReservedBalance.Decimal, "reserved balance should be consistent")
-
+		assert.Equal(
+			t,
+			utility.CleanDecimal(decimal.NewFromInt(98)),
+			finalAcc.ReservedBalance.Decimal,
+			"reserved balance should be consistent",
+		)
 	})
 }
 
 func (ts *TransactionsModelSuite) TestTransactBalanceCheck() {
-	ts.WithTestDependancies(ts.T(), func(t *testing.T, dep *testdef.DependancyOption) {
-
-		svc, ctx := ts.CreateService(t, dep)
+	ts.WithTestDependancies(ts.T(), func(t *testing.T, _ *testdef.DependancyOption) {
+		svc, ctx := ts.CreateService(t, nil)
 		ts.setupFixtures(ctx, svc)
 
-		accountRepo := repository2.NewAccountRepository(svc)
-		transactionRepository := repository2.NewTransactionRepository(svc, accountRepo)
+		accountRepo := repository.NewAccountRepository(svc)
+		transactionRepository := repository.NewTransactionRepository(svc, accountRepo)
 
 		initialAccMap, err := accountRepo.ListByID(ctx, "a3", "a4")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		timeNow := time.Now().UTC()
 		transaction := &models.Transaction{
@@ -351,26 +349,34 @@ func (ts *TransactionsModelSuite) TestTransactBalanceCheck() {
 			},
 		}
 		done, err1 := transactionRepository.Transact(ctx, transaction)
-		assert.NoError(t, err1)
-		assert.NotEqual(t, nil, done, "Transaction should be created")
+		require.NoError(t, err1)
+		require.NotNil(t, done, "Transaction should be created")
 
 		finalAccMap, err2 := accountRepo.ListByID(ctx, "a3", "a4")
-		assert.NoError(t, err2)
+		require.NoError(t, err2)
 
-		assert.Equal(t, utility.CleanDecimal(decimal.NewFromInt(51)), finalAccMap["a3"].Balance.Decimal.Sub(initialAccMap["a3"].Balance.Decimal), "Debited Balance should be equal")
-		assert.Equal(t, utility.CleanDecimal(decimal.NewFromInt(-51)), finalAccMap["a4"].Balance.Decimal.Sub(initialAccMap["a4"].Balance.Decimal), "Credited Balance should be equal")
-
+		assert.Equal(
+			t,
+			utility.CleanDecimal(decimal.NewFromInt(51)),
+			finalAccMap["a3"].Balance.Decimal.Sub(initialAccMap["a3"].Balance.Decimal),
+			"Debited Balance should be equal",
+		)
+		assert.Equal(
+			t,
+			utility.CleanDecimal(decimal.NewFromInt(-51)),
+			finalAccMap["a4"].Balance.Decimal.Sub(initialAccMap["a4"].Balance.Decimal),
+			"Credited Balance should be equal",
+		)
 	})
 }
 
 func (ts *TransactionsModelSuite) TestDuplicateTransactions() {
-	ts.WithTestDependancies(ts.T(), func(t *testing.T, dep *testdef.DependancyOption) {
-
-		svc, ctx := ts.CreateService(t, dep)
+	ts.WithTestDependancies(ts.T(), func(t *testing.T, _ *testdef.DependancyOption) {
+		svc, ctx := ts.CreateService(t, nil)
 		ts.setupFixtures(ctx, svc)
 
-		accountRepo := repository2.NewAccountRepository(svc)
-		transactionRepository := repository2.NewTransactionRepository(svc, accountRepo)
+		accountRepo := repository.NewAccountRepository(svc)
+		transactionRepository := repository.NewTransactionRepository(svc, accountRepo)
 
 		timeNow := time.Now().UTC()
 
@@ -399,26 +405,25 @@ func (ts *TransactionsModelSuite) TestDuplicateTransactions() {
 		for i := 1; i <= 5; i++ {
 			go func(txn *models.Transaction) {
 				trxn, _ := transactionRepository.Transact(ctx, txn)
-				assert.NotEqual(t, nil, trxn, "Transaction creation should be success")
+				assert.NotNil(t, trxn, "Transaction creation should be success")
 				wg.Done()
 			}(transaction)
 		}
 		wg.Wait()
 
 		exists, err := transactionRepository.GetByID(ctx, "t005")
-		assert.Equal(t, nil, err, "Error while checking for existing transaction")
+		require.NoError(t, err, "Error while checking for existing transaction")
 		assert.Equal(t, "t005", exists.ID, "Transaction should exist")
-
 	})
 }
-func (ts *TransactionsModelSuite) TestTransactionReversaL() {
-	ts.WithTestDependancies(ts.T(), func(t *testing.T, dep *testdef.DependancyOption) {
 
-		svc, ctx := ts.CreateService(t, dep)
+func (ts *TransactionsModelSuite) TestTransactionReversaL() {
+	ts.WithTestDependancies(ts.T(), func(t *testing.T, _ *testdef.DependancyOption) {
+		svc, ctx := ts.CreateService(t, nil)
 		ts.setupFixtures(ctx, svc)
 
-		accountRepo := repository2.NewAccountRepository(svc)
-		transactionRepository := repository2.NewTransactionRepository(svc, accountRepo)
+		accountRepo := repository.NewAccountRepository(svc)
+		transactionRepository := repository.NewTransactionRepository(svc, accountRepo)
 
 		timeNow := time.Now().UTC()
 
@@ -443,32 +448,35 @@ func (ts *TransactionsModelSuite) TestTransactionReversaL() {
 		}
 
 		trxn, err := transactionRepository.Transact(ctx, transaction)
-		assert.NoError(t, err)
-		assert.NotEqual(t, nil, trxn, "Transaction creation should be success")
+		require.NoError(t, err)
+		require.NotNil(t, trxn, "Transaction creation should be success")
 
 		reversal, err := transactionRepository.Reverse(ctx, trxn.ID)
-		assert.NoError(t, err)
-		assert.NotEqual(t, nil, reversal, "Transaction reversal should be success")
+		require.NoError(t, err)
+		require.NotNil(t, reversal, "Transaction reversal should be success")
 
 		exists, err := transactionRepository.GetByID(ctx, "t053_REVERSAL")
-		assert.Equal(t, nil, err, "Error while checking for existing transaction")
+		require.NoError(t, err, "Error while checking for existing transaction")
 		assert.Equal(t, "t053_REVERSAL", exists.ID, "Transaction should exist")
-		assert.Equal(t, ledgerV1.TransactionType_REVERSAL.String(), exists.TransactionType, "Transaction type is not setup correctly")
-
+		assert.Equal(
+			t,
+			ledgerV1.TransactionType_REVERSAL.String(),
+			exists.TransactionType,
+			"Transaction type is not setup correctly",
+		)
 	})
 }
 
 func (ts *TransactionsModelSuite) TestUnClearedTransactions() {
-	ts.WithTestDependancies(ts.T(), func(t *testing.T, dep *testdef.DependancyOption) {
-
-		svc, ctx := ts.CreateService(t, dep)
+	ts.WithTestDependancies(ts.T(), func(t *testing.T, _ *testdef.DependancyOption) {
+		svc, ctx := ts.CreateService(t, nil)
 		ts.setupFixtures(ctx, svc)
 
-		accountRepo := repository2.NewAccountRepository(svc)
-		transactionRepository := repository2.NewTransactionRepository(svc, accountRepo)
+		accountRepo := repository.NewAccountRepository(svc)
+		transactionRepository := repository.NewTransactionRepository(svc, accountRepo)
 
 		initialAccMap, err := accountRepo.ListByID(ctx, "b1", "b2")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		timeNow := time.Now().UTC()
 
@@ -492,36 +500,65 @@ func (ts *TransactionsModelSuite) TestUnClearedTransactions() {
 		}
 
 		done, err1 := transactionRepository.Transact(ctx, transaction)
-		assert.NoError(t, err1)
-		assert.NotEqual(t, nil, done, "Transaction should be created")
+		require.NoError(t, err1)
+		require.NotNil(t, done, "Transaction should be created")
 
 		finalAccMap, err2 := accountRepo.ListByID(ctx, "b1", "b2")
-		assert.NoError(t, err2)
+		require.NoError(t, err2)
 
-		assert.Equal(t, utility.CleanDecimal(decimal.NewFromFloat(0.0)), utility.CleanDecimal(finalAccMap["b1"].Balance.Decimal.Sub(initialAccMap["b1"].Balance.Decimal)), "Debited Balance should be equal")
-		assert.Equal(t, utility.CleanDecimal(decimal.NewFromInt(0)), utility.CleanDecimal(finalAccMap["b2"].Balance.Decimal.Sub(initialAccMap["b2"].Balance.Decimal)), "Credited Balance should be equal")
+		assert.Equal(
+			t,
+			utility.CleanDecimal(decimal.NewFromFloat(0.0)),
+			utility.CleanDecimal(finalAccMap["b1"].Balance.Decimal.Sub(initialAccMap["b1"].Balance.Decimal)),
+			"Debited Balance should be equal",
+		)
+		assert.Equal(
+			t,
+			utility.CleanDecimal(decimal.NewFromInt(0)),
+			utility.CleanDecimal(finalAccMap["b2"].Balance.Decimal.Sub(initialAccMap["b2"].Balance.Decimal)),
+			"Credited Balance should be equal",
+		)
 
-		assert.Equal(t, utility.CleanDecimal(decimal.NewFromInt(100)), utility.CleanDecimal(finalAccMap["b1"].UnClearedBalance.Decimal), "b1 Uncleared balance should be equal")
-		assert.Equal(t, utility.CleanDecimal(decimal.NewFromInt(-100)), utility.CleanDecimal(finalAccMap["b2"].UnClearedBalance.Decimal), "b2 Uncleared balance should be equal")
+		assert.Equal(
+			t,
+			utility.CleanDecimal(decimal.NewFromInt(100)),
+			utility.CleanDecimal(finalAccMap["b1"].UnClearedBalance.Decimal),
+			"b1 Uncleared balance should be equal",
+		)
+		assert.Equal(
+			t,
+			utility.CleanDecimal(decimal.NewFromInt(-100)),
+			utility.CleanDecimal(finalAccMap["b2"].UnClearedBalance.Decimal),
+			"b2 Uncleared balance should be equal",
+		)
 
-		assert.Equal(t, utility.CleanDecimal(decimal.NewFromInt(0)), utility.CleanDecimal(finalAccMap["b1"].ReservedBalance.Decimal), "b1 reserved balance should be zero")
-		assert.Equal(t, utility.CleanDecimal(decimal.NewFromInt(0)), utility.CleanDecimal(finalAccMap["b2"].ReservedBalance.Decimal), "b2 reserved balance should be zero")
+		assert.Equal(
+			t,
+			utility.CleanDecimal(decimal.NewFromInt(0)),
+			utility.CleanDecimal(finalAccMap["b1"].ReservedBalance.Decimal),
+			"b1 reserved balance should be zero",
+		)
+		assert.Equal(
+			t,
+			utility.CleanDecimal(decimal.NewFromInt(0)),
+			utility.CleanDecimal(finalAccMap["b2"].ReservedBalance.Decimal),
+			"b2 reserved balance should be zero",
+		)
 	})
 }
 
 func (ts *TransactionsModelSuite) TestTransactWithBoundaryValues() {
-	ts.WithTestDependancies(ts.T(), func(t *testing.T, dep *testdef.DependancyOption) {
-
-		svc, ctx := ts.CreateService(t, dep)
+	ts.WithTestDependancies(ts.T(), func(t *testing.T, _ *testdef.DependancyOption) {
+		svc, ctx := ts.CreateService(t, nil)
 		ts.setupFixtures(ctx, svc)
 
-		accountRepo := repository2.NewAccountRepository(svc)
-		transactionRepository := repository2.NewTransactionRepository(svc, accountRepo)
+		accountRepo := repository.NewAccountRepository(svc)
+		transactionRepository := repository.NewTransactionRepository(svc, accountRepo)
 
 		timeNow := time.Now().UTC()
 
 		// In-boundary value transaction
-		boundaryValue := utility.CleanDecimal(utility.MaxDecimalValue) // Max +ve for 2^64
+		boundaryValue := utility.CleanDecimal(utility.GetMaxDecimalValue()) // Max +ve for 2^64
 		transaction := &models.Transaction{
 			BaseModel:       frame.BaseModel{ID: "t004"},
 			Currency:        "UGX",
@@ -546,9 +583,9 @@ func (ts *TransactionsModelSuite) TestTransactWithBoundaryValues() {
 			},
 		}
 		done, _ := transactionRepository.Transact(ctx, transaction)
-		assert.NotNil(t, done, "Transaction should be created")
+		require.NotNil(t, done, "Transaction should be created")
 		exists, err := transactionRepository.GetByID(ctx, "t004")
-		assert.Nil(t, err, "Error while checking for existing transaction")
+		require.NoError(t, err, "Error while checking for existing transaction")
 		assert.Equal(t, "t004", exists.ID, "Transaction should exist")
 
 		// Out-of-boundary value transaction

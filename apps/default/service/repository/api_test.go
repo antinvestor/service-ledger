@@ -2,6 +2,7 @@ package repository_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"testing"
@@ -18,17 +19,21 @@ import (
 	"github.com/rs/xid"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"google.golang.org/genproto/googleapis/type/money"
 )
 
-type GrpcApiSuite struct {
+type GrpcAPISuite struct {
 	tests.BaseTestSuite
 }
 
-func (as *GrpcApiSuite) setupDependencies(t *testing.T, dep *testdef.DependancyOption) (*ledgerV1.LedgerClient, testcontainers.Container) {
+func (as *GrpcAPISuite) setupDependencies(
+	t *testing.T,
+	dep *testdef.DependancyOption,
+) (*ledgerV1.LedgerClient, testcontainers.Container) {
 	ctx := t.Context()
 
 	if len(dep.Database()) == 0 {
@@ -38,31 +43,34 @@ func (as *GrpcApiSuite) setupDependencies(t *testing.T, dep *testdef.DependancyO
 	datastoreDS := dep.Database()[0].GetInternalDS()
 
 	_, err := as.setupServiceContainer(ctx, datastoreDS, true)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	lContainer, err := as.setupServiceContainer(ctx, datastoreDS, false)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	host, err := lContainer.Host(ctx)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	port, err := lContainer.MappedPort(ctx, "50051")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	lc, err := ledgerV1.NewLedgerClient(ctx,
 		common.WithEndpoint(net.JoinHostPort(host, port.Port())),
 		common.WithoutAuthentication(),
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = as.createInitialAccounts(ctx, lc)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	return lc, lContainer
 }
 
-func (as *GrpcApiSuite) setupServiceContainer(ctx context.Context, datastoreDS frame.DataSource, doMigration bool) (testcontainers.Container, error) {
-
+func (as *GrpcAPISuite) setupServiceContainer(
+	ctx context.Context,
+	datastoreDS frame.DataSource,
+	doMigration bool,
+) (testcontainers.Container, error) {
 	environmentVars := []string{
 		"OTEL_TRACES_EXPORTER=none",
 		"LOG_LEVEL=debug",
@@ -108,12 +116,10 @@ func (as *GrpcApiSuite) setupServiceContainer(ctx context.Context, datastoreDS f
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
-
+	return nil, errors.New("container not needed")
 }
 
-func (as *GrpcApiSuite) createInitialAccounts(ctx context.Context, lc *ledgerV1.LedgerClient) error {
-
+func (as *GrpcAPISuite) createInitialAccounts(ctx context.Context, lc *ledgerV1.LedgerClient) error {
 	ledgers := []*ledgerV1.Ledger{
 		{Reference: "ilAsset", Type: ledgerV1.LedgerType_ASSET},
 		{Reference: "ilIncome", Type: ledgerV1.LedgerType_INCOME},
@@ -151,8 +157,7 @@ func toMoney(val int) *money.Money {
 	return &m
 }
 
-func (as *GrpcApiSuite) TestTransactions() {
-
+func (as *GrpcAPISuite) TestTransactions() {
 	testcases := []struct {
 		name      string
 		request   *ledgerV1.Transaction
@@ -213,14 +218,12 @@ func (as *GrpcApiSuite) TestTransactions() {
 	}
 
 	as.WithTestDependancies(as.T(), func(t *testing.T, dep *testdef.DependancyOption) {
-
 		ctx := t.Context()
 		lc, lContainer := as.setupDependencies(t, dep)
 		defer lContainer.Terminate(ctx)
 
 		for _, tt := range testcases {
 			t.Run(tt.name, func(t *testing.T) {
-
 				result, err := lc.Client.CreateTransaction(ctx, tt.request)
 				if err != nil {
 					if !tt.wantErr {
@@ -230,33 +233,39 @@ func (as *GrpcApiSuite) TestTransactions() {
 				}
 
 				accRef := result.GetEntries()[0].GetAccount()
-				accounts, err := lc.Client.SearchAccounts(ctx, &commonv1.SearchRequest{Query: fmt.Sprintf("{\"query\": {\"must\": { \"fields\": [{\"id\": {\"eq\": \"%s\"}}]}}}", accRef)})
-				assert.NoError(t, err)
+				accounts, err := lc.Client.SearchAccounts(
+					ctx,
+					&commonv1.SearchRequest{
+						Query: fmt.Sprintf(
+							"{\"query\": {\"must\": { \"fields\": [{\"id\": {\"eq\": \"%s\"}}]}}}",
+							accRef,
+						),
+					},
+				)
+				require.NoError(t, err)
 
 				acc, err := accounts.Recv()
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				assert.True(t, utility.CompareMoney(tt.balance, acc.GetBalance()))
 				assert.True(t, utility.CompareMoney(tt.reserve, acc.GetReservedBalance()))
 				assert.True(t, utility.CompareMoney(tt.uncleared, acc.GetUnclearedBalance()))
-
 			})
 		}
-
 	})
 }
 
-func (as *GrpcApiSuite) TestClearBalances() {
-
-	updateId := xid.New().String()
+func (as *GrpcAPISuite) TestClearBalances() {
+	updateID := xid.New().String()
 	testcases := []struct {
-		name        string
-		request     *ledgerV1.Transaction
-		balance     *money.Money
-		reserve     *money.Money
-		uncleared   *money.Money
-		clearUpdate bool
-		wantErr     bool
+		name          string
+		request       *ledgerV1.Transaction
+		balance       *money.Money
+		reserve       *money.Money
+		uncleared     *money.Money
+		clearUpdate   bool
+		wantErr       bool
+		clearBalances bool
 	}{
 		{
 			name: "happy path",
@@ -270,11 +279,12 @@ func (as *GrpcApiSuite) TestClearBalances() {
 					{Account: "ac4", Amount: toMoney(50), Credit: true},
 				},
 			},
-			balance:     toMoney(50),
-			reserve:     toMoney(0),
-			uncleared:   toMoney(0),
-			clearUpdate: false,
-			wantErr:     false,
+			balance:       toMoney(50),
+			reserve:       toMoney(0),
+			uncleared:     toMoney(0),
+			clearUpdate:   false,
+			wantErr:       false,
+			clearBalances: false,
 		},
 		{
 			name: "send uncleared entry",
@@ -282,17 +292,18 @@ func (as *GrpcApiSuite) TestClearBalances() {
 				Type:      ledgerV1.TransactionType_NORMAL,
 				Cleared:   false,
 				Currency:  "UGX",
-				Reference: updateId,
+				Reference: updateID,
 				Entries: []*ledgerV1.TransactionEntry{
 					{Account: "ac3", Amount: toMoney(20), Credit: false},
 					{Account: "ac4", Amount: toMoney(20), Credit: true},
 				},
 			},
-			balance:     toMoney(50),
-			reserve:     toMoney(0),
-			uncleared:   toMoney(20),
-			clearUpdate: false,
-			wantErr:     false,
+			balance:       toMoney(50),
+			reserve:       toMoney(0),
+			uncleared:     toMoney(20),
+			clearUpdate:   false,
+			wantErr:       false,
+			clearBalances: false,
 		},
 		{
 			name: "reduce reserve balance path",
@@ -300,68 +311,85 @@ func (as *GrpcApiSuite) TestClearBalances() {
 				Type:      ledgerV1.TransactionType_NORMAL,
 				Cleared:   true,
 				Currency:  "UGX",
-				Reference: updateId,
+				Reference: updateID,
 				Entries: []*ledgerV1.TransactionEntry{
 					{Account: "ac3", Amount: toMoney(20), Credit: false},
 					{Account: "ac4", Amount: toMoney(20), Credit: true},
 				},
 			},
-			balance:     toMoney(70),
-			reserve:     toMoney(0),
-			uncleared:   toMoney(0),
-			clearUpdate: true,
-			wantErr:     false,
+			balance:       toMoney(70),
+			reserve:       toMoney(0),
+			uncleared:     toMoney(0),
+			clearUpdate:   true,
+			wantErr:       false,
+			clearBalances: false,
 		},
 	}
 
 	as.WithTestDependancies(as.T(), func(t *testing.T, dep *testdef.DependancyOption) {
-
 		ctx := t.Context()
 		lc, lContainer := as.setupDependencies(t, dep)
 		defer lContainer.Terminate(ctx)
 
 		for _, tt := range testcases {
 			t.Run(tt.name, func(t *testing.T) {
-				var accRef string
-				if tt.clearUpdate {
-					result, err := lc.Client.UpdateTransaction(ctx, tt.request)
-					if err != nil {
-						if !tt.wantErr {
-							t.Fatalf("Update Transaction () error = %v, wantErr %v", err, tt.wantErr)
-						}
-						return
+				accRef, err := as.processTransaction(ctx, lc, tt)
+				if err != nil {
+					if !tt.wantErr {
+						t.Fatalf("Transaction processing error = %v, wantErr %v", err, tt.wantErr)
 					}
-					accRef = result.GetEntries()[0].GetAccount()
-				} else {
-					result, err := lc.Client.CreateTransaction(ctx, tt.request)
-					if err != nil {
-						if !tt.wantErr {
-							t.Fatalf("Create Transaction () error = %v, wantErr %v", err, tt.wantErr)
-						}
-						return
-					}
-					accRef = result.GetEntries()[0].GetAccount()
+					return
 				}
 
-				accounts, err := lc.Client.SearchAccounts(ctx, &commonv1.SearchRequest{Query: fmt.Sprintf("{\"query\": {\"must\": { \"fields\": [{\"id\": {\"eq\": \"%s\"}}]}}}", accRef)})
-				assert.NoError(t, err)
+				accounts, err := lc.Client.SearchAccounts(
+					ctx,
+					&commonv1.SearchRequest{
+						Query: fmt.Sprintf(
+							"{\"query\": {\"must\": { \"fields\": [{\"id\": {\"eq\": \"%s\"}}]}}}",
+							accRef,
+						),
+					},
+				)
+				require.NoError(t, err)
 
 				acc, err := accounts.Recv()
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				assert.True(t, utility.CompareMoney(tt.balance, acc.GetBalance()))
 				assert.True(t, utility.CompareMoney(tt.reserve, acc.GetReservedBalance()))
 				assert.True(t, utility.CompareMoney(tt.uncleared, acc.GetUnclearedBalance()))
-
 			})
 		}
-
 	})
 }
 
-func (as *GrpcApiSuite) TestReverseTransaction() {
+func (as *GrpcAPISuite) processTransaction(ctx context.Context, lc *ledgerV1.LedgerClient, tt struct {
+	name          string
+	request       *ledgerV1.Transaction
+	balance       *money.Money
+	reserve       *money.Money
+	uncleared     *money.Money
+	clearUpdate   bool
+	wantErr       bool
+	clearBalances bool
+}) (string, error) {
+	if tt.clearUpdate {
+		result, err := lc.Client.UpdateTransaction(ctx, tt.request)
+		if err != nil {
+			return "", err
+		}
+		return result.GetEntries()[0].GetAccount(), nil
+	}
 
-	updateId := xid.New().String()
+	result, err := lc.Client.CreateTransaction(ctx, tt.request)
+	if err != nil {
+		return "", err
+	}
+	return result.GetEntries()[0].GetAccount(), nil
+}
+
+func (as *GrpcAPISuite) TestReverseTransaction() {
+	updateID := xid.New().String()
 	testcases := []struct {
 		name         string
 		request      *ledgerV1.Transaction
@@ -376,7 +404,7 @@ func (as *GrpcApiSuite) TestReverseTransaction() {
 				Type:      ledgerV1.TransactionType_NORMAL,
 				Cleared:   true,
 				Currency:  "UGX",
-				Reference: updateId,
+				Reference: updateID,
 				Entries: []*ledgerV1.TransactionEntry{
 					{Account: "ac5", Amount: toMoney(13), Credit: false},
 					{Account: "ac4", Amount: toMoney(13), Credit: true},
@@ -427,7 +455,7 @@ func (as *GrpcApiSuite) TestReverseTransaction() {
 				Type:      ledgerV1.TransactionType_REVERSAL,
 				Cleared:   true,
 				Currency:  "UGX",
-				Reference: fmt.Sprintf("REVERSAL_%s", updateId),
+				Reference: fmt.Sprintf("REVERSAL_%s", updateID),
 				Entries: []*ledgerV1.TransactionEntry{
 					{Account: "ac5", Amount: toMoney(13), Credit: false},
 					{Account: "ac4", Amount: toMoney(13), Credit: true},
@@ -441,14 +469,12 @@ func (as *GrpcApiSuite) TestReverseTransaction() {
 	}
 
 	as.WithTestDependancies(as.T(), func(t *testing.T, dep *testdef.DependancyOption) {
-
 		ctx := t.Context()
 		lc, lContainer := as.setupDependencies(t, dep)
 		defer lContainer.Terminate(ctx)
 
 		for _, tt := range testcases {
 			t.Run(tt.name, func(t *testing.T) {
-
 				debitAccRef := tt.request.GetEntries()[0].GetAccount()
 				activeTx := tt.request
 
@@ -458,13 +484,27 @@ func (as *GrpcApiSuite) TestReverseTransaction() {
 						t.Fatalf("Create Transaction () error = %v, wantErr %v", err, tt.wantErr)
 					}
 
-					accounts, err := lc.Client.SearchAccounts(ctx, &commonv1.SearchRequest{Query: fmt.Sprintf("{\"query\": {\"must\": { \"fields\": [{\"id\": {\"eq\": \"%s\"}}]}}}", debitAccRef)})
-					assert.NoError(t, err)
+					accounts, err := lc.Client.SearchAccounts(
+						ctx,
+						&commonv1.SearchRequest{
+							Query: fmt.Sprintf(
+								"{\"query\": {\"must\": { \"fields\": [{\"id\": {\"eq\": \"%s\"}}]}}}",
+								debitAccRef,
+							),
+						},
+					)
+					require.NoError(t, err)
 
 					acc, err := accounts.Recv()
-					assert.NoError(t, err)
+					require.NoError(t, err)
 
-					assert.True(t, utility.CompareMoney(tt.balance, acc.GetBalance()), " amounts don't match %s %s", tt.balanceAfter, acc.GetBalance())
+					assert.True(
+						t,
+						utility.CompareMoney(tt.balance, acc.GetBalance()),
+						" amounts don't match %s %s",
+						tt.balanceAfter,
+						acc.GetBalance(),
+					)
 				}
 
 				_, err := lc.Client.ReverseTransaction(ctx, activeTx)
@@ -475,20 +515,32 @@ func (as *GrpcApiSuite) TestReverseTransaction() {
 					return
 				}
 
-				accounts, err := lc.Client.SearchAccounts(ctx, &commonv1.SearchRequest{Query: fmt.Sprintf("{\"query\": {\"must\": { \"fields\": [{\"id\": {\"eq\": \"%s\"}}]}}}", debitAccRef)})
-				assert.NoError(t, err)
+				accounts, err := lc.Client.SearchAccounts(
+					ctx,
+					&commonv1.SearchRequest{
+						Query: fmt.Sprintf(
+							"{\"query\": {\"must\": { \"fields\": [{\"id\": {\"eq\": \"%s\"}}]}}}",
+							debitAccRef,
+						),
+					},
+				)
+				require.NoError(t, err)
 
 				acc, err := accounts.Recv()
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
-				assert.True(t, utility.CompareMoney(tt.balanceAfter, acc.GetBalance()), " amounts don't match %s %s", tt.balanceAfter, acc.GetBalance())
-
+				assert.True(
+					t,
+					utility.CompareMoney(tt.balanceAfter, acc.GetBalance()),
+					" amounts don't match %s %s",
+					tt.balanceAfter,
+					acc.GetBalance(),
+				)
 			})
 		}
-
 	})
 }
 
-func TestGrpcApiSuite(t *testing.T) {
-	suite.Run(t, new(GrpcApiSuite))
+func TestGrpcAPISuite(t *testing.T) {
+	suite.Run(t, new(GrpcAPISuite))
 }

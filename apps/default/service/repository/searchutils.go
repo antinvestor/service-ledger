@@ -39,7 +39,7 @@ func sqlComparisonOp(op string) string {
 	return "="
 }
 
-func convertTermsToSQL(terms []map[string]interface{}) (where []string, args []interface{}) {
+func convertTermsToSQL(terms []map[string]interface{}) ([]string, []interface{}) {
 	// Sample terms
 	/*
 	   "terms": [
@@ -62,6 +62,8 @@ func convertTermsToSQL(terms []map[string]interface{}) (where []string, args []i
 	   -- object value
 	   SELECT id FROM transactions WHERE data->'products' @> '{"qw":{"coupons": ["x001"]}}'::jsonb;
 	*/
+	where := []string{}
+	args := []interface{}{}
 	for _, term := range terms {
 		var conditions []string
 		for key, value := range term {
@@ -73,10 +75,10 @@ func convertTermsToSQL(terms []map[string]interface{}) (where []string, args []i
 		}
 		where = append(where, "("+strings.Join(conditions, " AND ")+")")
 	}
-	return
+	return where, args
 }
 
-func convertRangesToSQL(ranges []map[string]map[string]interface{}) (where []string, args []interface{}) {
+func convertRangesToSQL(ranges []map[string]map[string]interface{}) ([]string, []interface{}) {
 	// Sample ranges
 	/*
 	   "ranges": [
@@ -91,6 +93,8 @@ func convertRangesToSQL(ranges []map[string]map[string]interface{}) (where []str
 	   -- other values
 	   SELECT id, data->'date' FROM transactions WHERE data->>'date' >= '2017-01-01' AND data->>'date' < '2017-06-31';
 	*/
+	where := []string{}
+	args := []interface{}{}
 	for _, rangeItem := range ranges {
 		var conditions []string
 		for key, comparison := range rangeItem {
@@ -106,11 +110,13 @@ func convertRangesToSQL(ranges []map[string]map[string]interface{}) (where []str
 		}
 		where = append(where, "("+strings.Join(conditions, " AND ")+")")
 	}
-	return
+	return where, args
 }
 
-func getSQLConditionAndArgsFromRange(key string, op string, value interface{}) (condition string, args []interface{}) {
-	getConditionAndArgs := func(key string, op string, val interface{}) (condn string, arg interface{}) {
+func getSQLConditionAndArgsFromRange(key string, op string, value interface{}) (string, []interface{}) {
+	getConditionAndArgs := func(key string, op string, val interface{}) (string, interface{}) {
+		var condn string
+		var arg interface{}
 		switch val.(type) {
 		case int, int8, int16, int32, int64, float32, float64:
 			condn = fmt.Sprintf("(data->>'%s')::float %s ?", key, sqlComparisonOp(op))
@@ -122,9 +128,11 @@ func getSQLConditionAndArgsFromRange(key string, op string, value interface{}) (
 			condn = fmt.Sprintf("data->>'%s' %s ?", key, sqlComparisonOp(op))
 			arg = val
 		}
-		return
+		return condn, arg
 	}
 
+	condition := ""
+	args := []interface{}{}
 	switch op {
 	case "in", "nin":
 		// Convert IN, NOT IN condition to OR of EQ and NE conditions
@@ -149,21 +157,18 @@ func getSQLConditionAndArgsFromRange(key string, op string, value interface{}) (
 		condition = c
 		args = append(args, arg)
 	}
-	return
+	return condition, args
 }
 
-func convertFieldsToSQL(fields []map[string]map[string]interface{}) (where []string, args []interface{}) {
+func convertFieldsToSQL(fields []map[string]map[string]interface{}) ([]string, []interface{}) {
 	// Sample ranges
 	/*
 	   "fields": [
 	       {"reference": {"eq": "ACME.CREDIT"}, "balance": {"lt": 0}},
 	   ]
 	*/
-	// Corresponding SQL
-	/*
-	   -- numeric value
-	   SELECT reference, balance, data FROM accounts WHERE reference = 'ACME.CREDIT' AND balance < 0;
-	*/
+	where := []string{}
+	args := []interface{}{}
 	for _, field := range fields {
 		var conditions []string
 		for key, comparison := range field {
@@ -175,5 +180,5 @@ func convertFieldsToSQL(fields []map[string]map[string]interface{}) (where []str
 		}
 		where = append(where, "("+strings.Join(conditions, " AND ")+")")
 	}
-	return
+	return where, args
 }

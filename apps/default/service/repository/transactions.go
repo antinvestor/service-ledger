@@ -8,34 +8,43 @@ import (
 	"time"
 
 	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
-	models2 "github.com/antinvestor/service-ledger/apps/default/service/models"
+	models "github.com/antinvestor/service-ledger/apps/default/service/models"
 	"github.com/antinvestor/service-ledger/internal/apperrors"
 	"github.com/pitabwire/frame"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 )
 
-// DefaultTimestamLayout is the timestamp layout followed in Ledger
+// DefaultTimestamLayout is the timestamp layout followed in Ledger.
 const DefaultTimestamLayout = "2006-01-02T15:04:05.999999999"
 
 type TransactionRepository interface {
-	GetByID(ctx context.Context, id string) (*models2.Transaction, apperrors.ApplicationLedgerError)
-	Search(ctx context.Context, query string) (frame.JobResultPipe[[]*models2.Transaction], error)
-	SearchEntries(ctx context.Context, query string) (frame.JobResultPipe[[]*models2.TransactionEntry], error)
-	Validate(ctx context.Context, transaction *models2.Transaction) (map[string]*models2.Account, apperrors.ApplicationLedgerError)
-	IsConflict(ctx context.Context, transaction2 *models2.Transaction) (bool, apperrors.ApplicationLedgerError)
-	Transact(ctx context.Context, transaction *models2.Transaction) (*models2.Transaction, apperrors.ApplicationLedgerError)
-	Update(ctx context.Context, transaction *models2.Transaction) (*models2.Transaction, apperrors.ApplicationLedgerError)
-	Reverse(ctx context.Context, id string) (*models2.Transaction, apperrors.ApplicationLedgerError)
+	GetByID(ctx context.Context, id string) (*models.Transaction, apperrors.ApplicationLedgerError)
+	Search(ctx context.Context, query string) (frame.JobResultPipe[[]*models.Transaction], error)
+	SearchEntries(ctx context.Context, query string) (frame.JobResultPipe[[]*models.TransactionEntry], error)
+	Validate(
+		ctx context.Context,
+		transaction *models.Transaction,
+	) (map[string]*models.Account, apperrors.ApplicationLedgerError)
+	IsConflict(ctx context.Context, transaction2 *models.Transaction) (bool, apperrors.ApplicationLedgerError)
+	Transact(
+		ctx context.Context,
+		transaction *models.Transaction,
+	) (*models.Transaction, apperrors.ApplicationLedgerError)
+	Update(
+		ctx context.Context,
+		transaction *models.Transaction,
+	) (*models.Transaction, apperrors.ApplicationLedgerError)
+	Reverse(ctx context.Context, id string) (*models.Transaction, apperrors.ApplicationLedgerError)
 }
 
-// transactionRepository is the interface to all transaction operations
+// transactionRepository is the interface to all transaction operations.
 type transactionRepository struct {
 	service     *frame.Service
 	accountRepo AccountRepository
 }
 
-// NewTransactionRepository returns a new instance of `transactionRepository`
+// NewTransactionRepository returns a new instance of `transactionRepository`.
 func NewTransactionRepository(service *frame.Service, accountRepo AccountRepository) TransactionRepository {
 	return &transactionRepository{
 		service:     service,
@@ -43,39 +52,37 @@ func NewTransactionRepository(service *frame.Service, accountRepo AccountReposit
 	}
 }
 
-func (t *transactionRepository) Search(ctx context.Context, query string) (frame.JobResultPipe[[]*models2.Transaction], error) {
-
+func (t *transactionRepository) Search(
+	ctx context.Context,
+	query string,
+) (frame.JobResultPipe[[]*models.Transaction], error) {
 	service := t.service
-	job := frame.NewJob(func(ctx context.Context, jobResult frame.JobResultPipe[[]*models2.Transaction]) error {
-
+	job := frame.NewJob(func(ctx context.Context, jobResult frame.JobResultPipe[[]*models.Transaction]) error {
 		rawQuery, err := NewSearchRawQuery(ctx, query)
 		if err != nil {
 			return jobResult.WriteError(ctx, err)
 		}
 
 		sqlQuery := rawQuery.ToQueryConditions()
-		var transactionList []*models2.Transaction
+		var transactionList []*models.Transaction
 
 		for sqlQuery.canLoad() {
-
 			result := service.DB(ctx, true).Where(sqlQuery.sql, sqlQuery.args...).Offset(sqlQuery.offset).
 				Limit(sqlQuery.batchSize).Find(&transactionList)
 			err1 := result.Error
 			if err1 != nil {
-
-				return jobResult.WriteError(ctx, apperrors.ErrorSystemFailure.Override(err))
+				return jobResult.WriteError(ctx, apperrors.ErrSystemFailure.Override(err1))
 			}
 
 			if len(transactionList) > 0 {
-
-				var transactionIds []string
+				var transactionIDs []string
 				for _, transaction := range transactionList {
-					transactionIds = append(transactionIds, transaction.GetID())
+					transactionIDs = append(transactionIDs, transaction.GetID())
 				}
 
-				entriesMap, err2 := t.SearchEntriesByTransactionID(ctx, transactionIds...)
+				entriesMap, err2 := t.SearchEntriesByTransactionID(ctx, transactionIDs...)
 				if err2 != nil {
-					return jobResult.WriteError(ctx, apperrors.ErrorSystemFailure.Override(err))
+					return jobResult.WriteError(ctx, apperrors.ErrSystemFailure.Override(err2))
 				}
 
 				for _, transaction := range transactionList {
@@ -96,7 +103,6 @@ func (t *transactionRepository) Search(ctx context.Context, query string) (frame
 			}
 		}
 		return nil
-
 	})
 
 	err := frame.SubmitJob(ctx, service, job)
@@ -105,12 +111,13 @@ func (t *transactionRepository) Search(ctx context.Context, query string) (frame
 	}
 
 	return job, nil
-
 }
 
-func (t *transactionRepository) SearchEntriesByTransactionID(ctx context.Context, transactionIDs ...string) (map[string][]*models2.TransactionEntry, error) {
-
-	entriesMap := make(map[string][]*models2.TransactionEntry)
+func (t *transactionRepository) SearchEntriesByTransactionID(
+	ctx context.Context,
+	transactionIDs ...string,
+) (map[string][]*models.TransactionEntry, error) {
+	entriesMap := make(map[string][]*models.TransactionEntry)
 
 	queryMap := map[string]any{
 		"query": map[string]any{
@@ -128,7 +135,7 @@ func (t *transactionRepository) SearchEntriesByTransactionID(ctx context.Context
 
 	queryBytes, err := json.Marshal(queryMap)
 	if err != nil {
-		return nil, apperrors.ErrorSystemFailure.Override(err).Extend("Json marshalling error")
+		return nil, apperrors.ErrSystemFailure.Override(err).Extend("Json marshalling error")
 	}
 
 	logger := t.service.Log(ctx)
@@ -141,11 +148,10 @@ func (t *transactionRepository) SearchEntriesByTransactionID(ctx context.Context
 	if err != nil {
 		logger.WithError(err).Info("could not query for entries")
 
-		return nil, apperrors.ErrorSystemFailure.Override(err).Extend(fmt.Sprintf("db query error [%s]", query))
+		return nil, apperrors.ErrSystemFailure.Override(err).Extend(fmt.Sprintf("db query error [%s]", query))
 	}
 
 	for {
-
 		logger.Info("reading results")
 
 		result, ok := jobResult.ReadResult(ctx)
@@ -155,45 +161,42 @@ func (t *transactionRepository) SearchEntriesByTransactionID(ctx context.Context
 		}
 		if result.IsError() {
 			logger.WithError(result.Error()).Info("could not read results")
-			return nil, apperrors.ErrorSystemFailure.Override(result.Error())
+			return nil, apperrors.ErrSystemFailure.Override(result.Error())
 		}
 
 		for _, entry := range result.Item() {
-
 			entries, ok0 := entriesMap[entry.TransactionID]
 			if !ok0 {
-				entries = make([]*models2.TransactionEntry, 0)
+				entries = make([]*models.TransactionEntry, 0)
 			}
 
 			entriesMap[entry.TransactionID] = append(entries, entry)
 		}
-
 	}
-
 }
 
-func (t *transactionRepository) SearchEntries(ctx context.Context, query string) (frame.JobResultPipe[[]*models2.TransactionEntry], error) {
-
+func (t *transactionRepository) SearchEntries(
+	ctx context.Context,
+	query string,
+) (frame.JobResultPipe[[]*models.TransactionEntry], error) {
 	service := t.service
 
-	job := frame.NewJob(func(ctx context.Context, jobResult frame.JobResultPipe[[]*models2.TransactionEntry]) error {
-
+	job := frame.NewJob(func(ctx context.Context, jobResult frame.JobResultPipe[[]*models.TransactionEntry]) error {
 		rawQuery, err := NewSearchRawQuery(ctx, query)
 		if err != nil {
 			return jobResult.WriteError(ctx, err)
 		}
 
 		sqlQuery := rawQuery.ToQueryConditions()
-		var transactionEntriesList []*models2.TransactionEntry
+		var transactionEntriesList []*models.TransactionEntry
 
 		for sqlQuery.canLoad() {
-
 			result := service.DB(ctx, true).Offset(sqlQuery.offset).Limit(sqlQuery.batchSize).
 				Where(sqlQuery.sql, sqlQuery.args...).Find(&transactionEntriesList)
 
 			err1 := result.Error
 			if err1 != nil {
-				return jobResult.WriteError(ctx, apperrors.ErrorSystemFailure.Override(err1))
+				return jobResult.WriteError(ctx, apperrors.ErrSystemFailure.Override(err1))
 			}
 
 			err1 = jobResult.WriteResult(ctx, transactionEntriesList)
@@ -207,7 +210,6 @@ func (t *transactionRepository) SearchEntries(ctx context.Context, query string)
 		}
 
 		return nil
-
 	})
 
 	err := frame.SubmitJob(ctx, service, job)
@@ -216,75 +218,85 @@ func (t *transactionRepository) SearchEntries(ctx context.Context, query string)
 	}
 
 	return job, nil
-
 }
 
-// Validate checks all issues around transaction are satisfied
-func (t *transactionRepository) Validate(ctx context.Context, txn *models2.Transaction) (map[string]*models2.Account, apperrors.ApplicationLedgerError) {
-
-	if ledgerV1.TransactionType_NORMAL.String() == txn.TransactionType || ledgerV1.TransactionType_REVERSAL.String() == txn.TransactionType {
+// Validate checks all issues around transaction are satisfied.
+func (t *transactionRepository) Validate(
+	ctx context.Context,
+	txn *models.Transaction,
+) (map[string]*models.Account, apperrors.ApplicationLedgerError) {
+	if ledgerV1.TransactionType_NORMAL.String() == txn.TransactionType ||
+		ledgerV1.TransactionType_REVERSAL.String() == txn.TransactionType {
 		// Skip if the transaction is invalid
 		// by validating the amount values
 		if !txn.IsZeroSum() {
-			return nil, apperrors.ErrorTransactionHasNonZeroSum
+			return nil, apperrors.ErrTransactionHasNonZeroSum
 		}
 
 		if !txn.IsTrueDrCr() {
-			return nil, apperrors.ErrorTransactionHasInvalidDrCrEntry
+			return nil, apperrors.ErrTransactionHasInvalidDrCrEntry
 		}
-
-	} else {
-
-		if ledgerV1.TransactionType_RESERVATION.String() == txn.TransactionType {
-			if len(txn.Entries) != 1 {
-				return nil, apperrors.ErrorTransactionHasInvalidDrCrEntry
-			}
+	} else if ledgerV1.TransactionType_RESERVATION.String() == txn.TransactionType {
+		if len(txn.Entries) != 1 {
+			return nil, apperrors.ErrTransactionHasInvalidDrCrEntry
 		}
-
 	}
 
 	if len(txn.Entries) == 0 {
-		return nil, apperrors.ErrorTransactionEntriesNotFound
+		return nil, apperrors.ErrTransactionEntriesNotFound
 	}
 
-	accountIdSet := map[string]bool{}
+	accountIDSet := map[string]bool{}
 	for _, entry := range txn.Entries {
-		accountIdSet[entry.AccountID] = true
+		accountIDSet[entry.AccountID] = true
 	}
 
-	accountIds := make([]string, 0, len(accountIdSet))
-	for k := range accountIdSet {
-		accountIds = append(accountIds, k)
+	accountIDs := make([]string, 0, len(accountIDSet))
+	for accountID := range accountIDSet {
+		accountIDs = append(accountIDs, accountID)
 	}
 
-	accountsMap, errAcc := t.accountRepo.ListByID(ctx, accountIds...)
+	accountsMap, errAcc := t.accountRepo.ListByID(ctx, accountIDs...)
 	if errAcc != nil {
 		return nil, errAcc
 	}
 
 	for _, entry := range txn.Entries {
-
 		if entry.Amount.Decimal.IsZero() {
-			return nil, apperrors.ErrorTransactionEntryHasZeroAmount.Extend(fmt.Sprintf("A transaction entry for account : %s has a zero amount", entry.AccountID))
+			return nil, apperrors.ErrTransactionEntryHasZeroAmount.Extend(
+				fmt.Sprintf("entry [id=%s, account_id=%s] amount is zero", entry.ID, entry.AccountID),
+			)
 		}
 
 		account, ok := accountsMap[entry.AccountID]
 		if !ok {
 			// // Accounts have to be predefined hence check all references exist.
-			return nil, apperrors.ErrorAccountNotFound.Extend(fmt.Sprintf("Account %s was not found in the system", entry.AccountID))
+			return nil, apperrors.ErrAccountNotFound.Extend(
+				fmt.Sprintf("Account %s was not found in the system", entry.AccountID),
+			)
 		}
 
 		if !strings.EqualFold(txn.Currency, account.Currency) {
-			return nil, apperrors.ErrorTransactionAccountsDifferCurrency.Extend(fmt.Sprintf("Account %s has differing currency of %s to transaction currency of %s", entry.AccountID, account.Currency, txn.Currency))
+			return nil, apperrors.ErrTransactionAccountsDifferCurrency.Extend(
+				fmt.Sprintf(
+					"entry [id=%s, account_id=%s] currency [%s] != [%s]",
+					entry.ID,
+					entry.AccountID,
+					account.Currency,
+					txn.Currency,
+				),
+			)
 		}
 	}
 
 	return accountsMap, nil
 }
 
-// IsConflict says whether a transaction conflicts with an existing transaction
-func (t *transactionRepository) IsConflict(ctx context.Context, transaction2 *models2.Transaction) (bool, apperrors.ApplicationLedgerError) {
-
+// IsConflict says whether a transaction conflicts with an existing transaction.
+func (t *transactionRepository) IsConflict(
+	ctx context.Context,
+	transaction2 *models.Transaction,
+) (bool, apperrors.ApplicationLedgerError) {
 	transaction1, err := t.GetByID(ctx, transaction2.ID)
 	if err != nil {
 		return false, err
@@ -294,30 +306,26 @@ func (t *transactionRepository) IsConflict(ctx context.Context, transaction2 *mo
 	return !containsSameElements(transaction1.Entries, transaction2.Entries), nil
 }
 
-// Transact creates the input transaction in the DB
-func (t *transactionRepository) Transact(ctx context.Context, transaction *models2.Transaction) (*models2.Transaction, apperrors.ApplicationLedgerError) {
-
+// Transact creates the input transaction in the DB.
+func (t *transactionRepository) Transact(
+	ctx context.Context,
+	transaction *models.Transaction,
+) (*models.Transaction, apperrors.ApplicationLedgerError) {
 	// Check if a transaction with Reference already exists
 	existingTransaction, aerr := t.GetByID(ctx, transaction.GetID())
-	if aerr != nil && !errors.Is(aerr, apperrors.ErrorTransactionNotFound) {
+	if aerr != nil && !errors.Is(aerr, apperrors.ErrTransactionNotFound) {
 		return nil, aerr
 	}
 
 	if existingTransaction != nil {
-
-		isConflict := false
-		// Check if the transaction entries are different
-		// and conflicts with the existing entries
-		isConflict, aerr = t.IsConflict(ctx, transaction)
-		if aerr != nil {
-			return nil, aerr
+		var conflictErr apperrors.ApplicationLedgerError
+		isConflict, conflictErr := t.IsConflict(ctx, transaction)
+		if conflictErr != nil {
+			return nil, conflictErr
 		}
 		if isConflict {
-			// The conflicting transactions are denied
-			return nil, apperrors.ErrorTransactionIsConfilicting
+			return nil, apperrors.ErrTransactionIsConfilicting
 		}
-		// Otherwise the transaction is just a duplicate
-		// The exactly duplicate transactions are ignored
 		return existingTransaction, nil
 	}
 
@@ -326,16 +334,24 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 		return nil, aerr
 	}
 
+	typedLedgerMap := make(map[string][]string)
+	typedLedgerMap[models.LedgerTypeAsset] = []string{"CR", "DR"}
+	typedLedgerMap[models.LedgerTypeExpense] = []string{"DR", "CR"}
+	typedLedgerMap[models.LedgerTypeLiability] = []string{"CR", "DR"}
+	typedLedgerMap[models.LedgerTypeIncome] = []string{"CR", "DR"}
+	typedLedgerMap[models.LedgerTypeCapital] = []string{"CR", "DR"}
+
 	// Add transaction Entries in one go to succeed or fail all
 	for _, line := range transaction.Entries {
-
 		account := accountsMap[line.AccountID]
 
 		line.Balance = decimal.NewNullDecimal(account.Balance.Decimal)
 
 		// Decide the signage of entry based on : https://en.wikipedia.org/wiki/Double-entry_bookkeeping :DEADCLIC
-		if line.Credit && (account.LedgerType == models2.LEDGER_TYPE_ASSET || account.LedgerType == models2.LEDGER_TYPE_EXPENSE) ||
-			!line.Credit && (account.LedgerType == models2.LEDGER_TYPE_LIABILITY || account.LedgerType == models2.LEDGER_TYPE_INCOME || account.LedgerType == models2.LEDGER_TYPE_CAPITAL) {
+		if line.Credit &&
+			(account.LedgerType == models.LedgerTypeAsset || account.LedgerType == models.LedgerTypeExpense) ||
+			!line.Credit &&
+				(account.LedgerType == models.LedgerTypeLiability || account.LedgerType == models.LedgerTypeIncome || account.LedgerType == models.LedgerTypeCapital) {
 			line.Amount = decimal.NewNullDecimal(line.Amount.Decimal.Neg())
 		}
 	}
@@ -343,17 +359,26 @@ func (t *transactionRepository) Transact(ctx context.Context, transaction *model
 	// Create the transaction and its entries
 	err := t.service.DB(ctx, false).Create(transaction).Error
 	if err != nil {
-		return nil, apperrors.ErrorSystemFailure.Override(err)
+		return nil, apperrors.ErrSystemFailure.Override(err)
+	}
+
+	now := time.Now()
+	if transaction.TransactedAt.IsZero() {
+		transaction.TransactedAt = &now
+	} else if transaction.ClearedAt.IsZero() {
+		transaction.ClearedAt = &now
 	}
 
 	return t.GetByID(ctx, transaction.GetID())
 }
 
-// GetByID returns a transaction with the given Reference
-func (t *transactionRepository) GetByID(ctx context.Context, id string) (*models2.Transaction, apperrors.ApplicationLedgerError) {
-
+// GetByID returns a transaction with the given Reference.
+func (t *transactionRepository) GetByID(
+	ctx context.Context,
+	id string,
+) (*models.Transaction, apperrors.ApplicationLedgerError) {
 	if id == "" {
-		return nil, apperrors.ErrorUnspecifiedReference
+		return nil, apperrors.ErrUnspecifiedReference
 	}
 
 	queryMap := map[string]any{
@@ -372,45 +397,41 @@ func (t *transactionRepository) GetByID(ctx context.Context, id string) (*models
 
 	queryBytes, err := json.Marshal(queryMap)
 	if err != nil {
-		return nil, apperrors.ErrorSystemFailure.Override(err).Extend("Json marshalling error")
+		return nil, apperrors.ErrSystemFailure.Override(err).Extend("Json marshalling error")
 	}
 
 	query := string(queryBytes)
 
 	jobResult, err := t.Search(ctx, query)
 	if err != nil {
-		return nil, apperrors.ErrorSystemFailure.Override(err)
+		return nil, apperrors.ErrSystemFailure.Override(err)
 	}
 
-	var transactions []*models2.Transaction
-	var terminalError apperrors.ApplicationLedgerError
+	var transactions []*models.Transaction
 	for {
-
 		result, ok := jobResult.ReadResult(ctx)
 
 		if !ok {
-			if terminalError != nil {
-				return nil, terminalError
-			}
-
 			if len(transactions) > 0 {
 				return transactions[0], nil
 			}
 
-			return nil, apperrors.ErrorTransactionNotFound
+			return nil, apperrors.ErrTransactionNotFound
 		}
 
 		if result.IsError() {
-			return nil, apperrors.ErrorSystemFailure.Override(result.Error())
+			return nil, apperrors.ErrSystemFailure.Override(result.Error())
 		}
 
 		transactions = append(transactions, result.Item()...)
 	}
-
 }
 
-// Update updates data of the given transaction
-func (t *transactionRepository) Update(ctx context.Context, txn *models2.Transaction) (*models2.Transaction, apperrors.ApplicationLedgerError) {
+// Update updates data of the given transaction.
+func (t *transactionRepository) Update(
+	ctx context.Context,
+	txn *models.Transaction,
+) (*models.Transaction, apperrors.ApplicationLedgerError) {
 	existingTransaction, errTx := t.GetByID(ctx, txn.ID)
 	if errTx != nil {
 		return nil, errTx
@@ -424,7 +445,6 @@ func (t *transactionRepository) Update(ctx context.Context, txn *models2.Transac
 
 	if existingTransaction.ClearedAt == nil {
 		if txn.ClearedAt != nil {
-
 			accountsMap, err1 := t.Validate(ctx, existingTransaction)
 			if err1 != nil {
 				return nil, err1
@@ -441,23 +461,26 @@ func (t *transactionRepository) Update(ctx context.Context, txn *models2.Transac
 	err := t.service.DB(ctx, false).Save(existingTransaction).Error
 	if err != nil {
 		t.service.Log(ctx).WithError(err).Error("could not save the transaction")
-		return nil, apperrors.ErrorSystemFailure.Override(err)
+		return nil, apperrors.ErrSystemFailure.Override(err)
 	}
 	return existingTransaction, nil
-
 }
 
-// Reverse creates a reversal  of the input transaction by creating a new transaction
-func (t *transactionRepository) Reverse(ctx context.Context, id string) (*models2.Transaction, apperrors.ApplicationLedgerError) {
-
+// Reverse creates a reversal  of the input transaction by creating a new transaction.
+func (t *transactionRepository) Reverse(
+	ctx context.Context,
+	id string,
+) (*models.Transaction, apperrors.ApplicationLedgerError) {
 	// Check if a transaction with same Reference already exists
 	reversalTxn, err1 := t.GetByID(ctx, id)
 	if err1 != nil {
 		return nil, err1
 	}
 
-	if ledgerV1.TransactionType_NORMAL.String() != reversalTxn.TransactionType {
-		return nil, apperrors.ErrorTransactionTypeNotReversible.Extend(fmt.Sprintf(" supplied type : %s", reversalTxn.TransactionType))
+	if reversalTxn.TransactionType != ledgerV1.TransactionType_NORMAL.String() {
+		return nil, apperrors.ErrTransactionTypeNotReversible.Extend(
+			fmt.Sprintf("transaction (type=%s) is not reversible", reversalTxn.TransactionType),
+		)
 	}
 
 	for _, entry := range reversalTxn.Entries {

@@ -20,7 +20,6 @@ func (entries Orderedentries) Less(i, j int) bool {
 }
 
 func containsSameElements(l1 []*models.TransactionEntry, l2 []*models.TransactionEntry) bool {
-
 	l1Map := make(map[string]*models.TransactionEntry)
 
 	if len(l1) != len(l2) {

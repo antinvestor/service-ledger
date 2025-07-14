@@ -25,23 +25,24 @@ func toLedgerType(model string) ledgerV1.LedgerType {
 	return ledgerV1.LedgerType(ledgerType)
 }
 
-func ledgerToApi(mLg *models.Ledger) *ledgerV1.Ledger {
+func ledgerToAPI(mLg *models.Ledger) *ledgerV1.Ledger {
 	return &ledgerV1.Ledger{Reference: mLg.ID, Type: toLedgerType(mLg.Type),
 		Parent: mLg.ParentID, Data: frame.DBPropertiesToMap(mLg.Data)}
 }
 
-func ledgerFromApi(aLg *ledgerV1.Ledger) *models.Ledger {
+func ledgerFromAPI(aLg *ledgerV1.Ledger) *models.Ledger {
 	return &models.Ledger{
 		BaseModel: frame.BaseModel{ID: aLg.GetReference()},
 		Type:      fromLedgerType(aLg.GetType()),
 		ParentID:  aLg.GetParent(),
 		Data:      frame.DBPropertiesFromMap(aLg.GetData())}
-
 }
 
-// SearchLedgers for an ledger based on search request json query
-func (ledgerSrv *LedgerServer) SearchLedgers(request *commonv1.SearchRequest, server ledgerV1.LedgerService_SearchLedgersServer) error {
-
+// SearchLedgers for an ledger based on search request json query.
+func (ledgerSrv *LedgerServer) SearchLedgers(
+	request *commonv1.SearchRequest,
+	server ledgerV1.LedgerService_SearchLedgersServer,
+) error {
 	ctx := server.Context()
 	ledgerRepository := repository.NewLedgerRepository(ledgerSrv.Service)
 
@@ -51,13 +52,12 @@ func (ledgerSrv *LedgerServer) SearchLedgers(request *commonv1.SearchRequest, se
 	}
 
 	for result := range jobResult.ResultChan() {
-
 		if result.IsError() {
-			return apperrors.ErrorSystemFailure.Override(result.Error())
+			return apperrors.ErrSystemFailure.Override(result.Error())
 		}
 
 		for _, ledger := range result.Item() {
-			if err = server.Send(ledgerToApi(ledger)); err != nil {
+			if err = server.Send(ledgerToAPI(ledger)); err != nil {
 				return err
 			}
 		}
@@ -65,32 +65,28 @@ func (ledgerSrv *LedgerServer) SearchLedgers(request *commonv1.SearchRequest, se
 	return nil
 }
 
-// CreateLedger a new account based on supplied data
+// CreateLedger a new account based on supplied data.
 func (ledgerSrv *LedgerServer) CreateLedger(ctx context.Context, lg *ledgerV1.Ledger) (*ledgerV1.Ledger, error) {
-
 	ledgerRepository := repository.NewLedgerRepository(ledgerSrv.Service)
 
 	// Otherwise, add lg
-	mAcc, aerr := ledgerRepository.Create(ctx, ledgerFromApi(lg))
+	mAcc, aerr := ledgerRepository.Create(ctx, ledgerFromAPI(lg))
 	if aerr != nil {
 		return nil, aerr
 	}
 
-	return ledgerToApi(mAcc), nil
-
+	return ledgerToAPI(mAcc), nil
 }
 
 // UpdateLedger the data component of the account.
 func (ledgerSrv *LedgerServer) UpdateLedger(context context.Context, aLg *ledgerV1.Ledger) (*ledgerV1.Ledger, error) {
-
 	ledgerDB := repository.NewLedgerRepository(ledgerSrv.Service)
 
 	// Otherwise, add account
-	mLg, aerr := ledgerDB.Update(context, ledgerFromApi(aLg))
+	mLg, aerr := ledgerDB.Update(context, ledgerFromAPI(aLg))
 	if aerr != nil {
 		return nil, aerr
 	}
 
-	return ledgerToApi(mLg), nil
-
+	return ledgerToAPI(mLg), nil
 }

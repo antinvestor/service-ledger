@@ -13,8 +13,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-func accountToApi(mAcc *models.Account) *ledgerV1.Account {
-
+func accountToAPI(mAcc *models.Account) *ledgerV1.Account {
 	accountBalance := decimal.Zero
 	if mAcc.Balance.Valid {
 		accountBalance = mAcc.Balance.Decimal
@@ -40,21 +39,19 @@ func accountToApi(mAcc *models.Account) *ledgerV1.Account {
 		Data: frame.DBPropertiesToMap(mAcc.Data)}
 }
 
-func accountFromApi(account *ledgerV1.Account) *models.Account {
-
+func accountFromAPI(account *ledgerV1.Account) *models.Account {
 	accountBalance := utility2.FromMoney(account.GetBalance())
 
 	return &models.Account{
 		BaseModel: frame.BaseModel{ID: account.GetReference()},
 		LedgerID:  account.GetLedger(),
-		Currency:  account.GetBalance().CurrencyCode,
+		Currency:  account.GetBalance().GetCurrencyCode(),
 		Balance:   decimal.NewNullDecimal(accountBalance),
-		Data:      frame.DBPropertiesFromMap(account.Data)}
+		Data:      frame.DBPropertiesFromMap(account.GetData())}
 }
 
 func (ledgerSrv *LedgerServer) SearchAccounts(
 	request *commonv1.SearchRequest, server ledgerV1.LedgerService_SearchAccountsServer) error {
-
 	ctx := server.Context()
 
 	accountsRepo := repository.NewAccountRepository(ledgerSrv.Service)
@@ -65,48 +62,42 @@ func (ledgerSrv *LedgerServer) SearchAccounts(
 	}
 
 	for result := range jobResult.ResultChan() {
-
 		if result.IsError() {
-			return apperrors.ErrorSystemFailure.Override(result.Error())
+			return apperrors.ErrSystemFailure.Override(result.Error())
 		}
 
 		for _, acc := range result.Item() {
-			if err = server.Send(accountToApi(acc)); err != nil {
+			if err = server.Send(accountToAPI(acc)); err != nil {
 				return err
 			}
 		}
 	}
 
 	return nil
-
 }
 
-// CreateAccount a new account based on supplied data
+// CreateAccount a new account based on supplied data.
 func (ledgerSrv *LedgerServer) CreateAccount(ctx context.Context, aAcc *ledgerV1.Account) (*ledgerV1.Account, error) {
-
 	accountsRepo := repository.NewAccountRepository(ledgerSrv.Service)
 
 	// Otherwise, add account
-	mAcc, aerr := accountsRepo.Create(ctx, accountFromApi(aAcc))
+	mAcc, aerr := accountsRepo.Create(ctx, accountFromAPI(aAcc))
 	if aerr != nil {
 		return nil, aerr
 	}
 
-	return accountToApi(mAcc), nil
-
+	return accountToAPI(mAcc), nil
 }
 
 // UpdateAccount the data component of the account.
 func (ledgerSrv *LedgerServer) UpdateAccount(ctx context.Context, aAcc *ledgerV1.Account) (*ledgerV1.Account, error) {
-
 	accountsRepo := repository.NewAccountRepository(ledgerSrv.Service)
 
 	// Otherwise, add account
-	mAcc, aerr := accountsRepo.Update(ctx, aAcc.Reference, aAcc.Data)
+	mAcc, aerr := accountsRepo.Update(ctx, aAcc.GetReference(), aAcc.GetData())
 	if aerr != nil {
 		return nil, aerr
 	}
 
-	return accountToApi(mAcc), nil
-
+	return accountToAPI(mAcc), nil
 }

@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+
+	//nolint:gosec // G108: Profiling endpoint deliberately exposed for monitoring and debugging purposes
 	_ "net/http/pprof"
 
 	"buf.build/go/protovalidate"
@@ -20,7 +22,6 @@ import (
 )
 
 func main() {
-
 	serviceName := "service_ledger"
 	ctx := context.Background()
 

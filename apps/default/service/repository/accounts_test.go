@@ -5,12 +5,13 @@ import (
 	"testing"
 
 	"github.com/antinvestor/service-ledger/apps/default/service/models"
-	repository2 "github.com/antinvestor/service-ledger/apps/default/service/repository"
+	repository "github.com/antinvestor/service-ledger/apps/default/service/repository"
 	"github.com/antinvestor/service-ledger/apps/default/tests"
 	_ "github.com/lib/pq"
 	"github.com/pitabwire/frame"
 	"github.com/pitabwire/frame/tests/testdef"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -20,43 +21,37 @@ type AccountsSuite struct {
 }
 
 func (as *AccountsSuite) setupFixtures(ctx context.Context, svc *frame.Service) {
-
 	// Create test accounts.
-	ledgersDB := repository2.NewLedgerRepository(svc)
-	accountsDB := repository2.NewAccountRepository(svc)
+	ledgersDB := repository.NewLedgerRepository(svc)
+	accountsDB := repository.NewAccountRepository(svc)
 
-	as.ledger = &models.Ledger{Type: models.LEDGER_TYPE_ASSET}
+	as.ledger = &models.Ledger{Type: models.LedgerTypeAsset}
 	var err error
 	as.ledger, err = ledgersDB.Create(ctx, as.ledger)
-	if err != nil {
-		as.Errorf(err, "Unable to create ledger for account")
-	}
+	as.Require().NoError(err, "Unable to create ledger for account")
 
-	account := &models.Account{LedgerID: as.ledger.ID, Currency: "UGX"}
+	account := &models.Account{LedgerID: as.ledger.ID, Currency: "UGX", LedgerType: models.LedgerTypeAsset}
 	account.ID = "100"
 	_, err = accountsDB.Create(ctx, account)
 	if err != nil {
-		as.Errorf(err, "Unable to create account")
+		as.Require().NoError(err, "Unable to create account")
 	}
 }
 
 func (as *AccountsSuite) TestAccountsInfoAPI() {
-
 	as.WithTestDependancies(as.T(), func(t *testing.T, dep *testdef.DependancyOption) {
-
 		svc, ctx := as.CreateService(t, dep)
 		as.setupFixtures(ctx, svc)
 
-		accountsDB := repository2.NewAccountRepository(svc)
+		accountsDB := repository.NewAccountRepository(svc)
 		account, err := accountsDB.GetByID(ctx, "100")
 		if err != nil {
-			as.Errorf(err, "Error getting account info api account")
+			require.NoError(t, err, "Error getting account info api account")
 		} else {
-			assert.Equal(t, nil, err, "Error while getting acccount")
+			assert.Nil(t, err, "Error while getting acccount")
 			assert.Equal(t, "100", account.ID, "Invalid account Reference")
 			assert.True(t, account.Balance.Valid && account.Balance.Decimal.IsZero(), "Invalid account balance")
 		}
-
 	})
 }
 

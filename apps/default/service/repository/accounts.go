@@ -49,22 +49,24 @@ type AccountRepository interface {
 	Update(ctx context.Context, id string, data map[string]string) (*models.Account, apperrors.ApplicationLedgerError)
 }
 
-// accountRepository provides all functions related to ledger account
+// accountRepository provides all functions related to ledger account.
 type accountRepository struct {
 	service          *frame.Service
 	ledgerRepository LedgerRepository
 }
 
-// NewAccountRepository provides instance of `accountRepository`
+// NewAccountRepository provides instance of `accountRepository`.
 func NewAccountRepository(service *frame.Service) AccountRepository {
 	return &accountRepository{service: service, ledgerRepository: NewLedgerRepository(service)}
 }
 
-// GetByID returns an acccount with the given Reference
-func (a *accountRepository) GetByID(ctx context.Context, id string) (*models.Account, apperrors.ApplicationLedgerError) {
-
+// GetByID returns an acccount with the given Reference.
+func (a *accountRepository) GetByID(
+	ctx context.Context,
+	id string,
+) (*models.Account, apperrors.ApplicationLedgerError) {
 	if id == "" {
-		return nil, apperrors.ErrorUnspecifiedID
+		return nil, apperrors.ErrUnspecifiedID
 	}
 
 	accList, err := a.ListByID(ctx, id)
@@ -75,11 +77,13 @@ func (a *accountRepository) GetByID(ctx context.Context, id string) (*models.Acc
 	return accList[id], nil
 }
 
-// ListByID returns a list of acccounts with the given list of ids
-func (a *accountRepository) ListByID(ctx context.Context, ids ...string) (map[string]*models.Account, apperrors.ApplicationLedgerError) {
-
+// ListByID returns a list of acccounts with the given list of ids.
+func (a *accountRepository) ListByID(
+	ctx context.Context,
+	ids ...string,
+) (map[string]*models.Account, apperrors.ApplicationLedgerError) {
 	if len(ids) == 0 {
-		return nil, apperrors.ErrorAccountsNotFound.Extend("No Accounts were specified")
+		return nil, apperrors.ErrAccountsNotFound.Extend("No Accounts were specified")
 	}
 
 	accountsMap := map[string]*models.Account{}
@@ -100,18 +104,17 @@ func (a *accountRepository) ListByID(ctx context.Context, ids ...string) (map[st
 
 	queryBytes, err := json.Marshal(queryMap)
 	if err != nil {
-		return nil, apperrors.ErrorSystemFailure.Override(err).Extend("Json marshalling error")
+		return nil, apperrors.ErrSystemFailure.Override(err).Extend("Json marshalling error")
 	}
 
 	query := string(queryBytes)
 
 	jobResult, err := a.Search(ctx, query)
 	if err != nil {
-		return nil, apperrors.ErrorSystemFailure.Override(err).Extend(fmt.Sprintf("db query error [%s]", query))
+		return nil, apperrors.ErrSystemFailure.Override(err).Extend(fmt.Sprintf("db query error [%s]", query))
 	}
 
 	for {
-
 		result, ok := jobResult.ReadResult(ctx)
 
 		if !ok {
@@ -119,21 +122,18 @@ func (a *accountRepository) ListByID(ctx context.Context, ids ...string) (map[st
 		}
 
 		if result.IsError() {
-			return nil, apperrors.ErrorSystemFailure.Override(result.Error())
+			return nil, apperrors.ErrSystemFailure.Override(result.Error())
 		}
 
 		for _, acc := range result.Item() {
 			accountsMap[acc.ID] = acc
 		}
-
 	}
 }
 
 func (a *accountRepository) Search(ctx context.Context, query string) (frame.JobResultPipe[[]*models.Account], error) {
-
 	service := a.service
 	job := frame.NewJob(func(ctx context.Context, jobResult frame.JobResultPipe[[]*models.Account]) error {
-
 		rawQuery, aerr := NewSearchRawQuery(ctx, query)
 		if aerr != nil {
 			return jobResult.WriteError(ctx, aerr)
@@ -142,15 +142,17 @@ func (a *accountRepository) Search(ctx context.Context, query string) (frame.Job
 		sqlQuery := rawQuery.ToQueryConditions()
 
 		for sqlQuery.canLoad() {
-
 			rows, err := service.DB(ctx, true).
 				Offset(sqlQuery.offset).Limit(sqlQuery.batchSize).
 				Raw(fmt.Sprintf(`%s WHERE %s`, constAccountQuery, sqlQuery.sql), sqlQuery.args...).Rows()
 			if err != nil {
 				if frame.ErrorIsNoRows(err) {
-					return jobResult.WriteError(ctx, apperrors.ErrorLedgerNotFound)
+					return jobResult.WriteError(ctx, apperrors.ErrLedgerNotFound)
 				}
-				return jobResult.WriteError(ctx, apperrors.ErrorSystemFailure.Override(err).Extend("Query execution error"))
+				return jobResult.WriteError(
+					ctx,
+					apperrors.ErrSystemFailure.Override(err).Extend("Query execution error"),
+				)
 			}
 
 			var accountList []*models.Account
@@ -161,14 +163,20 @@ func (a *accountRepository) Search(ctx context.Context, query string) (frame.Job
 					&acc.LedgerID, &acc.LedgerType, &acc.CreatedAt, &acc.ModifiedAt, &acc.Version, &acc.TenantID,
 					&acc.PartitionID, &acc.AccessID, &acc.DeletedAt)
 				if err != nil {
-					return jobResult.WriteError(ctx, apperrors.ErrorSystemFailure.Override(err).Extend("Query binding error"))
+					return jobResult.WriteError(
+						ctx,
+						apperrors.ErrSystemFailure.Override(err).Extend("Query binding error"),
+					)
 				}
 				accountList = append(accountList, &acc)
 			}
 
 			err = rows.Close()
 			if err != nil {
-				return jobResult.WriteError(ctx, apperrors.ErrorSystemFailure.Override(err).Extend("Query closure error"))
+				return jobResult.WriteError(
+					ctx,
+					apperrors.ErrSystemFailure.Override(err).Extend("Query closure error"),
+				)
 			}
 
 			err = jobResult.WriteResult(ctx, accountList)
@@ -181,7 +189,6 @@ func (a *accountRepository) Search(ctx context.Context, query string) (frame.Job
 			}
 		}
 		return nil
-
 	})
 
 	err := frame.SubmitJob(ctx, service, job)
@@ -192,9 +199,12 @@ func (a *accountRepository) Search(ctx context.Context, query string) (frame.Job
 	return job, nil
 }
 
-// Update persists an existing account in the ledger if it is existent
-func (a *accountRepository) Update(ctx context.Context, id string, data map[string]string) (*models.Account, apperrors.ApplicationLedgerError) {
-
+// Update persists an existing account in the ledger if it is existent.
+func (a *accountRepository) Update(
+	ctx context.Context,
+	id string,
+	data map[string]string,
+) (*models.Account, apperrors.ApplicationLedgerError) {
 	existingAccount, errAcc := a.GetByID(ctx, id)
 	if errAcc != nil {
 		return nil, errAcc
@@ -209,20 +219,20 @@ func (a *accountRepository) Update(ctx context.Context, id string, data map[stri
 	err := a.service.DB(ctx, false).Save(&existingAccount).Error
 	if err != nil {
 		a.service.Log(ctx).WithError(err).Error("could not save the account")
-		return nil, apperrors.ErrorSystemFailure.Override(err)
+		return nil, apperrors.ErrSystemFailure.Override(err)
 	}
 	return existingAccount, nil
-
 }
 
-// Create persists a new account in the ledger if its none existent
-func (a *accountRepository) Create(ctx context.Context, account *models.Account) (*models.Account, apperrors.ApplicationLedgerError) {
-
+// Create persists a new account in the ledger if its none existent.
+func (a *accountRepository) Create(
+	ctx context.Context,
+	account *models.Account,
+) (*models.Account, apperrors.ApplicationLedgerError) {
 	if account.LedgerID != "" {
-
 		lg, err := a.ledgerRepository.GetByID(ctx, account.LedgerID)
 		if err != nil {
-			return nil, apperrors.ErrorSystemFailure.Override(err)
+			return nil, apperrors.ErrSystemFailure.Override(err)
 		}
 		account.LedgerID = lg.ID
 		account.LedgerType = lg.Type
@@ -230,7 +240,7 @@ func (a *accountRepository) Create(ctx context.Context, account *models.Account)
 
 	currencyUnit, err := currency.ParseISO(account.Currency)
 	if err != nil {
-		return nil, apperrors.ErrorAccountsCurrencyUnknown
+		return nil, apperrors.ErrAccountsCurrencyUnknown
 	}
 
 	account.Currency = currencyUnit.String()
@@ -238,9 +248,8 @@ func (a *accountRepository) Create(ctx context.Context, account *models.Account)
 	err = a.service.DB(ctx, false).Save(account).Error
 	if err != nil {
 		a.service.Log(ctx).WithError(err).Error("could not save the ledger")
-		return nil, apperrors.ErrorSystemFailure.Override(err)
+		return nil, apperrors.ErrSystemFailure.Override(err)
 	}
 
 	return account, nil
-
 }

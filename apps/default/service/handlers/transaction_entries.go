@@ -4,13 +4,12 @@ import (
 	commonv1 "github.com/antinvestor/apis/go/common/v1"
 	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
 	"github.com/antinvestor/service-ledger/apps/default/service/models"
-	repository2 "github.com/antinvestor/service-ledger/apps/default/service/repository"
+	repository "github.com/antinvestor/service-ledger/apps/default/service/repository"
 	"github.com/antinvestor/service-ledger/internal/apperrors"
 	utility2 "github.com/antinvestor/service-ledger/internal/utility"
 )
 
-func transactionEntryToApi(mEntry *models.TransactionEntry) *ledgerV1.TransactionEntry {
-
+func transactionEntryToAPI(mEntry *models.TransactionEntry) *ledgerV1.TransactionEntry {
 	entryAmount := utility2.ToMoney(mEntry.Currency, mEntry.Amount.Decimal)
 
 	balanceAmount := utility2.ToMoney(mEntry.Currency, mEntry.Balance.Decimal)
@@ -24,13 +23,15 @@ func transactionEntryToApi(mEntry *models.TransactionEntry) *ledgerV1.Transactio
 	}
 }
 
-// SearchTransactionEntries for transactions based on details of the query json
-func (ledgerSrv *LedgerServer) SearchTransactionEntries(request *commonv1.SearchRequest, server ledgerV1.LedgerService_SearchTransactionEntriesServer) error {
-
+// SearchTransactionEntries for transactions based on details of the query json.
+func (ledgerSrv *LedgerServer) SearchTransactionEntries(
+	request *commonv1.SearchRequest,
+	server ledgerV1.LedgerService_SearchTransactionEntriesServer,
+) error {
 	ctx := server.Context()
 
-	accountRepository := repository2.NewAccountRepository(ledgerSrv.Service)
-	transactionRepository := repository2.NewTransactionRepository(ledgerSrv.Service, accountRepository)
+	accountRepository := repository.NewAccountRepository(ledgerSrv.Service)
+	transactionRepository := repository.NewTransactionRepository(ledgerSrv.Service, accountRepository)
 
 	jobResult, err := transactionRepository.SearchEntries(ctx, request.GetQuery())
 	if err != nil {
@@ -38,12 +39,11 @@ func (ledgerSrv *LedgerServer) SearchTransactionEntries(request *commonv1.Search
 	}
 
 	for result := range jobResult.ResultChan() {
-
 		if result.IsError() {
-			return apperrors.ErrorSystemFailure.Override(result.Error())
+			return apperrors.ErrSystemFailure.Override(result.Error())
 		}
 		for _, entry := range result.Item() {
-			if err = server.Send(transactionEntryToApi(entry)); err != nil {
+			if err = server.Send(transactionEntryToAPI(entry)); err != nil {
 				return err
 			}
 		}

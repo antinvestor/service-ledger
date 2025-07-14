@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -10,43 +11,49 @@ import (
 	"github.com/pitabwire/frame"
 )
 
-var (
-	// SearchNamespaceLedgers holds search namespace of ledgers
+// Search namespace constants.
+const (
+	// SearchNamespaceLedgers holds search namespace of ledgers.
 	SearchNamespaceLedgers = "ledgers"
-	// SearchNamespaceAccounts holds search namespace of accounts
+	// SearchNamespaceAccounts holds search namespace of accounts.
 	SearchNamespaceAccounts = "accounts"
-	// SearchNamespaceTransactions holds search namespace of transactions
+	// SearchNamespaceTransactions holds search namespace of transactions.
 	SearchNamespaceTransactions = "transactions"
-	// SearchNamespaceTransactionEntries holds search namespace of transaction entries
+	// SearchNamespaceTransactionEntries holds search namespace of transaction entries.
 	SearchNamespaceTransactionEntries = "transaction_entries"
 )
 
-// SearchEngine is the interface for all search operations
+// SearchEngine is the interface for all search operations.
 type SearchEngine struct {
 	service   *frame.Service
 	namespace string
 }
 
-// NewSearchEngine returns a new instance of `SearchEngine`
+// NewSearchEngine returns a new instance of `SearchEngine`.
 func NewSearchEngine(service *frame.Service, namespace string) (*SearchEngine, apperrors.ApplicationLedgerError) {
-	if namespace != SearchNamespaceAccounts &&
-		namespace != SearchNamespaceTransactions &&
-		namespace != SearchNamespaceLedgers &&
-		namespace != SearchNamespaceTransactionEntries {
-		return nil, apperrors.ErrorSearchNamespaceUnknown
+	switch namespace {
+	case SearchNamespaceLedgers,
+		SearchNamespaceAccounts,
+		SearchNamespaceTransactions,
+		SearchNamespaceTransactionEntries:
+		// pass
+	default:
+		return nil, apperrors.ErrSearchNamespaceUnknown.Extend(
+			fmt.Sprintf("namespace %s not recognised", namespace),
+		)
 	}
 
 	return &SearchEngine{service: service, namespace: namespace}, nil
 }
 
-// QueryContainer represents the format of query subsection inside `must` or `should`
+// QueryContainer represents the format of query subsection inside `must` or `should`.
 type QueryContainer struct {
 	Fields     []map[string]map[string]interface{} `json:"fields"`
 	Terms      []map[string]interface{}            `json:"terms"`
 	RangeItems []map[string]map[string]interface{} `json:"ranges"`
 }
 
-// SearchRawQuery represents the format of search query
+// SearchRawQuery represents the format of search query.
 type SearchRawQuery struct {
 	Offset int `json:"from,omitempty"`
 	Limit  int `json:"size,omitempty"`
@@ -56,7 +63,7 @@ type SearchRawQuery struct {
 	} `json:"query"`
 }
 
-// SearchSQLQuery hold information of search SQL query
+// SearchSQLQuery hold information of search SQL query.
 type SearchSQLQuery struct {
 	sql    string
 	args   []interface{}
@@ -105,33 +112,51 @@ func hasValidKeys(items interface{}) bool {
 	}
 }
 
-// NewSearchRawQuery returns a new instance of `SearchRawQuery`
+// NewSearchRawQuery returns a new instance of `SearchRawQuery`.
 func NewSearchRawQuery(_ context.Context, q string) (*SearchRawQuery, apperrors.ApplicationLedgerError) {
-	var rawQuery *SearchRawQuery
-	err := json.Unmarshal([]byte(q), &rawQuery)
-	if err != nil {
-		return nil, apperrors.ErrorSearchQueryHasInvalidFormart
+	rawQuery := new(SearchRawQuery)
+	if err := json.Unmarshal([]byte(q), rawQuery); err != nil {
+		return nil, apperrors.ErrSearchQueryHasInvalidFormart.Override(err)
 	}
 
-	// TODO: extend Must Fields with tenant and partition id
+	// Initialize nil fields to prevent nil dereferences
+	if rawQuery.Query.MustClause.Fields == nil {
+		rawQuery.Query.MustClause.Fields = []map[string]map[string]interface{}{}
+	}
+	if rawQuery.Query.MustClause.Terms == nil {
+		rawQuery.Query.MustClause.Terms = []map[string]interface{}{}
+	}
+	if rawQuery.Query.MustClause.RangeItems == nil {
+		rawQuery.Query.MustClause.RangeItems = []map[string]map[string]interface{}{}
+	}
+	if rawQuery.Query.ShouldClause.Fields == nil {
+		rawQuery.Query.ShouldClause.Fields = []map[string]map[string]interface{}{}
+	}
+	if rawQuery.Query.ShouldClause.Terms == nil {
+		rawQuery.Query.ShouldClause.Terms = []map[string]interface{}{}
+	}
+	if rawQuery.Query.ShouldClause.RangeItems == nil {
+		rawQuery.Query.ShouldClause.RangeItems = []map[string]map[string]interface{}{}
+	}
 
+	// Check if query has valid keys
 	checkList := []interface{}{
 		rawQuery.Query.MustClause.Fields,
 		rawQuery.Query.MustClause.Terms,
 		rawQuery.Query.MustClause.RangeItems,
 		rawQuery.Query.ShouldClause.Fields,
-		rawQuery.Query.MustClause.Terms,
-		rawQuery.Query.MustClause.RangeItems,
+		rawQuery.Query.ShouldClause.Terms,
+		rawQuery.Query.ShouldClause.RangeItems,
 	}
 	for _, item := range checkList {
 		if !hasValidKeys(item) {
-			return nil, apperrors.ErrorSearchQueryHasInvalidKeys
+			return nil, apperrors.ErrSearchQueryHasInvalidKeys
 		}
 	}
 	return rawQuery, nil
 }
 
-// ToQueryConditions converts a raw search query conditions
+// ToQueryConditions converts a raw search query conditions.
 func (rawQuery *SearchRawQuery) ToQueryConditions() *SearchSQLQuery {
 	var conditionSQL string
 	var conditionArgs []interface{}
@@ -167,18 +192,24 @@ func (rawQuery *SearchRawQuery) ToQueryConditions() *SearchSQLQuery {
 	conditionArgs = append(conditionArgs, rangesArgs...)
 
 	if len(mustWhere) == 0 && len(shouldWhere) == 0 {
-		return &SearchSQLQuery{sql: conditionSQL, args: conditionArgs, offset: 0, limit: SystemBatchSize, batchSize: SystemBatchSize}
+		return &SearchSQLQuery{
+			sql:       conditionSQL,
+			args:      conditionArgs,
+			offset:    0,
+			limit:     SystemBatchSize,
+			batchSize: SystemBatchSize,
+		}
 	}
 
 	if len(mustWhere) != 0 {
-		conditionSQL = conditionSQL + "(" + strings.Join(mustWhere, " AND ") + ")"
+		conditionSQL += "(" + strings.Join(mustWhere, " AND ") + ")"
 		if len(shouldWhere) != 0 {
-			conditionSQL = conditionSQL + " AND "
+			conditionSQL += " AND "
 		}
 	}
 
 	if len(shouldWhere) != 0 {
-		conditionSQL = conditionSQL + "(" + strings.Join(shouldWhere, " OR ") + ")"
+		conditionSQL += "(" + strings.Join(shouldWhere, " OR ") + ")"
 	}
 
 	var offset = rawQuery.Offset

@@ -1,9 +1,9 @@
 package models
 
 const (
-	LEDGER_TYPE_ASSET     = "ASSET"
-	LEDGER_TYPE_EXPENSE   = "EXPENSE"
-	LEDGER_TYPE_LIABILITY = "LIABILITY"
-	LEDGER_TYPE_INCOME    = "INCOME"
-	LEDGER_TYPE_CAPITAL   = "CAPITAL"
+	LedgerTypeAsset     = "ASSET"
+	LedgerTypeExpense   = "EXPENSE"
+	LedgerTypeLiability = "LIABILITY"
+	LedgerTypeIncome    = "INCOME"
+	LedgerTypeCapital   = "CAPITAL"
 )
