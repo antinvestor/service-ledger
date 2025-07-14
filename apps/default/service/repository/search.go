@@ -3,10 +3,11 @@ package repository
 import (
 	"context"
 	"encoding/json"
-	"github.com/antinvestor/service-ledger/internal/apperrors"
-	"github.com/pitabwire/frame"
 	"regexp"
 	"strings"
+
+	"github.com/antinvestor/service-ledger/internal/apperrors"
+	"github.com/pitabwire/frame"
 )
 
 var (

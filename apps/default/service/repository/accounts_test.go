@@ -2,14 +2,14 @@ package repository_test
 
 import (
 	"context"
+	"testing"
+
 	"github.com/antinvestor/service-ledger/apps/default/service/models"
 	repository2 "github.com/antinvestor/service-ledger/apps/default/service/repository"
 	"github.com/antinvestor/service-ledger/apps/default/tests"
+	_ "github.com/lib/pq"
 	"github.com/pitabwire/frame"
 	"github.com/pitabwire/frame/tests/testdef"
-	"testing"
-
-	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )

@@ -45,7 +45,7 @@ func convertTermsToSQL(terms []map[string]interface{}) (where []string, args []i
 	   "terms": [
 	       {"status": "completed", "active": true},
 	       {"charge": 2000},
-	       {"colors": ["red", "green"]},
+	       {"colours": ["red", "green"]},
 	       {"products":{"qw":{"coupons":["x001"]}}}
 	   ]
 	*/

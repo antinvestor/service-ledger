@@ -2,18 +2,18 @@ package repository_test
 
 import (
 	"context"
-	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
-	models2 "github.com/antinvestor/service-ledger/apps/default/service/models"
-	repository2 "github.com/antinvestor/service-ledger/apps/default/service/repository"
-	"github.com/antinvestor/service-ledger/apps/default/tests"
-	"github.com/pitabwire/frame"
-	"github.com/pitabwire/frame/tests/testdef"
-	"github.com/shopspring/decimal"
 	"log"
 	"testing"
 	"time"
 
+	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
+	models2 "github.com/antinvestor/service-ledger/apps/default/service/models"
+	repository2 "github.com/antinvestor/service-ledger/apps/default/service/repository"
+	"github.com/antinvestor/service-ledger/apps/default/tests"
 	_ "github.com/lib/pq"
+	"github.com/pitabwire/frame"
+	"github.com/pitabwire/frame/tests/testdef"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )

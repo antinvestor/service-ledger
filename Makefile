@@ -22,6 +22,11 @@ help:   ## show this help
 	@echo 'targets:'
 	@egrep '^(.+)\:\ .*##\ (.+)' ${MAKEFILE_LIST} | sed 's/:.*##/#/' | column -t -c 2 -s '#'
 
+format:
+	find . -name '*.go' -not -path './.git/*' -exec sed -i '/^import (/,/^)/{/^$$/d}' {} +
+	find . -name '*.go' -not -path './.git/*' -exec goimports -w {} +
+	golangci-lint run --fix -c .golangci.yaml
+
 clean:  ## go clean
 	go clean
 

@@ -2,10 +2,10 @@ package tests
 
 import (
 	"context"
-	"github.com/antinvestor/service-ledger/apps/default/config"
-	"github.com/antinvestor/service-ledger/apps/default/service/repository"
 	"testing"
 
+	"github.com/antinvestor/service-ledger/apps/default/config"
+	"github.com/antinvestor/service-ledger/apps/default/service/repository"
 	"github.com/pitabwire/frame"
 	"github.com/pitabwire/frame/tests"
 	"github.com/pitabwire/frame/tests/deps/testpostgres"

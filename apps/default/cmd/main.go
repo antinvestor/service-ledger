@@ -1,9 +1,11 @@
 package main
 
 import (
-	"buf.build/go/protovalidate"
 	"context"
 	"fmt"
+	_ "net/http/pprof"
+
+	"buf.build/go/protovalidate"
 	"github.com/antinvestor/apis/go/common"
 	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
 	"github.com/antinvestor/service-ledger/apps/default/config"
@@ -15,7 +17,6 @@ import (
 	"github.com/pitabwire/util"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	_ "net/http/pprof"
 )
 
 func main() {

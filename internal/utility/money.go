@@ -1,10 +1,11 @@
 package utility
 
 import (
-	"github.com/shopspring/decimal"
-	"google.golang.org/genproto/googleapis/type/money"
 	"math"
 	"time"
+
+	"github.com/shopspring/decimal"
+	"google.golang.org/genproto/googleapis/type/money"
 )
 
 const NanoSize = 1000000000

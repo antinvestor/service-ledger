@@ -1,10 +1,11 @@
 package repository_test
 
 import (
+	"testing"
+
 	"github.com/antinvestor/service-ledger/apps/default/service/models"
 	"github.com/pitabwire/frame/tests/testdef"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func (ss *SearchSuite) TestSearchAccountsWithMustFields() {

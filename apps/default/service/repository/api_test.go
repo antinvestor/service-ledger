@@ -3,6 +3,10 @@ package repository_test
 import (
 	"context"
 	"fmt"
+	"net"
+	"testing"
+	"time"
+
 	"github.com/antinvestor/apis/go/common"
 	commonv1 "github.com/antinvestor/apis/go/common/v1"
 	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
@@ -18,16 +22,13 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"google.golang.org/genproto/googleapis/type/money"
-	"net"
-	"testing"
-	"time"
 )
 
 type GrpcApiSuite struct {
 	tests.BaseTestSuite
 }
 
-func (as *GrpcApiSuite) setupDependencies(t *testing.T, dep *testdef.DependancyOption, ) (*ledgerV1.LedgerClient, testcontainers.Container) {
+func (as *GrpcApiSuite) setupDependencies(t *testing.T, dep *testdef.DependancyOption) (*ledgerV1.LedgerClient, testcontainers.Container) {
 	ctx := t.Context()
 
 	if len(dep.Database()) == 0 {

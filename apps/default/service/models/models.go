@@ -1,12 +1,13 @@
 package models
 
 import (
+	"time"
+
 	"github.com/pitabwire/frame"
 	"github.com/shopspring/decimal"
-	"time"
 )
 
-// Ledger represents the hierarchy for organizing ledgers with information such as type, and JSON data
+// Ledger represents the hierarchy for organising ledgers with information such as type, and JSON data
 type Ledger struct {
 	frame.BaseModel
 	Type     string        `gorm:"type:varchar(50)" json:"type"`

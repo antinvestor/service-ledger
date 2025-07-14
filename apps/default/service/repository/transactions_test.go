@@ -2,19 +2,19 @@ package repository_test
 
 import (
 	"context"
+	"sync"
+	"testing"
+	"time"
+
 	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
 	"github.com/antinvestor/service-ledger/apps/default/service/models"
 	repository2 "github.com/antinvestor/service-ledger/apps/default/service/repository"
 	"github.com/antinvestor/service-ledger/apps/default/tests"
 	"github.com/antinvestor/service-ledger/internal/utility"
+	_ "github.com/lib/pq"
 	"github.com/pitabwire/frame"
 	"github.com/pitabwire/frame/tests/testdef"
 	"github.com/shopspring/decimal"
-	"sync"
-	"testing"
-	"time"
-
-	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -398,7 +398,7 @@ func (ts *TransactionsModelSuite) TestDuplicateTransactions() {
 		wg.Add(5)
 		for i := 1; i <= 5; i++ {
 			go func(txn *models.Transaction) {
-				trxn, _ := transactionRepository.Transact(ctx, transaction)
+				trxn, _ := transactionRepository.Transact(ctx, txn)
 				assert.NotEqual(t, nil, trxn, "Transaction creation should be success")
 				wg.Done()
 			}(transaction)
