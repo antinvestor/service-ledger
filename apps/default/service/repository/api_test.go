@@ -27,19 +27,19 @@ type GrpcApiSuite struct {
 	tests.BaseTestSuite
 }
 
-func (as *GrpcApiSuite) setupDependencies(t *testing.T, dep *testdef.DependancyOption, ) (context.Context, *ledgerV1.LedgerClient, testcontainers.Container) {
+func (as *GrpcApiSuite) setupDependencies(t *testing.T, dep *testdef.DependancyOption, ) (*ledgerV1.LedgerClient, testcontainers.Container) {
 	ctx := t.Context()
 
-	var datastoreDS frame.DataSource
-
-	for _, res := range dep.Database() {
-		if res.GetDS().IsDB() {
-			datastoreDS = res.GetDS()
-			break
-		}
+	if len(dep.Database()) == 0 {
+		return nil, nil
 	}
 
-	lContainer, err := as.setupLedgerService(ctx, datastoreDS)
+	datastoreDS := dep.Database()[0].GetInternalDS()
+
+	_, err := as.setupServiceContainer(ctx, datastoreDS, true)
+	assert.NoError(t, err)
+
+	lContainer, err := as.setupServiceContainer(ctx, datastoreDS, false)
 	assert.NoError(t, err)
 
 	host, err := lContainer.Host(ctx)
@@ -57,31 +57,37 @@ func (as *GrpcApiSuite) setupDependencies(t *testing.T, dep *testdef.DependancyO
 	err = as.createInitialAccounts(ctx, lc)
 	assert.NoError(t, err)
 
-	return ctx, lc, lContainer
+	return lc, lContainer
 }
 
-func (as *GrpcApiSuite) setupLedgerService(ctx context.Context, datastoreDS frame.DataSource) (testcontainers.Container, error) {
+func (as *GrpcApiSuite) setupServiceContainer(ctx context.Context, datastoreDS frame.DataSource, doMigration bool) (testcontainers.Container, error) {
+
+	environmentVars := []string{
+		"OTEL_TRACES_EXPORTER=none",
+		"LOG_LEVEL=debug",
+		"RUN_SERVICE_SECURELY=false",
+		"HTTP_PORT=80",
+		"GRPC_PORT=50051",
+		fmt.Sprintf("DATABASE_URL=%s", datastoreDS.String()),
+	}
+
+	var waitingForStrategy wait.Strategy
+
+	if doMigration {
+		environmentVars = append(environmentVars, "DO_MIGRATION=true")
+		waitingForStrategy = wait.ForExit()
+	} else {
+		waitingForStrategy = wait.ForLog("Initiating server operations").WithStartupTimeout(5 * time.Second)
+	}
 
 	cRequest := testcontainers.ContainerRequest{
 		FromDockerfile: testcontainers.FromDockerfile{Context: "../../../../", Dockerfile: "./apps/default/Dockerfile"},
 		ConfigModifier: func(config *container.Config) {
-			config.Env = []string{
-				"OTEL_TRACES_EXPORTER=none",
-				"LOG_LEVEL=debug",
-				"RUN_SERVICE_SECURELY=false",
-				"HTTP_PORT=80",
-				"GRPC_PORT=50051",
-				fmt.Sprintf("DATABASE_URL=%s", datastoreDS.String()),
-			}
+			config.Env = environmentVars
 		},
 		ExposedPorts: []string{"80", "50051"},
 		Networks:     []string{as.Network.Name},
-		WaitingFor:   wait.ForLog("Initiating server operations").WithStartupTimeout(5 * time.Second),
-		LogConsumerCfg: &testcontainers.LogConsumerConfig{
-			Opts: []testcontainers.LogProductionOption{
-				testcontainers.WithLogProductionTimeout(2 * time.Second),
-			},
-		},
+		WaitingFor:   waitingForStrategy,
 	}
 
 	genericContainer, err := testcontainers.GenericContainer(ctx,
@@ -93,7 +99,16 @@ func (as *GrpcApiSuite) setupLedgerService(ctx context.Context, datastoreDS fram
 		return nil, err
 	}
 
-	return genericContainer, nil
+	if !doMigration {
+		return genericContainer, nil
+	}
+
+	err = genericContainer.Terminate(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return nil, nil
+
 }
 
 func (as *GrpcApiSuite) createInitialAccounts(ctx context.Context, lc *ledgerV1.LedgerClient) error {
@@ -198,7 +213,8 @@ func (as *GrpcApiSuite) TestTransactions() {
 
 	as.WithTestDependancies(as.T(), func(t *testing.T, dep *testdef.DependancyOption) {
 
-		ctx, lc, lContainer := as.setupDependencies(t, dep)
+		ctx := t.Context()
+		lc, lContainer := as.setupDependencies(t, dep)
 		defer lContainer.Terminate(ctx)
 
 		for _, tt := range testcases {
@@ -299,7 +315,8 @@ func (as *GrpcApiSuite) TestClearBalances() {
 
 	as.WithTestDependancies(as.T(), func(t *testing.T, dep *testdef.DependancyOption) {
 
-		ctx, lc, lContainer := as.setupDependencies(t, dep)
+		ctx := t.Context()
+		lc, lContainer := as.setupDependencies(t, dep)
 		defer lContainer.Terminate(ctx)
 
 		for _, tt := range testcases {
@@ -424,7 +441,8 @@ func (as *GrpcApiSuite) TestReverseTransaction() {
 
 	as.WithTestDependancies(as.T(), func(t *testing.T, dep *testdef.DependancyOption) {
 
-		ctx, lc, lContainer := as.setupDependencies(t, dep)
+		ctx := t.Context()
+		lc, lContainer := as.setupDependencies(t, dep)
 		defer lContainer.Terminate(ctx)
 
 		for _, tt := range testcases {

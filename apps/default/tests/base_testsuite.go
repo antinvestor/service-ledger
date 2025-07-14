@@ -38,14 +38,17 @@ func (bs *BaseTestSuite) SetupSuite() {
 func (bs *BaseTestSuite) CreateService(
 	t *testing.T,
 	depOpts *testdef.DependancyOption,
+
+	frameOpts ...frame.Option,
+
 ) (*frame.Service, context.Context) {
 	t.Setenv("OTEL_TRACES_EXPORTER", "none")
-	profileConfig, err := frame.ConfigFromEnv[config.LedgerConfig]()
+	cfg, err := frame.ConfigFromEnv[config.LedgerConfig]()
 	require.NoError(t, err)
 
-	profileConfig.LogLevel = "debug"
-	profileConfig.RunServiceSecurely = false
-	profileConfig.ServerPort = ""
+	cfg.LogLevel = "debug"
+	cfg.RunServiceSecurely = false
+	cfg.ServerPort = ""
 
 	for _, res := range depOpts.Database() {
 		testDS, cleanup, err0 := res.GetRandomisedDS(t.Context(), depOpts.Prefix())
@@ -55,16 +58,19 @@ func (bs *BaseTestSuite) CreateService(
 			cleanup(t.Context())
 		})
 
-		profileConfig.DatabasePrimaryURL = []string{testDS.String()}
-		profileConfig.DatabaseReplicaURL = []string{testDS.String()}
+		cfg.DatabasePrimaryURL = []string{testDS.String()}
+		cfg.DatabaseReplicaURL = []string{testDS.String()}
+	}
+
+	if len(frameOpts) == 0 {
+		frameOpts = append(frameOpts, frame.WithNoopDriver())
 	}
 
 	ctx, svc := frame.NewServiceWithContext(t.Context(), "profile tests",
-		frame.WithConfig(&profileConfig),
-		frame.WithDatastore(),
-		frame.WithNoopDriver())
+		frame.WithConfig(&cfg),
+		frame.WithDatastore())
 
-	svc.Init(ctx)
+	svc.Init(ctx, frameOpts...)
 
 	err = repository.Migrate(ctx, svc, "../../migrations/0001")
 	require.NoError(t, err)
