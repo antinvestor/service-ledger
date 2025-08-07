@@ -4,7 +4,7 @@ go 1.24.5
 
 require (
 	buf.build/go/protovalidate v0.14.0
-	github.com/antinvestor/apis/go/common v1.36.3
+	github.com/antinvestor/apis/go/common v1.37.1
 	github.com/antinvestor/apis/go/ledger v1.36.4
 	github.com/docker/docker v28.3.3+incompatible
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.2
@@ -22,7 +22,7 @@ require (
 )
 
 require (
-	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.6-20250717165733-d22d418d82d8.1 // indirect
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.6-20250717185734-6c6e0d3c608e.1 // indirect
 	cel.dev/expr v0.24.0 // indirect
 	dario.cat/mergo v1.0.1 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
