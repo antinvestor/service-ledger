@@ -10,7 +10,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.2
 	github.com/lib/pq v1.10.9
 	github.com/pitabwire/frame v1.50.17
-	github.com/pitabwire/util v0.3.1
+	github.com/pitabwire/util v0.3.4
 	github.com/pkg/errors v0.9.1
 	github.com/rs/xid v1.6.0
 	github.com/shopspring/decimal v1.4.0
