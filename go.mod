@@ -4,7 +4,7 @@ go 1.24.5
 
 require (
 	buf.build/go/protovalidate v0.14.0
-	github.com/antinvestor/apis/go/common v1.37.1
+	github.com/antinvestor/apis/go/common v1.37.10
 	github.com/antinvestor/apis/go/ledger v1.36.4
 	github.com/docker/docker v28.3.3+incompatible
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.2
