@@ -50,6 +50,8 @@ github.com/antinvestor/apis/go/common v1.38.0 h1:UIOR6oK0Zcj8Z05+MhkB2y1apvf8tIY
 github.com/antinvestor/apis/go/common v1.38.0/go.mod h1:QIvObLIyzPGb0n0O20USqVpPkt/y1wDcEpHzF4N03fs=
 github.com/antinvestor/apis/go/ledger v1.36.4 h1:NzGTJ8PJeNQXxu3GBxfTrOX8vuD7JP5/gOTE94xAgrA=
 github.com/antinvestor/apis/go/ledger v1.36.4/go.mod h1:Z37LhksLZgsA/DBK60rN/6+ycL04080mFpqFuuzxcS0=
+github.com/antinvestor/apis/go/ledger v1.39.0 h1:Z9nbbJNzjf9s4IaYUikxRULgsx5T24CmS+YiGVti0Gg=
+github.com/antinvestor/apis/go/ledger v1.39.0/go.mod h1:mebQdksU1HQlxbukX/9xL65WeECHB7+m9fSFByt8fgM=
 github.com/antlr4-go/antlr/v4 v4.13.1 h1:SqQKkuVZ+zWkMMNkjy5FZe5mr5WURWnlpmOuzYWrPrQ=
 github.com/antlr4-go/antlr/v4 v4.13.1/go.mod h1:GKmUxMtwp6ZgGwZSva4eWPC5mS6vUAmOABFgjdkM7Nw=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
@@ -481,6 +483,8 @@ google.golang.org/genproto/googleapis/api v0.0.0-20250728155136-f173205681a0 h1:
 google.golang.org/genproto/googleapis/api v0.0.0-20250728155136-f173205681a0/go.mod h1:8ytArBbtOy2xfht+y2fqKd5DRDJRUQhqbyEnQ4bDChs=
 google.golang.org/genproto/googleapis/api v0.0.0-20250804133106-a7a43d27e69b h1:ULiyYQ0FdsJhwwZUwbaXpZF5yUE3h+RA+gxvBu37ucc=
 google.golang.org/genproto/googleapis/api v0.0.0-20250804133106-a7a43d27e69b/go.mod h1:oDOGiMSXHL4sDTJvFvIB9nRQCGdLP1o/iVaqQK8zB+M=
+google.golang.org/genproto/googleapis/api v0.0.0-20250811230008-5f3141c8851a h1:DMCgtIAIQGZqJXMVzJF4MV8BlWoJh2ZuFiRdAleyr58=
+google.golang.org/genproto/googleapis/api v0.0.0-20250811230008-5f3141c8851a/go.mod h1:y2yVLIE/CSMCPXaHnSKXxu1spLPnglFLegmgdY23uuE=
 google.golang.org/genproto/googleapis/rpc v0.0.0-20250603155806-513f23925822 h1:fc6jSaCT0vBduLYZHYrBBNY4dsWuvgyff9noRNDdBeE=
 google.golang.org/genproto/googleapis/rpc v0.0.0-20250603155806-513f23925822/go.mod h1:qQ0YXyHHx3XkvlzUtpXDkS29lDSafHMZBAZDc03LQ3A=
 google.golang.org/genproto/googleapis/rpc v0.0.0-20250728155136-f173205681a0 h1:MAKi5q709QWfnkkpNQ0M12hYJ1+e8qYVDyowc4U1XZM=
