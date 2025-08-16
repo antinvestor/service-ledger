@@ -19,23 +19,23 @@ import (
 const DefaultTimestamLayout = "2006-01-02T15:04:05.999999999"
 
 type TransactionRepository interface {
-	GetByID(ctx context.Context, id string) (*models.Transaction, apperrors.ApplicationLedgerError)
+	GetByID(ctx context.Context, id string) (*models.Transaction, apperrors.ApplicationError)
 	Search(ctx context.Context, query string) (frame.JobResultPipe[[]*models.Transaction], error)
 	SearchEntries(ctx context.Context, query string) (frame.JobResultPipe[[]*models.TransactionEntry], error)
 	Validate(
 		ctx context.Context,
 		transaction *models.Transaction,
-	) (map[string]*models.Account, apperrors.ApplicationLedgerError)
-	IsConflict(ctx context.Context, transaction2 *models.Transaction) (bool, apperrors.ApplicationLedgerError)
+	) (map[string]*models.Account, apperrors.ApplicationError)
+	IsConflict(ctx context.Context, transaction2 *models.Transaction) (bool, apperrors.ApplicationError)
 	Transact(
 		ctx context.Context,
 		transaction *models.Transaction,
-	) (*models.Transaction, apperrors.ApplicationLedgerError)
+	) (*models.Transaction, apperrors.ApplicationError)
 	Update(
 		ctx context.Context,
 		transaction *models.Transaction,
-	) (*models.Transaction, apperrors.ApplicationLedgerError)
-	Reverse(ctx context.Context, id string) (*models.Transaction, apperrors.ApplicationLedgerError)
+	) (*models.Transaction, apperrors.ApplicationError)
+	Reverse(ctx context.Context, id string) (*models.Transaction, apperrors.ApplicationError)
 }
 
 // transactionRepository is the interface to all transaction operations.
@@ -236,7 +236,7 @@ func (t *transactionRepository) SearchEntries(
 func (t *transactionRepository) Validate(
 	ctx context.Context,
 	txn *models.Transaction,
-) (map[string]*models.Account, apperrors.ApplicationLedgerError) {
+) (map[string]*models.Account, apperrors.ApplicationError) {
 	if ledgerV1.TransactionType_NORMAL.String() == txn.TransactionType ||
 		ledgerV1.TransactionType_REVERSAL.String() == txn.TransactionType {
 		// Skip if the transaction is invalid
@@ -308,7 +308,7 @@ func (t *transactionRepository) Validate(
 func (t *transactionRepository) IsConflict(
 	ctx context.Context,
 	transaction2 *models.Transaction,
-) (bool, apperrors.ApplicationLedgerError) {
+) (bool, apperrors.ApplicationError) {
 	transaction1, err := t.GetByID(ctx, transaction2.ID)
 	if err != nil {
 		return false, err
@@ -322,7 +322,7 @@ func (t *transactionRepository) IsConflict(
 func (t *transactionRepository) Transact(
 	ctx context.Context,
 	transaction *models.Transaction,
-) (*models.Transaction, apperrors.ApplicationLedgerError) {
+) (*models.Transaction, apperrors.ApplicationError) {
 	// Check if a transaction with Reference already exists
 	existingTransaction, aerr := t.GetByID(ctx, transaction.GetID())
 	if aerr != nil && !errors.Is(aerr, apperrors.ErrTransactionNotFound) {
@@ -330,7 +330,7 @@ func (t *transactionRepository) Transact(
 	}
 
 	if existingTransaction != nil {
-		var conflictErr apperrors.ApplicationLedgerError
+		var conflictErr apperrors.ApplicationError
 		isConflict, conflictErr := t.IsConflict(ctx, transaction)
 		if conflictErr != nil {
 			return nil, conflictErr
@@ -388,7 +388,7 @@ func (t *transactionRepository) Transact(
 func (t *transactionRepository) GetByID(
 	ctx context.Context,
 	id string,
-) (*models.Transaction, apperrors.ApplicationLedgerError) {
+) (*models.Transaction, apperrors.ApplicationError) {
 	if id == "" {
 		return nil, apperrors.ErrUnspecifiedReference
 	}
@@ -443,7 +443,7 @@ func (t *transactionRepository) GetByID(
 func (t *transactionRepository) Update(
 	ctx context.Context,
 	txn *models.Transaction,
-) (*models.Transaction, apperrors.ApplicationLedgerError) {
+) (*models.Transaction, apperrors.ApplicationError) {
 	existingTransaction, errTx := t.GetByID(ctx, txn.ID)
 	if errTx != nil {
 		return nil, errTx
@@ -482,7 +482,7 @@ func (t *transactionRepository) Update(
 func (t *transactionRepository) Reverse(
 	ctx context.Context,
 	id string,
-) (*models.Transaction, apperrors.ApplicationLedgerError) {
+) (*models.Transaction, apperrors.ApplicationError) {
 	// Check if a transaction with same Reference already exists
 	reversalTxn, err1 := t.GetByID(ctx, id)
 	if err1 != nil {

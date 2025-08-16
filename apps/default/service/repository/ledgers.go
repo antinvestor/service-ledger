@@ -10,10 +10,10 @@ import (
 )
 
 type LedgerRepository interface {
-	GetByID(ctx context.Context, id string) (*models.Ledger, apperrors.ApplicationLedgerError)
+	GetByID(ctx context.Context, id string) (*models.Ledger, apperrors.ApplicationError)
 	Search(ctx context.Context, query string) (frame.JobResultPipe[[]*models.Ledger], error)
-	Create(ctx context.Context, ledger *models.Ledger) (*models.Ledger, apperrors.ApplicationLedgerError)
-	Update(ctx context.Context, ledger *models.Ledger) (*models.Ledger, apperrors.ApplicationLedgerError)
+	Create(ctx context.Context, ledger *models.Ledger) (*models.Ledger, apperrors.ApplicationError)
+	Update(ctx context.Context, ledger *models.Ledger) (*models.Ledger, apperrors.ApplicationError)
 }
 
 // LedgerRepository provides all functions related to ledger Ledger.
@@ -27,7 +27,7 @@ func NewLedgerRepository(service *frame.Service) LedgerRepository {
 }
 
 // GetByID returns an acccount with the given id.
-func (l *ledgerRepository) GetByID(ctx context.Context, id string) (*models.Ledger, apperrors.ApplicationLedgerError) {
+func (l *ledgerRepository) GetByID(ctx context.Context, id string) (*models.Ledger, apperrors.ApplicationError) {
 	if id == "" {
 		return nil, apperrors.ErrUnspecifiedID
 	}
@@ -113,7 +113,7 @@ func (l *ledgerRepository) Search(ctx context.Context, query string) (frame.JobR
 func (l *ledgerRepository) Update(
 	ctx context.Context,
 	lg *models.Ledger,
-) (*models.Ledger, apperrors.ApplicationLedgerError) {
+) (*models.Ledger, apperrors.ApplicationError) {
 	existingLedger, errLedger := l.GetByID(ctx, lg.ID)
 	if errLedger != nil {
 		return nil, errLedger
@@ -137,7 +137,7 @@ func (l *ledgerRepository) Update(
 func (l *ledgerRepository) Create(
 	ctx context.Context,
 	lg *models.Ledger,
-) (*models.Ledger, apperrors.ApplicationLedgerError) {
+) (*models.Ledger, apperrors.ApplicationError) {
 	if lg.ParentID != "" {
 		pLg, err := l.GetByID(ctx, lg.ParentID)
 		if err != nil {

@@ -42,11 +42,11 @@ FROM accounts a
 LEFT JOIN current_balance_summary bs ON a.id = bs.account_id AND a.currency = bs.currency `
 
 type AccountRepository interface {
-	GetByID(ctx context.Context, id string) (*models.Account, apperrors.ApplicationLedgerError)
-	ListByID(ctx context.Context, ids ...string) (map[string]*models.Account, apperrors.ApplicationLedgerError)
+	GetByID(ctx context.Context, id string) (*models.Account, apperrors.ApplicationError)
+	ListByID(ctx context.Context, ids ...string) (map[string]*models.Account, apperrors.ApplicationError)
 	Search(ctx context.Context, query string) (frame.JobResultPipe[[]*models.Account], error)
-	Create(ctx context.Context, ledger *models.Account) (*models.Account, apperrors.ApplicationLedgerError)
-	Update(ctx context.Context, id string, data map[string]string) (*models.Account, apperrors.ApplicationLedgerError)
+	Create(ctx context.Context, ledger *models.Account) (*models.Account, apperrors.ApplicationError)
+	Update(ctx context.Context, id string, data map[string]string) (*models.Account, apperrors.ApplicationError)
 }
 
 // accountRepository provides all functions related to ledger account.
@@ -64,7 +64,7 @@ func NewAccountRepository(service *frame.Service) AccountRepository {
 func (a *accountRepository) GetByID(
 	ctx context.Context,
 	id string,
-) (*models.Account, apperrors.ApplicationLedgerError) {
+) (*models.Account, apperrors.ApplicationError) {
 	if id == "" {
 		return nil, apperrors.ErrUnspecifiedID
 	}
@@ -81,7 +81,7 @@ func (a *accountRepository) GetByID(
 func (a *accountRepository) ListByID(
 	ctx context.Context,
 	ids ...string,
-) (map[string]*models.Account, apperrors.ApplicationLedgerError) {
+) (map[string]*models.Account, apperrors.ApplicationError) {
 	if len(ids) == 0 {
 		return nil, apperrors.ErrAccountsNotFound.Extend("No Accounts were specified")
 	}
@@ -204,7 +204,7 @@ func (a *accountRepository) Update(
 	ctx context.Context,
 	id string,
 	data map[string]string,
-) (*models.Account, apperrors.ApplicationLedgerError) {
+) (*models.Account, apperrors.ApplicationError) {
 	existingAccount, errAcc := a.GetByID(ctx, id)
 	if errAcc != nil {
 		return nil, errAcc
@@ -228,7 +228,7 @@ func (a *accountRepository) Update(
 func (a *accountRepository) Create(
 	ctx context.Context,
 	account *models.Account,
-) (*models.Account, apperrors.ApplicationLedgerError) {
+) (*models.Account, apperrors.ApplicationError) {
 	if account.LedgerID != "" {
 		lg, err := a.ledgerRepository.GetByID(ctx, account.LedgerID)
 		if err != nil {

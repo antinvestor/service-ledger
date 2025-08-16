@@ -30,7 +30,7 @@ type SearchEngine struct {
 }
 
 // NewSearchEngine returns a new instance of `SearchEngine`.
-func NewSearchEngine(service *frame.Service, namespace string) (*SearchEngine, apperrors.ApplicationLedgerError) {
+func NewSearchEngine(service *frame.Service, namespace string) (*SearchEngine, apperrors.ApplicationError) {
 	switch namespace {
 	case SearchNamespaceLedgers,
 		SearchNamespaceAccounts,
@@ -113,7 +113,7 @@ func hasValidKeys(items interface{}) bool {
 }
 
 // NewSearchRawQuery returns a new instance of `SearchRawQuery`.
-func NewSearchRawQuery(_ context.Context, q string) (*SearchRawQuery, apperrors.ApplicationLedgerError) {
+func NewSearchRawQuery(_ context.Context, q string) (*SearchRawQuery, apperrors.ApplicationError) {
 	rawQuery := new(SearchRawQuery)
 	if err := json.Unmarshal([]byte(q), rawQuery); err != nil {
 		return nil, apperrors.ErrSearchQueryHasInvalidFormart.Override(err)

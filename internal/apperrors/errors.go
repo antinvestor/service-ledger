@@ -40,12 +40,12 @@ const (
 	ErrorCodeSearchQueryResultsNotCasting = 64
 )
 
-type ApplicationLedgerError interface {
+type ApplicationError interface {
 	error
 	ErrorCode() int32
 	String() string
-	Extend(message string) ApplicationLedgerError
-	Override(errs ...error) ApplicationLedgerError
+	Extend(message string) ApplicationError
+	Override(errs ...error) ApplicationError
 }
 
 type applicationLedgerError struct {
@@ -55,7 +55,7 @@ type applicationLedgerError struct {
 	ExtraMessage string
 }
 
-func NewApplicationError(code int32, message string) ApplicationLedgerError {
+func NewApplicationError(code int32, message string) ApplicationError {
 	return &applicationLedgerError{code, 200, message, ""}
 }
 
@@ -77,12 +77,12 @@ func (e applicationLedgerError) String() string {
 }
 
 // Extend default Message.
-func (e applicationLedgerError) Extend(message string) ApplicationLedgerError {
+func (e applicationLedgerError) Extend(message string) ApplicationError {
 	return &applicationLedgerError{e.Code, e.CodeOffset, e.Message, message}
 }
 
 // Override default Message.
-func (e applicationLedgerError) Override(errs ...error) ApplicationLedgerError {
+func (e applicationLedgerError) Override(errs ...error) ApplicationError {
 	errorStrings := make([]string, len(errs))
 
 	for i, err := range errs {
