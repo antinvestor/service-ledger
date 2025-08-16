@@ -9,7 +9,7 @@ require (
 	github.com/docker/docker v28.3.3+incompatible
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.2
 	github.com/lib/pq v1.10.9
-	github.com/pitabwire/frame v1.52.0
+	github.com/pitabwire/frame v1.55.6
 	github.com/pitabwire/util v0.3.4
 	github.com/pkg/errors v0.9.1
 	github.com/rs/xid v1.6.0
