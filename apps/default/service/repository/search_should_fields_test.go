@@ -4,13 +4,13 @@ import (
 	"testing"
 
 	"github.com/antinvestor/service-ledger/apps/default/service/models"
-	"github.com/pitabwire/frame/tests/testdef"
+	"github.com/pitabwire/frame/frametests/definition"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func (ss *SearchSuite) TestSearchAccountsWithShouldFields() {
-	ss.WithTestDependancies(ss.T(), func(t *testing.T, dep *testdef.DependancyOption) {
+	ss.WithTestDependancies(ss.T(), func(t *testing.T, dep *definition.DependancyOption) {
 		svc, ctx := ss.CreateService(t, dep)
 		ss.setupFixtures(ctx, svc)
 
@@ -51,7 +51,7 @@ func (ss *SearchSuite) TestSearchAccountsWithShouldFields() {
 }
 
 func (ss *SearchSuite) TestSearchTransactionsWithShouldFields() {
-	ss.WithTestDependancies(ss.T(), func(t *testing.T, dep *testdef.DependancyOption) {
+	ss.WithTestDependancies(ss.T(), func(t *testing.T, dep *definition.DependancyOption) {
 		svc, ctx := ss.CreateService(t, dep)
 		ss.setupFixtures(ctx, svc)
 

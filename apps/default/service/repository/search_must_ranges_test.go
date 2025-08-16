@@ -4,13 +4,13 @@ import (
 	"testing"
 
 	"github.com/antinvestor/service-ledger/apps/default/service/models"
-	"github.com/pitabwire/frame/tests/testdef"
+	"github.com/pitabwire/frame/frametests/definition"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func (ss *SearchSuite) TestSearchAccountsWithMustRanges() {
-	ss.WithTestDependancies(ss.T(), func(t *testing.T, dep *testdef.DependancyOption) {
+	ss.WithTestDependancies(ss.T(), func(t *testing.T, dep *definition.DependancyOption) {
 		svc, ctx := ss.CreateService(t, dep)
 		ss.setupFixtures(ctx, svc)
 
@@ -52,7 +52,7 @@ func (ss *SearchSuite) TestSearchAccountsWithMustRanges() {
 }
 
 func (ss *SearchSuite) TestSearchTransactionsWithMustRanges() {
-	ss.WithTestDependancies(ss.T(), func(t *testing.T, dep *testdef.DependancyOption) {
+	ss.WithTestDependancies(ss.T(), func(t *testing.T, dep *definition.DependancyOption) {
 		svc, ctx := ss.CreateService(t, dep)
 		ss.setupFixtures(ctx, svc)
 
@@ -94,7 +94,7 @@ func (ss *SearchSuite) TestSearchTransactionsWithMustRanges() {
 }
 
 func (ss *SearchSuite) TestSearchTransactionsWithIsOperator() {
-	ss.WithTestDependancies(ss.T(), func(t *testing.T, dep *testdef.DependancyOption) {
+	ss.WithTestDependancies(ss.T(), func(t *testing.T, dep *definition.DependancyOption) {
 		svc, ctx := ss.CreateService(t, dep)
 		ss.setupFixtures(ctx, svc)
 		// Test IS operator
@@ -134,7 +134,7 @@ func (ss *SearchSuite) TestSearchTransactionsWithIsOperator() {
 }
 
 func (ss *SearchSuite) TestSearchAccountsWithInOperator() {
-	ss.WithTestDependancies(ss.T(), func(t *testing.T, dep *testdef.DependancyOption) {
+	ss.WithTestDependancies(ss.T(), func(t *testing.T, dep *definition.DependancyOption) {
 		svc, ctx := ss.CreateService(t, dep)
 		ss.setupFixtures(ctx, svc)
 

@@ -13,7 +13,7 @@ import (
 	"github.com/antinvestor/service-ledger/internal/utility"
 	_ "github.com/lib/pq"
 	"github.com/pitabwire/frame"
-	"github.com/pitabwire/frame/tests/testdef"
+	"github.com/pitabwire/frame/frametests/definition"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -66,7 +66,7 @@ func (ts *TransactionsModelSuite) setupFixtures(ctx context.Context, svc *frame.
 }
 
 func (ts *TransactionsModelSuite) TestIsZeroSum() {
-	ts.WithTestDependancies(ts.T(), func(t *testing.T, _ *testdef.DependancyOption) {
+	ts.WithTestDependancies(ts.T(), func(t *testing.T, _ *definition.DependancyOption) {
 		svc, ctx := ts.CreateService(t, nil)
 		ts.setupFixtures(ctx, svc)
 
@@ -101,7 +101,7 @@ func (ts *TransactionsModelSuite) TestIsZeroSum() {
 }
 
 func (ts *TransactionsModelSuite) TestIsTrueDrCr() {
-	ts.WithTestDependancies(ts.T(), func(t *testing.T, _ *testdef.DependancyOption) {
+	ts.WithTestDependancies(ts.T(), func(t *testing.T, _ *definition.DependancyOption) {
 		timeNow := time.Now().UTC()
 		transaction := &models.Transaction{
 			BaseModel:       frame.BaseModel{ID: "t001"},
@@ -132,7 +132,7 @@ func (ts *TransactionsModelSuite) TestIsTrueDrCr() {
 }
 
 func (ts *TransactionsModelSuite) TestIsConflict() {
-	ts.WithTestDependancies(ts.T(), func(t *testing.T, _ *testdef.DependancyOption) {
+	ts.WithTestDependancies(ts.T(), func(t *testing.T, _ *definition.DependancyOption) {
 		svc, ctx := ts.CreateService(t, nil)
 		ts.setupFixtures(ctx, svc)
 
@@ -216,7 +216,7 @@ func (ts *TransactionsModelSuite) TestIsConflict() {
 }
 
 func (ts *TransactionsModelSuite) TestTransact() {
-	ts.WithTestDependancies(ts.T(), func(t *testing.T, _ *testdef.DependancyOption) {
+	ts.WithTestDependancies(ts.T(), func(t *testing.T, _ *definition.DependancyOption) {
 		svc, ctx := ts.CreateService(t, nil)
 		ts.setupFixtures(ctx, svc)
 
@@ -258,7 +258,7 @@ func (ts *TransactionsModelSuite) TestTransact() {
 }
 
 func (ts *TransactionsModelSuite) TestReserveTransaction() {
-	ts.WithTestDependancies(ts.T(), func(t *testing.T, _ *testdef.DependancyOption) {
+	ts.WithTestDependancies(ts.T(), func(t *testing.T, _ *definition.DependancyOption) {
 		svc, ctx := ts.CreateService(t, nil)
 		ts.setupFixtures(ctx, svc)
 
@@ -315,7 +315,7 @@ func (ts *TransactionsModelSuite) TestReserveTransaction() {
 }
 
 func (ts *TransactionsModelSuite) TestTransactBalanceCheck() {
-	ts.WithTestDependancies(ts.T(), func(t *testing.T, _ *testdef.DependancyOption) {
+	ts.WithTestDependancies(ts.T(), func(t *testing.T, _ *definition.DependancyOption) {
 		svc, ctx := ts.CreateService(t, nil)
 		ts.setupFixtures(ctx, svc)
 
@@ -371,7 +371,7 @@ func (ts *TransactionsModelSuite) TestTransactBalanceCheck() {
 }
 
 func (ts *TransactionsModelSuite) TestDuplicateTransactions() {
-	ts.WithTestDependancies(ts.T(), func(t *testing.T, _ *testdef.DependancyOption) {
+	ts.WithTestDependancies(ts.T(), func(t *testing.T, _ *definition.DependancyOption) {
 		svc, ctx := ts.CreateService(t, nil)
 		ts.setupFixtures(ctx, svc)
 
@@ -418,7 +418,7 @@ func (ts *TransactionsModelSuite) TestDuplicateTransactions() {
 }
 
 func (ts *TransactionsModelSuite) TestTransactionReversaL() {
-	ts.WithTestDependancies(ts.T(), func(t *testing.T, _ *testdef.DependancyOption) {
+	ts.WithTestDependancies(ts.T(), func(t *testing.T, _ *definition.DependancyOption) {
 		svc, ctx := ts.CreateService(t, nil)
 		ts.setupFixtures(ctx, svc)
 
@@ -468,7 +468,7 @@ func (ts *TransactionsModelSuite) TestTransactionReversaL() {
 }
 
 func (ts *TransactionsModelSuite) TestUnClearedTransactions() {
-	ts.WithTestDependancies(ts.T(), func(t *testing.T, _ *testdef.DependancyOption) {
+	ts.WithTestDependancies(ts.T(), func(t *testing.T, _ *definition.DependancyOption) {
 		svc, ctx := ts.CreateService(t, nil)
 		ts.setupFixtures(ctx, svc)
 
@@ -548,7 +548,7 @@ func (ts *TransactionsModelSuite) TestUnClearedTransactions() {
 }
 
 func (ts *TransactionsModelSuite) TestTransactWithBoundaryValues() {
-	ts.WithTestDependancies(ts.T(), func(t *testing.T, _ *testdef.DependancyOption) {
+	ts.WithTestDependancies(ts.T(), func(t *testing.T, _ *definition.DependancyOption) {
 		svc, ctx := ts.CreateService(t, nil)
 		ts.setupFixtures(ctx, svc)
 

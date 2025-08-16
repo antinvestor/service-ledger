@@ -15,7 +15,7 @@ import (
 	"github.com/antinvestor/service-ledger/internal/utility"
 	"github.com/docker/docker/api/types/container"
 	"github.com/pitabwire/frame"
-	"github.com/pitabwire/frame/tests/testdef"
+	"github.com/pitabwire/frame/frametests/definition"
 	"github.com/rs/xid"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
@@ -32,15 +32,15 @@ type GrpcAPISuite struct {
 
 func (as *GrpcAPISuite) setupDependencies(
 	t *testing.T,
-	dep *testdef.DependancyOption,
+	dep *definition.DependancyOption,
 ) (*ledgerV1.LedgerClient, testcontainers.Container) {
 	ctx := t.Context()
 
-	if len(dep.Database()) == 0 {
+	if len(dep.Database(ctx)) == 0 {
 		return nil, nil
 	}
 
-	datastoreDS := dep.Database()[0].GetInternalDS()
+	datastoreDS := dep.Database(ctx)[0].GetInternalDS(ctx)
 
 	_, err := as.setupServiceContainer(ctx, datastoreDS, true)
 	require.NoError(t, err)
@@ -136,14 +136,14 @@ func (as *GrpcAPISuite) createInitialAccounts(ctx context.Context, lc *ledgerV1.
 	}
 
 	for _, req := range ledgers {
-		_, err := lc.Client.CreateLedger(ctx, req)
+		_, err := lc.Svc().CreateLedger(ctx, req)
 		if err != nil {
 			return err
 		}
 	}
 
 	for _, req := range accounts {
-		_, err := lc.Client.CreateAccount(ctx, req)
+		_, err := lc.Svc().CreateAccount(ctx, req)
 		if err != nil {
 			return err
 		}
@@ -217,14 +217,14 @@ func (as *GrpcAPISuite) TestTransactions() {
 		},
 	}
 
-	as.WithTestDependancies(as.T(), func(t *testing.T, dep *testdef.DependancyOption) {
+	as.WithTestDependancies(as.T(), func(t *testing.T, dep *definition.DependancyOption) {
 		ctx := t.Context()
 		lc, lContainer := as.setupDependencies(t, dep)
 		defer lContainer.Terminate(ctx)
 
 		for _, tt := range testcases {
 			t.Run(tt.name, func(t *testing.T) {
-				result, err := lc.Client.CreateTransaction(ctx, tt.request)
+				result, err := lc.Svc().CreateTransaction(ctx, tt.request)
 				if err != nil {
 					if !tt.wantErr {
 						t.Errorf("Create Transaction () error = %v, wantErr %v", err, tt.wantErr)
@@ -233,7 +233,7 @@ func (as *GrpcAPISuite) TestTransactions() {
 				}
 
 				accRef := result.GetEntries()[0].GetAccount()
-				accounts, err := lc.Client.SearchAccounts(
+				accounts, err := lc.Svc().SearchAccounts(
 					ctx,
 					&commonv1.SearchRequest{
 						Query: fmt.Sprintf(
@@ -326,7 +326,7 @@ func (as *GrpcAPISuite) TestClearBalances() {
 		},
 	}
 
-	as.WithTestDependancies(as.T(), func(t *testing.T, dep *testdef.DependancyOption) {
+	as.WithTestDependancies(as.T(), func(t *testing.T, dep *definition.DependancyOption) {
 		ctx := t.Context()
 		lc, lContainer := as.setupDependencies(t, dep)
 		defer lContainer.Terminate(ctx)
@@ -341,7 +341,7 @@ func (as *GrpcAPISuite) TestClearBalances() {
 					return
 				}
 
-				accounts, err := lc.Client.SearchAccounts(
+				accounts, err := lc.Svc().SearchAccounts(
 					ctx,
 					&commonv1.SearchRequest{
 						Query: fmt.Sprintf(
@@ -374,14 +374,14 @@ func (as *GrpcAPISuite) processTransaction(ctx context.Context, lc *ledgerV1.Led
 	clearBalances bool
 }) (string, error) {
 	if tt.clearUpdate {
-		result, err := lc.Client.UpdateTransaction(ctx, tt.request)
+		result, err := lc.Svc().UpdateTransaction(ctx, tt.request)
 		if err != nil {
 			return "", err
 		}
 		return result.GetEntries()[0].GetAccount(), nil
 	}
 
-	result, err := lc.Client.CreateTransaction(ctx, tt.request)
+	result, err := lc.Svc().CreateTransaction(ctx, tt.request)
 	if err != nil {
 		return "", err
 	}
@@ -468,7 +468,7 @@ func (as *GrpcAPISuite) TestReverseTransaction() {
 		},
 	}
 
-	as.WithTestDependancies(as.T(), func(t *testing.T, dep *testdef.DependancyOption) {
+	as.WithTestDependancies(as.T(), func(t *testing.T, dep *definition.DependancyOption) {
 		ctx := t.Context()
 		lc, lContainer := as.setupDependencies(t, dep)
 		defer lContainer.Terminate(ctx)
@@ -479,12 +479,12 @@ func (as *GrpcAPISuite) TestReverseTransaction() {
 				activeTx := tt.request
 
 				if tt.createTx {
-					_, err := lc.Client.CreateTransaction(ctx, activeTx)
+					_, err := lc.Svc().CreateTransaction(ctx, activeTx)
 					if err != nil {
 						t.Fatalf("Create Transaction () error = %v, wantErr %v", err, tt.wantErr)
 					}
 
-					accounts, err := lc.Client.SearchAccounts(
+					accounts, err := lc.Svc().SearchAccounts(
 						ctx,
 						&commonv1.SearchRequest{
 							Query: fmt.Sprintf(
@@ -507,7 +507,7 @@ func (as *GrpcAPISuite) TestReverseTransaction() {
 					)
 				}
 
-				_, err := lc.Client.ReverseTransaction(ctx, activeTx)
+				_, err := lc.Svc().ReverseTransaction(ctx, activeTx)
 				if err != nil {
 					if !tt.wantErr {
 						t.Fatalf("Reverse Transaction () error = %v, wantErr %v", err, tt.wantErr)
@@ -515,7 +515,7 @@ func (as *GrpcAPISuite) TestReverseTransaction() {
 					return
 				}
 
-				accounts, err := lc.Client.SearchAccounts(
+				accounts, err := lc.Svc().SearchAccounts(
 					ctx,
 					&commonv1.SearchRequest{
 						Query: fmt.Sprintf(

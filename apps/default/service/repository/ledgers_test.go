@@ -9,7 +9,7 @@ import (
 	"github.com/antinvestor/service-ledger/apps/default/tests"
 	_ "github.com/lib/pq"
 	"github.com/pitabwire/frame"
-	"github.com/pitabwire/frame/tests/testdef"
+	"github.com/pitabwire/frame/frametests/definition"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -32,7 +32,7 @@ func (ls *LedgersSuite) setupFixtures(ctx context.Context, svc *frame.Service) {
 }
 
 func (ls *LedgersSuite) TestLedgersInfoAPI() {
-	ls.WithTestDependancies(ls.T(), func(t *testing.T, dep *testdef.DependancyOption) {
+	ls.WithTestDependancies(ls.T(), func(t *testing.T, dep *definition.DependancyOption) {
 		svc, ctx := ls.CreateService(t, dep)
 		ls.setupFixtures(ctx, svc)
 

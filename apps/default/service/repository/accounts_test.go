@@ -9,7 +9,7 @@ import (
 	"github.com/antinvestor/service-ledger/apps/default/tests"
 	_ "github.com/lib/pq"
 	"github.com/pitabwire/frame"
-	"github.com/pitabwire/frame/tests/testdef"
+	"github.com/pitabwire/frame/frametests/definition"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -39,7 +39,7 @@ func (as *AccountsSuite) setupFixtures(ctx context.Context, svc *frame.Service) 
 }
 
 func (as *AccountsSuite) TestAccountsInfoAPI() {
-	as.WithTestDependancies(as.T(), func(t *testing.T, dep *testdef.DependancyOption) {
+	as.WithTestDependancies(as.T(), func(t *testing.T, dep *definition.DependancyOption) {
 		svc, ctx := as.CreateService(t, dep)
 		as.setupFixtures(ctx, svc)
 

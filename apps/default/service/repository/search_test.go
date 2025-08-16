@@ -11,7 +11,7 @@ import (
 	"github.com/antinvestor/service-ledger/apps/default/tests"
 	_ "github.com/lib/pq"
 	"github.com/pitabwire/frame"
-	"github.com/pitabwire/frame/tests/testdef"
+	"github.com/pitabwire/frame/frametests/definition"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -164,7 +164,7 @@ func (ss *SearchSuite) setupFixtures(ctx context.Context, svc *frame.Service) {
 }
 
 func (ss *SearchSuite) TestSearchAccountsWithBothMustAndShould() {
-	ss.WithTestDependancies(ss.T(), func(t *testing.T, dep *testdef.DependancyOption) {
+	ss.WithTestDependancies(ss.T(), func(t *testing.T, dep *definition.DependancyOption) {
 		svc, ctx := ss.CreateService(t, dep)
 		ss.setupFixtures(ctx, svc)
 
@@ -199,7 +199,7 @@ func (ss *SearchSuite) TestSearchAccountsWithBothMustAndShould() {
 }
 
 func (ss *SearchSuite) TestSearchTransactionsWithBothMustAndShould() {
-	ss.WithTestDependancies(ss.T(), func(t *testing.T, dep *testdef.DependancyOption) {
+	ss.WithTestDependancies(ss.T(), func(t *testing.T, dep *definition.DependancyOption) {
 		svc, ctx := ss.CreateService(t, dep)
 		ss.setupFixtures(ctx, svc)
 
