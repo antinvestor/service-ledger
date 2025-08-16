@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-
 	//nolint:gosec // G108: Profiling endpoint deliberately exposed for monitoring and debugging purposes
 	_ "net/http/pprof"
 
@@ -60,12 +59,12 @@ func main() {
 		grpc.ChainUnaryInterceptor(
 			protovalidateinterceptor.UnaryServerInterceptor(validator),
 			recovery.UnaryServerInterceptor(recovery.WithRecoveryHandlerContext(frame.RecoveryHandlerFun)),
-			svc.UnaryAuthInterceptor(jwtAudience, cfg.Oauth2JwtVerifyIssuer),
+			svc.UnaryAuthInterceptor(jwtAudience, cfg.GetOauth2Issuer()),
 		),
 		grpc.ChainStreamInterceptor(
 			protovalidateinterceptor.StreamServerInterceptor(validator),
 			recovery.StreamServerInterceptor(recovery.WithRecoveryHandlerContext(frame.RecoveryHandlerFun)),
-			svc.StreamAuthInterceptor(jwtAudience, cfg.Oauth2JwtVerifyIssuer),
+			svc.StreamAuthInterceptor(jwtAudience, cfg.GetOauth2Issuer()),
 		),
 	)
 
@@ -79,7 +78,7 @@ func main() {
 	serviceOptions = append(serviceOptions, grpcServerOpt)
 
 	proxyOptions := common.ProxyOptions{
-		GrpcServerEndpoint: fmt.Sprintf("localhost:%s", cfg.GrpcServerPort),
+		GrpcServerEndpoint: fmt.Sprintf("localhost:%s", cfg.GrpcPort()),
 		GrpcServerDialOpts: []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())},
 	}
 

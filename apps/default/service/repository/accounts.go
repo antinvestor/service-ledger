@@ -15,8 +15,8 @@ const constAccountQuery = `WITH current_balance_summary AS (
     SELECT 
         e.account_id, 
         t.currency,
-        COALESCE(SUM(CASE WHEN t.transaction_type IN ('NORMAL', 'REVERSAL') AND t.cleared_at IS NOT NULL THEN e.amount ELSE 0 END), 0) AS balance,
-        COALESCE(SUM(CASE WHEN t.transaction_type IN ('NORMAL', 'REVERSAL') AND t.cleared_at IS NULL THEN e.amount ELSE 0 END), 0) AS uncleared_balance,
+        COALESCE(SUM(CASE WHEN t.transaction_type IN ('NORMAL', 'REVERSAL') AND t.cleared_at IS NOT NULL AND t.cleared_at != '0001-01-01 00:00:00' THEN e.amount ELSE 0 END), 0) AS balance,
+        COALESCE(SUM(CASE WHEN t.transaction_type IN ('NORMAL', 'REVERSAL') AND (t.cleared_at IS NULL OR t.cleared_at = '0001-01-01 00:00:00') THEN e.amount ELSE 0 END), 0) AS uncleared_balance,
         COALESCE(SUM(CASE WHEN t.transaction_type = 'RESERVATION' THEN e.amount ELSE 0 END), 0) AS reserved_balance
     FROM transaction_entries e 
     LEFT JOIN transactions t ON e.transaction_id = t.id

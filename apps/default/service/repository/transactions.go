@@ -374,12 +374,12 @@ func (t *transactionRepository) Transact(
 		return nil, apperrors.ErrSystemFailure.Override(err)
 	}
 
-	now := time.Now()
+	timeNow := time.Now()
 	if transaction.TransactedAt.IsZero() {
-		transaction.TransactedAt = &now
-	} else if transaction.ClearedAt.IsZero() {
-		transaction.ClearedAt = &now
+		transaction.TransactedAt = timeNow
 	}
+	// Only set ClearedAt if it was explicitly provided and is not zero
+	// Don't automatically clear transactions that should remain uncleared
 
 	return t.GetByID(ctx, transaction.GetID())
 }
@@ -455,8 +455,8 @@ func (t *transactionRepository) Update(
 		}
 	}
 
-	if existingTransaction.ClearedAt == nil {
-		if txn.ClearedAt != nil {
+	if existingTransaction.ClearedAt.IsZero() {
+		if !txn.ClearedAt.IsZero() {
 			accountsMap, err1 := t.Validate(ctx, existingTransaction)
 			if err1 != nil {
 				return nil, err1
@@ -504,9 +504,9 @@ func (t *transactionRepository) Reverse(
 	reversalTxn.TransactionType = ledgerV1.TransactionType_REVERSAL.String()
 
 	timeNow := time.Now()
-	reversalTxn.TransactedAt = &timeNow
-	reversalTxn.CreatedAt = time.Now()
-	reversalTxn.ModifiedAt = time.Now()
+	reversalTxn.TransactedAt = timeNow
+	reversalTxn.CreatedAt = timeNow
+	reversalTxn.ModifiedAt = timeNow
 
 	return t.Transact(ctx, reversalTxn)
 }

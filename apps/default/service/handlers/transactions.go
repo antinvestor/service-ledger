@@ -7,7 +7,7 @@ import (
 	commonv1 "github.com/antinvestor/apis/go/common/v1"
 	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
 	"github.com/antinvestor/service-ledger/apps/default/service/models"
-	repository "github.com/antinvestor/service-ledger/apps/default/service/repository"
+	"github.com/antinvestor/service-ledger/apps/default/service/repository"
 	"github.com/antinvestor/service-ledger/internal/apperrors"
 	utility2 "github.com/antinvestor/service-ledger/internal/utility"
 	"github.com/pitabwire/frame"
@@ -31,7 +31,7 @@ func transactionToAPI(mTxn *models.Transaction) *ledgerV1.Transaction {
 		Data:      frame.DBPropertiesToMap(mTxn.Data),
 		Entries:   apiEntries}
 
-	if mTxn.TransactedAt != nil && !mTxn.TransactedAt.IsZero() {
+	if !mTxn.TransactedAt.IsZero() {
 		trx.TransactedAt = mTxn.TransactedAt.Format(repository.DefaultTimestamLayout)
 	}
 
@@ -72,10 +72,10 @@ func transactionFromAPI(aTxn *ledgerV1.Transaction) (*models.Transaction, error)
 			return nil, err
 		}
 	}
-	transaction.TransactedAt = &transactedAt
+	transaction.TransactedAt = transactedAt
 
 	if aTxn.GetCleared() {
-		transaction.ClearedAt = &transactedAt
+		transaction.ClearedAt = transactedAt
 	}
 
 	return transaction, nil

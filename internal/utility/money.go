@@ -88,6 +88,6 @@ func CleanDecimal(d decimal.Decimal) decimal.Decimal {
 	return rounded
 }
 
-func IsValidTime(t *time.Time) bool {
-	return t != nil && !t.IsZero()
+func IsValidTime(t time.Time) bool {
+	return !t.IsZero()
 }

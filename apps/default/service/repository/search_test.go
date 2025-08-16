@@ -83,8 +83,8 @@ func (ss *SearchSuite) setupFixtures(ctx context.Context, svc *frame.Service) {
 		BaseModel:       frame.BaseModel{ID: "txn1"},
 		Currency:        "UGX",
 		TransactionType: ledgerV1.TransactionType_NORMAL.String(),
-		TransactedAt:    &timeNow,
-		ClearedAt:       &timeNow,
+		TransactedAt:    timeNow,
+		ClearedAt:       timeNow,
 		Entries: []*models.TransactionEntry{
 			{
 				AccountID: "acc1",
@@ -110,8 +110,8 @@ func (ss *SearchSuite) setupFixtures(ctx context.Context, svc *frame.Service) {
 		BaseModel:       frame.BaseModel{ID: "txn2"},
 		Currency:        "UGX",
 		TransactionType: ledgerV1.TransactionType_NORMAL.String(),
-		TransactedAt:    &timeNow,
-		ClearedAt:       &timeNow,
+		TransactedAt:    timeNow,
+		ClearedAt:       timeNow,
 		Entries: []*models.TransactionEntry{
 			{
 				AccountID: "acc1",
@@ -136,8 +136,8 @@ func (ss *SearchSuite) setupFixtures(ctx context.Context, svc *frame.Service) {
 		BaseModel:       frame.BaseModel{ID: "txn3"},
 		Currency:        "UGX",
 		TransactionType: ledgerV1.TransactionType_NORMAL.String(),
-		TransactedAt:    &timeNow,
-		ClearedAt:       &timeNow,
+		TransactedAt:    timeNow,
+		ClearedAt:       timeNow,
 		Entries: []*models.TransactionEntry{
 			{
 				AccountID: "acc1",

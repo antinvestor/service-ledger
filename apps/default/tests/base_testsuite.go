@@ -50,16 +50,18 @@ func (bs *BaseTestSuite) CreateService(
 	cfg.RunServiceSecurely = false
 	cfg.ServerPort = ""
 
-	for _, res := range depOpts.Database(ctx) {
-		testDS, cleanup, err0 := res.GetRandomisedDS(ctx, depOpts.Prefix())
-		require.NoError(t, err0)
+	if depOpts != nil {
+		for _, res := range depOpts.Database(ctx) {
+			testDS, cleanup, err0 := res.GetRandomisedDS(ctx, depOpts.Prefix())
+			require.NoError(t, err0)
 
-		t.Cleanup(func() {
-			cleanup(ctx)
-		})
+			t.Cleanup(func() {
+				cleanup(ctx)
+			})
 
-		cfg.DatabasePrimaryURL = []string{testDS.String()}
-		cfg.DatabaseReplicaURL = []string{testDS.String()}
+			cfg.DatabasePrimaryURL = []string{testDS.String()}
+			cfg.DatabaseReplicaURL = []string{testDS.String()}
+		}
 	}
 
 	if len(frameOpts) == 0 {

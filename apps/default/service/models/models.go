@@ -33,8 +33,8 @@ type Transaction struct {
 	Currency        string              `gorm:"type:varchar(10);not null"            json:"currency"`
 	TransactionType string              `gorm:"type:varchar(50)"                     json:"transaction_type"`
 	Data            frame.JSONMap       `gorm:"type:jsonb;index:,gin:jsonb_path_ops" json:"data"`
-	ClearedAt       *time.Time          `gorm:"type:timestamp"                       json:"cleared_at"`
-	TransactedAt    *time.Time          `gorm:"type:timestamp"                       json:"transacted_at"`
+	ClearedAt       time.Time           `gorm:"type:timestamp"                       json:"cleared_at"`
+	TransactedAt    time.Time           `gorm:"type:timestamp"                       json:"transacted_at"`
 	Entries         []*TransactionEntry `gorm:"foreignKey:TransactionID"             json:"entries"`
 }
 
@@ -47,8 +47,8 @@ type TransactionEntry struct {
 	Amount        decimal.NullDecimal `gorm:"type:numeric(29,9)"              json:"amount"`
 	Credit        bool                `                                       json:"credit"`
 	Balance       decimal.NullDecimal `gorm:"type:numeric(29,9)"              json:"balance"`
-	ClearedAt     *time.Time          `gorm:"-"                               json:"cleared_at"`
-	TransactedAt  *time.Time          `gorm:"-"                               json:"transacted_at"`
+	ClearedAt     time.Time           `gorm:"-"                               json:"cleared_at"`
+	TransactedAt  time.Time           `gorm:"-"                               json:"transacted_at"`
 }
 
 func (t *TransactionEntry) Equal(ot TransactionEntry) bool {
