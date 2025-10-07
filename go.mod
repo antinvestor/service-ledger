@@ -18,7 +18,7 @@ require (
 	github.com/testcontainers/testcontainers-go v0.38.0
 	golang.org/x/text v0.28.0
 	google.golang.org/genproto v0.0.0-20250811230008-5f3141c8851a
-	google.golang.org/grpc v1.74.2
+	google.golang.org/grpc v1.76.0
 )
 
 require (
