@@ -3,101 +3,81 @@ package handlers
 import (
 	"context"
 
-	commonv1 "github.com/antinvestor/apis/go/common/v1"
-	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
-	"github.com/antinvestor/service-ledger/apps/default/service/models"
-	"github.com/antinvestor/service-ledger/apps/default/service/repository"
-	"github.com/antinvestor/service-ledger/internal/apperrors"
-	utility2 "github.com/antinvestor/service-ledger/internal/utility"
-	"github.com/pitabwire/frame"
-	"github.com/shopspring/decimal"
+	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
+	ledgerv1 "buf.build/gen/go/antinvestor/ledger/protocolbuffers/go/ledger/v1"
+	"connectrpc.com/connect"
 )
 
-func accountToAPI(mAcc *models.Account) *ledgerV1.Account {
-	accountBalance := decimal.Zero
-	if mAcc.Balance.Valid {
-		accountBalance = mAcc.Balance.Decimal
-	}
-	balance := utility2.ToMoney(mAcc.Currency, accountBalance)
-
-	reservedBalanceAmt := decimal.Zero
-	if mAcc.ReservedBalance.Valid {
-		reservedBalanceAmt = mAcc.ReservedBalance.Decimal
-	}
-
-	reservedBalance := utility2.ToMoney(mAcc.Currency, reservedBalanceAmt)
-
-	unClearedBalanceAmt := decimal.Zero
-	if mAcc.UnClearedBalance.Valid {
-		unClearedBalanceAmt = mAcc.UnClearedBalance.Decimal
-	}
-	unClearedBalance := utility2.ToMoney(mAcc.Currency, unClearedBalanceAmt)
-
-	return &ledgerV1.Account{
-		Reference: mAcc.ID, Ledger: mAcc.LedgerID,
-		Balance: &balance, ReservedBalance: &reservedBalance, UnclearedBalance: &unClearedBalance,
-		Data: frame.DBPropertiesToMap(mAcc.Data)}
-}
-
-func accountFromAPI(account *ledgerV1.Account) *models.Account {
-	accountBalance := utility2.FromMoney(account.GetBalance())
-
-	return &models.Account{
-		BaseModel: frame.BaseModel{ID: account.GetReference()},
-		LedgerID:  account.GetLedger(),
-		Currency:  account.GetBalance().GetCurrencyCode(),
-		Balance:   decimal.NewNullDecimal(accountBalance),
-		Data:      frame.DBPropertiesFromMap(account.GetData())}
-}
-
+// SearchAccounts finds accounts matching specified criteria.
+// Supports filtering by ledger, balance range, and custom properties.
 func (ledgerSrv *LedgerServer) SearchAccounts(
-	request *commonv1.SearchRequest, server ledgerV1.LedgerService_SearchAccountsServer) error {
-	ctx := server.Context()
-
-	accountsRepo := repository.NewAccountRepository(ledgerSrv.Service)
-
-	jobResult, err := accountsRepo.Search(ctx, request.GetQuery())
+	ctx context.Context,
+	req *connect.Request[commonv1.SearchRequest],
+	stream *connect.ServerStream[ledgerv1.SearchAccountsResponse],
+) error {
+	// Search accounts using business layer
+	result, err := ledgerSrv.Account.SearchAccounts(ctx, req.Msg)
 	if err != nil {
 		return err
 	}
 
-	for result := range jobResult.ResultChan() {
-		if result.IsError() {
-			return apperrors.ErrSystemFailure.Override(result.Error())
+	for {
+		res, ok := result.ReadResult(ctx)
+		if !ok {
+			return nil
 		}
 
-		for _, acc := range result.Item() {
-			if err = server.Send(accountToAPI(acc)); err != nil {
-				return err
-			}
+		if res.IsError() {
+			return res.Error()
+		}
+
+		// Send response with account data
+		response := &ledgerv1.SearchAccountsResponse{
+			Data: res.Item(),
+		}
+		
+		if err := stream.Send(response); err != nil {
+			return err
 		}
 	}
-
-	return nil
 }
 
-// CreateAccount a new account based on supplied data.
-func (ledgerSrv *LedgerServer) CreateAccount(ctx context.Context, aAcc *ledgerV1.Account) (*ledgerV1.Account, error) {
-	accountsRepo := repository.NewAccountRepository(ledgerSrv.Service)
-
-	// Otherwise, add account
-	mAcc, aerr := accountsRepo.Create(ctx, accountFromAPI(aAcc))
-	if aerr != nil {
-		return nil, aerr
+// CreateAccount creates a new account within a ledger.
+// Each account tracks balances and transaction history.
+func (ledgerSrv *LedgerServer) CreateAccount(
+	ctx context.Context,
+	req *connect.Request[ledgerv1.CreateAccountRequest],
+) (*connect.Response[ledgerv1.CreateAccountResponse], error) {
+	// Create the account using business layer
+	createdAccount, err := ledgerSrv.Account.CreateAccount(ctx, req.Msg)
+	if err != nil {
+		return nil, err
 	}
 
-	return accountToAPI(mAcc), nil
+	// Return response with created account
+	response := &ledgerv1.CreateAccountResponse{
+		Data: createdAccount,
+	}
+
+	return connect.NewResponse(response), nil
 }
 
-// UpdateAccount the data component of the account.
-func (ledgerSrv *LedgerServer) UpdateAccount(ctx context.Context, aAcc *ledgerV1.Account) (*ledgerV1.Account, error) {
-	accountsRepo := repository.NewAccountRepository(ledgerSrv.Service)
-
-	// Otherwise, add account
-	mAcc, aerr := accountsRepo.Update(ctx, aAcc.GetReference(), aAcc.GetData())
-	if aerr != nil {
-		return nil, aerr
+// UpdateAccount updates an existing account's metadata.
+// Balances are updated through transactions, not directly.
+func (ledgerSrv *LedgerServer) UpdateAccount(
+	ctx context.Context,
+	req *connect.Request[ledgerv1.UpdateAccountRequest],
+) (*connect.Response[ledgerv1.UpdateAccountResponse], error) {
+	// Update the account using business layer
+	updatedAccount, err := ledgerSrv.Account.UpdateAccount(ctx, req.Msg)
+	if err != nil {
+		return nil, err
 	}
 
-	return accountToAPI(mAcc), nil
+	// Return response with updated account
+	response := &ledgerv1.UpdateAccountResponse{
+		Data: updatedAccount,
+	}
+
+	return connect.NewResponse(response), nil
 }

@@ -1,7 +1,9 @@
 package config
 
-import "github.com/pitabwire/frame"
+import (
+	"github.com/pitabwire/frame/config"
+)
 
 type LedgerConfig struct {
-	frame.ConfigurationDefault
+	config.ConfigurationDefault
 }

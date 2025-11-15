@@ -2,102 +2,77 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"net/http"
 	//nolint:gosec // G108: Profiling endpoint deliberately exposed for monitoring and debugging purposes
 	_ "net/http/pprof"
 
-	"buf.build/go/protovalidate"
-	"github.com/antinvestor/apis/go/common"
-	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
-	"github.com/antinvestor/service-ledger/apps/default/config"
+	"buf.build/gen/go/antinvestor/ledger/connectrpc/go/ledger/v1/ledgerv1connect"
+	"connectrpc.com/connect"
+	"connectrpc.com/otelconnect"
+	aconfig "github.com/antinvestor/service-ledger/apps/default/config"
+	"github.com/antinvestor/service-ledger/apps/default/service/business"
 	"github.com/antinvestor/service-ledger/apps/default/service/handlers"
 	"github.com/antinvestor/service-ledger/apps/default/service/repository"
-	protovalidateinterceptor "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
-	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"github.com/pitabwire/frame"
+	"github.com/pitabwire/frame/config"
+	"github.com/pitabwire/frame/datastore"
+	"github.com/pitabwire/frame/security"
+	securityconnect "github.com/pitabwire/frame/security/interceptors/connect"
 	"github.com/pitabwire/util"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
-	serviceName := "service_ledger"
+
 	ctx := context.Background()
 
-	cfg, err := frame.ConfigFromEnv[config.LedgerConfig]()
+	// Create frame service
+	cfg, err := config.LoadWithOIDC[aconfig.LedgerConfig](ctx)
 	if err != nil {
 		util.Log(ctx).WithError(err).Fatal("could not process configs")
 		return
 	}
 
-	ctx, svc := frame.NewServiceWithContext(ctx, serviceName, frame.WithConfig(&cfg))
-	defer svc.Stop(ctx)
-	log := svc.Log(ctx)
+	if cfg.Name() == "" {
+		cfg.ServiceName = "service_ledger"
+	}
 
-	serviceOptions := []frame.Option{frame.WithDatastore()}
+	_, service := frame.NewServiceWithContext(ctx, frame.WithConfig(&cfg), frame.WithRegisterServerOauth2Client(), frame.WithDatastore(), frame.WithTranslation("en"))
+	defer service.Stop(ctx)
+
+	log := service.Log(ctx)
+
+	// Get the default database pool and work manager
+	dbPool := service.DatastoreManager().GetPool(ctx, datastore.DefaultPoolName)
+	workMan := service.WorkManager()
+
+	// Create repositories with proper dependency injection
+	ledgerRepo := repository.NewLedgerRepository(ctx, dbPool, workMan)
+	accountRepo := repository.NewAccountRepository(ctx, dbPool, workMan, ledgerRepo)
+	transactionRepo := repository.NewTransactionRepository(ctx, dbPool, workMan, accountRepo)
+
+	ledgerBusiness := business.NewLedgerBusiness(ledgerRepo)
+	accountBusiness := business.NewAccountBusiness(accountRepo)
+	transactionBusiness := business.NewTransactionBusiness(transactionRepo)
+
+	// Create handler with injected business layer
+	ledgerServer := handlers.NewLedgerServer(ledgerBusiness, accountBusiness, transactionBusiness)
 
 	// Handle database migration if requested
-	if handleDatabaseMigration(ctx, svc, cfg, log) {
+	if handleDatabaseMigration(ctx, service, cfg, log) {
 		return
 	}
 
-	serviceTranslations := frame.WithTranslations("en")
-	serviceOptions = append(serviceOptions, serviceTranslations)
+	// Setup Connect server with injected dependencies
+	connectHandler := setupConnectServer(ctx, service.SecurityManager(), ledgerServer)
 
-	jwtAudience := cfg.Oauth2JwtVerifyAudience
-	if jwtAudience == "" {
-		jwtAudience = serviceName
-	}
-
-	validator, err := protovalidate.New()
-	if err != nil {
-		log.WithError(err).Fatal("could not load validator for proto messages")
-		return
-	}
-
-	grpcServer := grpc.NewServer(
-		grpc.ChainUnaryInterceptor(
-			protovalidateinterceptor.UnaryServerInterceptor(validator),
-			recovery.UnaryServerInterceptor(recovery.WithRecoveryHandlerContext(frame.RecoveryHandlerFun)),
-			svc.UnaryAuthInterceptor(jwtAudience, cfg.GetOauth2Issuer()),
-		),
-		grpc.ChainStreamInterceptor(
-			protovalidateinterceptor.StreamServerInterceptor(validator),
-			recovery.StreamServerInterceptor(recovery.WithRecoveryHandlerContext(frame.RecoveryHandlerFun)),
-			svc.StreamAuthInterceptor(jwtAudience, cfg.GetOauth2Issuer()),
-		),
-	)
-
-	implementation := &handlers.LedgerServer{
-		Service: svc,
-	}
-
-	ledgerV1.RegisterLedgerServiceServer(grpcServer, implementation)
-
-	grpcServerOpt := frame.WithGRPCServer(grpcServer)
-	serviceOptions = append(serviceOptions, grpcServerOpt)
-
-	proxyOptions := common.ProxyOptions{
-		GrpcServerEndpoint: fmt.Sprintf("localhost:%s", cfg.GrpcPort()),
-		GrpcServerDialOpts: []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())},
-	}
-
-	proxyMux, err := ledgerV1.CreateProxyHandler(ctx, proxyOptions)
-	if err != nil {
-		log.WithError(err).Fatal("could not create the proxy handler")
-		return
-	}
-
-	proxyServerOpt := frame.WithHTTPHandler(proxyMux)
-	serviceOptions = append(serviceOptions, proxyServerOpt)
-
-	svc.Init(ctx, serviceOptions...)
+	// Setup HTTP handlers
+	serviceOptions := []frame.Option{frame.WithHTTPHandler(connectHandler)}
+	service.Init(ctx, serviceOptions...)
 
 	log.WithField("server http port", cfg.HTTPServerPort).
-		WithField("server grpc port", cfg.GrpcServerPort).
 		Info(" Initiating server operations")
 
-	err = svc.Run(ctx, "")
+	err = service.Run(ctx, "")
 	if err != nil {
 		log.Printf("main -- Could not run Server : %v", err)
 	}
@@ -107,7 +82,7 @@ func main() {
 func handleDatabaseMigration(
 	ctx context.Context,
 	svc *frame.Service,
-	cfg config.LedgerConfig,
+	cfg aconfig.LedgerConfig,
 	log *util.LogEntry,
 ) bool {
 	serviceOptions := []frame.Option{frame.WithDatastore()}
@@ -122,4 +97,29 @@ func handleDatabaseMigration(
 		return true
 	}
 	return false
+}
+
+// setupConnectServer initializes and configures the connect server.
+func setupConnectServer(
+	ctx context.Context,
+	securityMan security.Manager,
+	implementation ledgerv1connect.LedgerServiceHandler,
+) http.Handler {
+	otelInterceptor, err := otelconnect.NewInterceptor()
+	if err != nil {
+		util.Log(ctx).WithError(err).Fatal("could not configure open telemetry")
+	}
+
+	validateInterceptor, err := securityconnect.NewValidationInterceptor()
+	if err != nil {
+		util.Log(ctx).WithError(err).Fatal("could not configure validation interceptor")
+	}
+
+	authenticator := securityMan.GetAuthenticator(ctx)
+	authInterceptor := securityconnect.NewAuthInterceptor(authenticator)
+
+	_, serverHandler := ledgerv1connect.NewLedgerServiceHandler(
+		implementation, connect.WithInterceptors(authInterceptor, otelInterceptor, validateInterceptor))
+
+	return serverHandler
 }

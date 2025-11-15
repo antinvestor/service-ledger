@@ -10,8 +10,8 @@ import (
 )
 
 func (ss *SearchSuite) TestSearchAccountsWithShouldTerms() {
-	ss.WithTestDependancies(ss.T(), func(t *testing.T, dep *definition.DependancyOption) {
-		svc, ctx := ss.CreateService(t, dep)
+	ss.WithTestDependencies(ss.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		svc, ctx, _ := ss.CreateService(t, dep)
 		ss.setupFixtures(ctx, svc)
 
 		query := `{
@@ -25,7 +25,7 @@ func (ss *SearchSuite) TestSearchAccountsWithShouldTerms() {
             }
         }
     }`
-		resultChannel, err := ss.accDB.Search(ctx, query)
+		resultChannel, err := ss.accDB.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
 		accounts, err := toSlice[*models.Account](resultChannel)
 
@@ -44,7 +44,7 @@ func (ss *SearchSuite) TestSearchAccountsWithShouldTerms() {
             }
         }
     }`
-		resultChannel, err = ss.accDB.Search(ctx, query)
+		resultChannel, err = ss.accDB.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
 		accounts, err = toSlice[*models.Account](resultChannel)
 
@@ -54,8 +54,8 @@ func (ss *SearchSuite) TestSearchAccountsWithShouldTerms() {
 }
 
 func (ss *SearchSuite) TestSearchTransactionsWithShouldTerms() {
-	ss.WithTestDependancies(ss.T(), func(t *testing.T, dep *definition.DependancyOption) {
-		svc, ctx := ss.CreateService(t, dep)
+	ss.WithTestDependencies(ss.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		svc, ctx, _ := ss.CreateService(t, dep)
 		ss.setupFixtures(ctx, svc)
 
 		query := `{
@@ -69,7 +69,7 @@ func (ss *SearchSuite) TestSearchTransactionsWithShouldTerms() {
             }
         }
     }`
-		resultChannel, err := ss.txnDB.Search(ctx, query)
+		resultChannel, err := ss.txnDB.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
 		transactions, err := toSlice[*models.Transaction](resultChannel)
 
@@ -88,7 +88,7 @@ func (ss *SearchSuite) TestSearchTransactionsWithShouldTerms() {
             }
         }
     }`
-		resultChannel, err = ss.txnDB.Search(ctx, query)
+		resultChannel, err = ss.txnDB.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
 		transactions, err = toSlice[*models.Transaction](resultChannel)
 

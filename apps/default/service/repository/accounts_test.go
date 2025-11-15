@@ -39,8 +39,8 @@ func (as *AccountsSuite) setupFixtures(ctx context.Context, svc *frame.Service) 
 }
 
 func (as *AccountsSuite) TestAccountsInfoAPI() {
-	as.WithTestDependancies(as.T(), func(t *testing.T, dep *definition.DependancyOption) {
-		svc, ctx := as.CreateService(t, dep)
+	as.WithTestDependencies(as.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		svc, ctx, _ := as.CreateService(t, dep)
 		as.setupFixtures(ctx, svc)
 
 		accountsDB := repository.NewAccountRepository(svc)

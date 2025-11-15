@@ -7,7 +7,11 @@ import (
 
 	"github.com/antinvestor/service-ledger/apps/default/service/models"
 	"github.com/antinvestor/service-ledger/internal/apperrors"
-	"github.com/pitabwire/frame"
+	"github.com/pitabwire/frame/data"
+	"github.com/pitabwire/frame/datastore"
+	"github.com/pitabwire/frame/datastore/pool"
+	"github.com/pitabwire/frame/workerpool"
+	"github.com/pitabwire/util"
 	"golang.org/x/text/currency"
 )
 
@@ -42,29 +46,33 @@ FROM accounts a
 LEFT JOIN current_balance_summary bs ON a.id = bs.account_id AND a.currency = bs.currency `
 
 type AccountRepository interface {
-	GetByID(ctx context.Context, id string) (*models.Account, apperrors.ApplicationError)
+	datastore.BaseRepository[*models.Account]
+	SearchAsESQ(ctx context.Context, query string) (workerpool.JobResultPipe[[]*models.Account], error)
 	ListByID(ctx context.Context, ids ...string) (map[string]*models.Account, apperrors.ApplicationError)
-	Search(ctx context.Context, query string) (frame.JobResultPipe[[]*models.Account], error)
-	Create(ctx context.Context, ledger *models.Account) (*models.Account, apperrors.ApplicationError)
-	Update(ctx context.Context, id string, data map[string]string) (*models.Account, apperrors.ApplicationError)
 }
 
 // accountRepository provides all functions related to ledger account.
 type accountRepository struct {
-	service          *frame.Service
+	datastore.BaseRepository[*models.Account]
 	ledgerRepository LedgerRepository
 }
 
 // NewAccountRepository provides instance of `accountRepository`.
-func NewAccountRepository(service *frame.Service) AccountRepository {
-	return &accountRepository{service: service, ledgerRepository: NewLedgerRepository(service)}
+func NewAccountRepository(ctx context.Context, dbPool pool.Pool, workMan workerpool.Manager, ledgerRepository LedgerRepository) AccountRepository {
+
+	return &accountRepository{
+		BaseRepository: datastore.NewBaseRepository[*models.Account](
+			ctx, dbPool, workMan, func() *models.Account { return &models.Account{} },
+		),
+		ledgerRepository: ledgerRepository,
+	}
 }
 
 // GetByID returns an acccount with the given Reference.
 func (a *accountRepository) GetByID(
 	ctx context.Context,
 	id string,
-) (*models.Account, apperrors.ApplicationError) {
+) (*models.Account, error) {
 	if id == "" {
 		return nil, apperrors.ErrUnspecifiedID
 	}
@@ -109,7 +117,7 @@ func (a *accountRepository) ListByID(
 
 	query := string(queryBytes)
 
-	jobResult, err := a.Search(ctx, query)
+	jobResult, err := a.SearchAsESQ(ctx, query)
 	if err != nil {
 		return nil, apperrors.ErrSystemFailure.Override(err).Extend(fmt.Sprintf("db query error [%s]", query))
 	}
@@ -132,14 +140,14 @@ func (a *accountRepository) ListByID(
 }
 
 func (a *accountRepository) searchAccounts(ctx context.Context, sqlQuery *SearchSQLQuery) ([]*models.Account, error) {
-	rows, err := a.service.DB(ctx, true).
+	rows, err := a.Pool().DB(ctx, true).
 		Offset(sqlQuery.offset).Limit(sqlQuery.batchSize).
 		Raw(fmt.Sprintf(`%s WHERE %s`, constAccountQuery, sqlQuery.sql), sqlQuery.args...).Rows()
 	if err != nil {
 		return nil, err
 	}
 
-	defer rows.Close()
+	defer util.CloseAndLogOnError(ctx, rows, "could not close account rows")
 
 	var accountList []*models.Account
 	for rows.Next() {
@@ -156,10 +164,9 @@ func (a *accountRepository) searchAccounts(ctx context.Context, sqlQuery *Search
 
 	return accountList, nil
 }
+func (a *accountRepository) SearchAsESQ(ctx context.Context, query string) (workerpool.JobResultPipe[[]*models.Account], error) {
 
-func (a *accountRepository) Search(ctx context.Context, query string) (frame.JobResultPipe[[]*models.Account], error) {
-	service := a.service
-	job := frame.NewJob(func(ctx context.Context, jobResult frame.JobResultPipe[[]*models.Account]) error {
+	job := workerpool.NewJob(func(ctx context.Context, jobResult workerpool.JobResultPipe[[]*models.Account]) error {
 		rawQuery, aerr := NewSearchRawQuery(ctx, query)
 		if aerr != nil {
 			return jobResult.WriteError(ctx, aerr)
@@ -170,7 +177,7 @@ func (a *accountRepository) Search(ctx context.Context, query string) (frame.Job
 		for sqlQuery.canLoad() {
 			accountList, dbErr := a.searchAccounts(ctx, sqlQuery)
 			if dbErr != nil {
-				if frame.ErrorIsNoRows(dbErr) {
+				if data.ErrorIsNoRows(dbErr) {
 					return jobResult.WriteError(ctx, apperrors.ErrLedgerNotFound)
 				}
 				return jobResult.WriteError(
@@ -191,7 +198,7 @@ func (a *accountRepository) Search(ctx context.Context, query string) (frame.Job
 		return nil
 	})
 
-	err := frame.SubmitJob(ctx, service, job)
+	err := workerpool.SubmitJob(ctx, a.WorkManager(), job)
 	if err != nil {
 		return nil, err
 	}
@@ -199,40 +206,15 @@ func (a *accountRepository) Search(ctx context.Context, query string) (frame.Job
 	return job, nil
 }
 
-// Update persists an existing account in the ledger if it is existent.
-func (a *accountRepository) Update(
-	ctx context.Context,
-	id string,
-	data map[string]string,
-) (*models.Account, apperrors.ApplicationError) {
-	existingAccount, errAcc := a.GetByID(ctx, id)
-	if errAcc != nil {
-		return nil, errAcc
-	}
-
-	for key, value := range data {
-		if value != "" && value != existingAccount.Data[key] {
-			existingAccount.Data[key] = value
-		}
-	}
-
-	err := a.service.DB(ctx, false).Save(&existingAccount).Error
-	if err != nil {
-		a.service.Log(ctx).WithError(err).Error("could not save the account")
-		return nil, apperrors.ErrSystemFailure.Override(err)
-	}
-	return existingAccount, nil
-}
-
 // Create persists a new account in the ledger if its none existent.
 func (a *accountRepository) Create(
 	ctx context.Context,
 	account *models.Account,
-) (*models.Account, apperrors.ApplicationError) {
+) error {
 	if account.LedgerID != "" {
 		lg, err := a.ledgerRepository.GetByID(ctx, account.LedgerID)
 		if err != nil {
-			return nil, apperrors.ErrSystemFailure.Override(err)
+			return apperrors.ErrSystemFailure.Override(err)
 		}
 		account.LedgerID = lg.ID
 		account.LedgerType = lg.Type
@@ -240,16 +222,10 @@ func (a *accountRepository) Create(
 
 	currencyUnit, err := currency.ParseISO(account.Currency)
 	if err != nil {
-		return nil, apperrors.ErrAccountsCurrencyUnknown
+		return apperrors.ErrAccountsCurrencyUnknown
 	}
 
 	account.Currency = currencyUnit.String()
 
-	err = a.service.DB(ctx, false).Save(account).Error
-	if err != nil {
-		a.service.Log(ctx).WithError(err).Error("could not save the ledger")
-		return nil, apperrors.ErrSystemFailure.Override(err)
-	}
-
-	return account, nil
+	return a.Create(ctx, account)
 }

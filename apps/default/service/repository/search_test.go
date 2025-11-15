@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
+	ledgerv1 "buf.build/gen/go/antinvestor/ledger/protocolbuffers/go/ledger/v1"
 	"github.com/antinvestor/service-ledger/apps/default/service/models"
 	"github.com/antinvestor/service-ledger/apps/default/service/repository"
 	"github.com/antinvestor/service-ledger/apps/default/tests"
@@ -27,7 +27,7 @@ type SearchSuite struct {
 	ledger *models.Ledger
 }
 
-func toSlice[T any](result frame.JobResultPipe[[]T]) ([]T, error) {
+func toSlice[T any](result workerpool.JobResultPipe[[]T]) ([]T, error) {
 	var resultSlice []T
 
 	for res := range result.ResultChan() {
@@ -53,7 +53,7 @@ func (ss *SearchSuite) setupFixtures(ctx context.Context, svc *frame.Service) {
 	ss.ledger = lg
 	// Create test accounts
 	acc1 := &models.Account{
-		BaseModel: frame.BaseModel{ID: "acc1"},
+		BaseModel: data.BaseModel{ID: "acc1"},
 		LedgerID:  ss.ledger.ID,
 		Currency:  "UGX",
 		Data: map[string]interface{}{
@@ -65,7 +65,7 @@ func (ss *SearchSuite) setupFixtures(ctx context.Context, svc *frame.Service) {
 	_, err = ss.accDB.Create(ctx, acc1)
 	require.NoError(t, err, "Error creating test account with %s", err)
 	acc2 := &models.Account{
-		BaseModel: frame.BaseModel{ID: "acc2"},
+		BaseModel: data.BaseModel{ID: "acc2"},
 		LedgerID:  ss.ledger.ID,
 		Currency:  "UGX",
 		Data: map[string]interface{}{
@@ -80,9 +80,9 @@ func (ss *SearchSuite) setupFixtures(ctx context.Context, svc *frame.Service) {
 	timeNow := time.Now().UTC()
 	// Create test transactions
 	txn1 := &models.Transaction{
-		BaseModel:       frame.BaseModel{ID: "txn1"},
+		BaseModel:       data.BaseModel{ID: "txn1"},
 		Currency:        "UGX",
-		TransactionType: ledgerV1.TransactionType_NORMAL.String(),
+		TransactionType: ledgerv1.TransactionType_NORMAL.String(),
 		TransactedAt:    timeNow,
 		ClearedAt:       timeNow,
 		Entries: []*models.TransactionEntry{
@@ -107,9 +107,9 @@ func (ss *SearchSuite) setupFixtures(ctx context.Context, svc *frame.Service) {
 	require.NoError(t, err, "Error creating test transaction")
 	require.NotNil(t, tx, "Error creating test transaction")
 	txn2 := &models.Transaction{
-		BaseModel:       frame.BaseModel{ID: "txn2"},
+		BaseModel:       data.BaseModel{ID: "txn2"},
 		Currency:        "UGX",
-		TransactionType: ledgerV1.TransactionType_NORMAL.String(),
+		TransactionType: ledgerv1.TransactionType_NORMAL.String(),
 		TransactedAt:    timeNow,
 		ClearedAt:       timeNow,
 		Entries: []*models.TransactionEntry{
@@ -133,9 +133,9 @@ func (ss *SearchSuite) setupFixtures(ctx context.Context, svc *frame.Service) {
 	tx, _ = ss.txnDB.Transact(ctx, txn2)
 	require.NotNil(t, tx, "Error creating test transaction")
 	txn3 := &models.Transaction{
-		BaseModel:       frame.BaseModel{ID: "txn3"},
+		BaseModel:       data.BaseModel{ID: "txn3"},
 		Currency:        "UGX",
-		TransactionType: ledgerV1.TransactionType_NORMAL.String(),
+		TransactionType: ledgerv1.TransactionType_NORMAL.String(),
 		TransactedAt:    timeNow,
 		ClearedAt:       timeNow,
 		Entries: []*models.TransactionEntry{
@@ -164,8 +164,8 @@ func (ss *SearchSuite) setupFixtures(ctx context.Context, svc *frame.Service) {
 }
 
 func (ss *SearchSuite) TestSearchAccountsWithBothMustAndShould() {
-	ss.WithTestDependancies(ss.T(), func(t *testing.T, dep *definition.DependancyOption) {
-		svc, ctx := ss.CreateService(t, dep)
+	ss.WithTestDependencies(ss.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		svc, ctx, _ := ss.CreateService(t, dep)
 		ss.setupFixtures(ctx, svc)
 
 		query := `{
@@ -189,7 +189,7 @@ func (ss *SearchSuite) TestSearchAccountsWithBothMustAndShould() {
         }
     }`
 
-		resultChannel, err := ss.accDB.Search(ctx, query)
+		resultChannel, err := ss.accDB.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
 		accounts, err := toSlice[*models.Account](resultChannel)
 		require.NoError(t, err, "Error in building search query")
@@ -199,8 +199,8 @@ func (ss *SearchSuite) TestSearchAccountsWithBothMustAndShould() {
 }
 
 func (ss *SearchSuite) TestSearchTransactionsWithBothMustAndShould() {
-	ss.WithTestDependancies(ss.T(), func(t *testing.T, dep *definition.DependancyOption) {
-		svc, ctx := ss.CreateService(t, dep)
+	ss.WithTestDependencies(ss.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		svc, ctx, _ := ss.CreateService(t, dep)
 		ss.setupFixtures(ctx, svc)
 
 		query := `{
@@ -225,7 +225,7 @@ func (ss *SearchSuite) TestSearchTransactionsWithBothMustAndShould() {
             }
         }
     }`
-		resultChannel, err := ss.txnDB.Search(ctx, query)
+		resultChannel, err := ss.txnDB.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
 		transactions, err := toSlice[*models.Transaction](resultChannel)
 

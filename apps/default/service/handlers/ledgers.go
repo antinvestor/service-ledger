@@ -3,90 +3,102 @@ package handlers
 import (
 	"context"
 
-	commonv1 "github.com/antinvestor/apis/go/common/v1"
-	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
-	"github.com/antinvestor/service-ledger/apps/default/service/models"
-	"github.com/antinvestor/service-ledger/apps/default/service/repository"
-	"github.com/antinvestor/service-ledger/internal/apperrors"
-	"github.com/pitabwire/frame"
+	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
+	"buf.build/gen/go/antinvestor/ledger/connectrpc/go/ledger/v1/ledgerv1connect"
+	ledgerv1 "buf.build/gen/go/antinvestor/ledger/protocolbuffers/go/ledger/v1"
+	"connectrpc.com/connect"
+	"github.com/antinvestor/service-ledger/apps/default/service/business"
 )
 
 type LedgerServer struct {
-	Service *frame.Service
-	ledgerV1.UnimplementedLedgerServiceServer
+	Ledger      business.LedgerBusiness
+	Account     business.AccountBusiness
+	Transaction business.TransactionBusiness
 }
 
-func fromLedgerType(raw ledgerV1.LedgerType) string {
-	return ledgerV1.LedgerType_name[int32(raw)]
+// NewLedgerServer creates a new LedgerServer with injected dependencies
+func NewLedgerServer(
+	ledgerBusiness business.LedgerBusiness,
+	accountBusiness business.AccountBusiness,
+	transactionBusiness business.TransactionBusiness,
+) ledgerv1connect.LedgerServiceHandler {
+	return &LedgerServer{
+		Ledger:      ledgerBusiness,
+		Account:     accountBusiness,
+		Transaction: transactionBusiness,
+	}
 }
 
-func toLedgerType(model string) ledgerV1.LedgerType {
-	ledgerType := ledgerV1.LedgerType_value[model]
-	return ledgerV1.LedgerType(ledgerType)
-}
-
-func ledgerToAPI(mLg *models.Ledger) *ledgerV1.Ledger {
-	return &ledgerV1.Ledger{Reference: mLg.ID, Type: toLedgerType(mLg.Type),
-		Parent: mLg.ParentID, Data: frame.DBPropertiesToMap(mLg.Data)}
-}
-
-func ledgerFromAPI(aLg *ledgerV1.Ledger) *models.Ledger {
-	return &models.Ledger{
-		BaseModel: frame.BaseModel{ID: aLg.GetReference()},
-		Type:      fromLedgerType(aLg.GetType()),
-		ParentID:  aLg.GetParent(),
-		Data:      frame.DBPropertiesFromMap(aLg.GetData())}
-}
-
-// SearchLedgers for an ledger based on search request json query.
+// SearchLedgers finds ledgers in the chart of accounts.
+// Supports filtering by type, parent, and custom properties.
 func (ledgerSrv *LedgerServer) SearchLedgers(
-	request *commonv1.SearchRequest,
-	server ledgerV1.LedgerService_SearchLedgersServer,
+	ctx context.Context,
+	req *connect.Request[commonv1.SearchRequest],
+	stream *connect.ServerStream[ledgerv1.SearchLedgersResponse],
 ) error {
-	ctx := server.Context()
-	ledgerRepository := repository.NewLedgerRepository(ledgerSrv.Service)
-
-	jobResult, err := ledgerRepository.Search(ctx, request.GetQuery())
+	// Search ledgers using business layer
+	result, err := ledgerSrv.Ledger.SearchLedgers(ctx, req.Msg)
 	if err != nil {
 		return err
 	}
 
-	for result := range jobResult.ResultChan() {
-		if result.IsError() {
-			return apperrors.ErrSystemFailure.Override(result.Error())
+	for {
+		res, ok := result.ReadResult(ctx)
+		if !ok {
+			return nil
 		}
 
-		for _, ledger := range result.Item() {
-			if err = server.Send(ledgerToAPI(ledger)); err != nil {
-				return err
-			}
+		if res.IsError() {
+			return res.Error()
+		}
+
+		// Send response with ledger data
+		response := &ledgerv1.SearchLedgersResponse{
+			Data: res.Item(),
+		}
+		
+		if err := stream.Send(response); err != nil {
+			return err
 		}
 	}
-	return nil
 }
 
-// CreateLedger a new account based on supplied data.
-func (ledgerSrv *LedgerServer) CreateLedger(ctx context.Context, lg *ledgerV1.Ledger) (*ledgerV1.Ledger, error) {
-	ledgerRepository := repository.NewLedgerRepository(ledgerSrv.Service)
-
-	// Otherwise, add lg
-	mAcc, aerr := ledgerRepository.Create(ctx, ledgerFromAPI(lg))
-	if aerr != nil {
-		return nil, aerr
+// CreateLedger creates a new ledger in the chart of accounts.
+// Ledgers can be hierarchical with parent-child relationships.
+func (ledgerSrv *LedgerServer) CreateLedger(
+	ctx context.Context,
+	req *connect.Request[ledgerv1.CreateLedgerRequest],
+) (*connect.Response[ledgerv1.CreateLedgerResponse], error) {
+	// Create the ledger using business layer
+	createdLedger, err := ledgerSrv.Ledger.CreateLedger(ctx, req.Msg)
+	if err != nil {
+		return nil, err
 	}
 
-	return ledgerToAPI(mAcc), nil
+	// Return response with created ledger
+	response := &ledgerv1.CreateLedgerResponse{
+		Data: createdLedger,
+	}
+
+	return connect.NewResponse(response), nil
 }
 
-// UpdateLedger the data component of the account.
-func (ledgerSrv *LedgerServer) UpdateLedger(context context.Context, aLg *ledgerV1.Ledger) (*ledgerV1.Ledger, error) {
-	ledgerDB := repository.NewLedgerRepository(ledgerSrv.Service)
-
-	// Otherwise, add account
-	mLg, aerr := ledgerDB.Update(context, ledgerFromAPI(aLg))
-	if aerr != nil {
-		return nil, aerr
+// UpdateLedger updates an existing ledger's metadata.
+// The ledger type and reference cannot be changed.
+func (ledgerSrv *LedgerServer) UpdateLedger(
+	ctx context.Context,
+	req *connect.Request[ledgerv1.UpdateLedgerRequest],
+) (*connect.Response[ledgerv1.UpdateLedgerResponse], error) {
+	// Update the ledger using business layer
+	updatedLedger, err := ledgerSrv.Ledger.UpdateLedger(ctx, req.Msg)
+	if err != nil {
+		return nil, err
 	}
 
-	return ledgerToAPI(mLg), nil
+	// Return response with updated ledger
+	response := &ledgerv1.UpdateLedgerResponse{
+		Data: updatedLedger,
+	}
+
+	return connect.NewResponse(response), nil
 }

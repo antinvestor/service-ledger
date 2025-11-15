@@ -1,52 +1,53 @@
 package handlers
 
 import (
-	commonv1 "github.com/antinvestor/apis/go/common/v1"
-	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
+	"context"
+
+	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
+	ledgerv1 "buf.build/gen/go/antinvestor/ledger/protocolbuffers/go/ledger/v1"
 	"github.com/antinvestor/service-ledger/apps/default/service/models"
-	repository "github.com/antinvestor/service-ledger/apps/default/service/repository"
-	"github.com/antinvestor/service-ledger/internal/apperrors"
 	utility2 "github.com/antinvestor/service-ledger/internal/utility"
+	"connectrpc.com/connect"
 )
 
-func transactionEntryToAPI(mEntry *models.TransactionEntry) *ledgerV1.TransactionEntry {
-	entryAmount := utility2.ToMoney(mEntry.Currency, mEntry.Amount.Decimal)
+func transactionEntryToAPI(mEntry *models.TransactionEntry) *ledgerv1.TransactionEntry {
+	entryAmount := utility2.ToMoney("", mEntry.Amount.Decimal)
 
-	balanceAmount := utility2.ToMoney(mEntry.Currency, mEntry.Balance.Decimal)
-
-	return &ledgerV1.TransactionEntry{
-		Account:     mEntry.AccountID,
-		Transaction: mEntry.TransactionID,
-		Amount:      &entryAmount,
-		Credit:      mEntry.Credit,
-		AccBalance:  &balanceAmount,
+	return &ledgerv1.TransactionEntry{
+		Id:            mEntry.ID,
+		AccountId:     mEntry.AccountID,
+		TransactionId: mEntry.TransactionID,
+		Amount:        &entryAmount,
+		Credit:        mEntry.Credit,
 	}
 }
 
-// SearchTransactionEntries for transactions based on details of the query json.
+// SearchTransactionEntries finds transaction entries matching specified criteria.
+// Supports filtering by account, transaction, date range, and amount ranges.
 func (ledgerSrv *LedgerServer) SearchTransactionEntries(
-	request *commonv1.SearchRequest,
-	server ledgerV1.LedgerService_SearchTransactionEntriesServer,
+	ctx context.Context,
+	req *connect.Request[commonv1.SearchRequest],
+	stream *connect.ServerStream[ledgerv1.SearchTransactionEntriesResponse],
 ) error {
-	ctx := server.Context()
-
-	accountRepository := repository.NewAccountRepository(ledgerSrv.Service)
-	transactionRepository := repository.NewTransactionRepository(ledgerSrv.Service, accountRepository)
-
-	jobResult, err := transactionRepository.SearchEntries(ctx, request.GetQuery())
+	// Search transaction entries using business layer
+	result, err := ledgerSrv.Transaction.SearchEntries(ctx, req.Msg.GetQuery())
 	if err != nil {
 		return err
 	}
 
-	for result := range jobResult.ResultChan() {
-		if result.IsError() {
-			return apperrors.ErrSystemFailure.Override(result.Error())
-		}
-		for _, entry := range result.Item() {
-			if err = server.Send(transactionEntryToAPI(entry)); err != nil {
-				return err
-			}
-		}
+	// Convert model entries to API entries and stream them
+	apiEntries := make([]*ledgerv1.TransactionEntry, len(result))
+	for i, entry := range result {
+		apiEntries[i] = transactionEntryToAPI(entry)
 	}
+	
+	response := &ledgerv1.SearchTransactionEntriesResponse{
+		Data: apiEntries,
+	}
+	
+	if err := stream.Send(response); err != nil {
+		return err
+	}
+
 	return nil
 }

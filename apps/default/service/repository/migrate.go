@@ -3,12 +3,11 @@ package repository
 import (
 	"context"
 
-	"github.com/antinvestor/service-ledger/apps/default/service/models"
 	"github.com/pitabwire/frame"
+	"github.com/pitabwire/frame/datastore"
 )
 
 func Migrate(ctx context.Context, svc *frame.Service, migrationPath string) error {
-	return svc.MigrateDatastore(ctx, migrationPath,
-		&models.Ledger{}, &models.Account{},
-		&models.Transaction{}, &models.TransactionEntry{})
+	pool := svc.DatastoreManager().GetPool(ctx, datastore.DefaultPoolName)
+	return svc.DatastoreManager().Migrate(ctx, pool, migrationPath)
 }

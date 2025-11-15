@@ -10,8 +10,8 @@ import (
 )
 
 func (ss *SearchSuite) TestSearchAccountsWithMustRanges() {
-	ss.WithTestDependancies(ss.T(), func(t *testing.T, dep *definition.DependancyOption) {
-		svc, ctx := ss.CreateService(t, dep)
+	ss.WithTestDependencies(ss.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		svc, ctx, _ := ss.CreateService(t, dep)
 		ss.setupFixtures(ctx, svc)
 
 		query := `{
@@ -24,7 +24,7 @@ func (ss *SearchSuite) TestSearchAccountsWithMustRanges() {
             }
         }
     }`
-		resultChannel, err := ss.accDB.Search(ctx, query)
+		resultChannel, err := ss.accDB.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
 		accounts, err := toSlice[*models.Account](resultChannel)
 
@@ -42,7 +42,7 @@ func (ss *SearchSuite) TestSearchAccountsWithMustRanges() {
             }
         }
     }`
-		resultChannel, err = ss.accDB.Search(ctx, query)
+		resultChannel, err = ss.accDB.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
 		accounts, err = toSlice[*models.Account](resultChannel)
 
@@ -52,8 +52,8 @@ func (ss *SearchSuite) TestSearchAccountsWithMustRanges() {
 }
 
 func (ss *SearchSuite) TestSearchTransactionsWithMustRanges() {
-	ss.WithTestDependancies(ss.T(), func(t *testing.T, dep *definition.DependancyOption) {
-		svc, ctx := ss.CreateService(t, dep)
+	ss.WithTestDependencies(ss.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		svc, ctx, _ := ss.CreateService(t, dep)
 		ss.setupFixtures(ctx, svc)
 
 		query := `{
@@ -66,7 +66,7 @@ func (ss *SearchSuite) TestSearchTransactionsWithMustRanges() {
             }
         }
     }`
-		resultChannel, err := ss.txnDB.Search(ctx, query)
+		resultChannel, err := ss.txnDB.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
 		transactions, err := toSlice[*models.Transaction](resultChannel)
 		require.NoError(t, err, "Error in building search query")
@@ -85,7 +85,7 @@ func (ss *SearchSuite) TestSearchTransactionsWithMustRanges() {
         }
     }`
 
-		resultChannel, err = ss.txnDB.Search(ctx, query)
+		resultChannel, err = ss.txnDB.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
 		transactions, err = toSlice[*models.Transaction](resultChannel)
 		require.NoError(t, err, "Error in building search query")
@@ -94,8 +94,8 @@ func (ss *SearchSuite) TestSearchTransactionsWithMustRanges() {
 }
 
 func (ss *SearchSuite) TestSearchTransactionsWithIsOperator() {
-	ss.WithTestDependancies(ss.T(), func(t *testing.T, dep *definition.DependancyOption) {
-		svc, ctx := ss.CreateService(t, dep)
+	ss.WithTestDependencies(ss.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		svc, ctx, _ := ss.CreateService(t, dep)
 		ss.setupFixtures(ctx, svc)
 		// Test IS operator
 		query := `{
@@ -108,7 +108,7 @@ func (ss *SearchSuite) TestSearchTransactionsWithIsOperator() {
 		}
 	}`
 
-		resultChannel, err := ss.txnDB.Search(ctx, query)
+		resultChannel, err := ss.txnDB.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
 		transactions, err := toSlice[*models.Transaction](resultChannel)
 		require.NoError(t, err, "Error in building search query")
@@ -125,7 +125,7 @@ func (ss *SearchSuite) TestSearchTransactionsWithIsOperator() {
 		}
 	}`
 
-		resultChannel, err = ss.txnDB.Search(ctx, query)
+		resultChannel, err = ss.txnDB.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
 		transactions, err = toSlice[*models.Transaction](resultChannel)
 		require.NoError(t, err, "Error in building search query")
@@ -134,8 +134,8 @@ func (ss *SearchSuite) TestSearchTransactionsWithIsOperator() {
 }
 
 func (ss *SearchSuite) TestSearchAccountsWithInOperator() {
-	ss.WithTestDependancies(ss.T(), func(t *testing.T, dep *definition.DependancyOption) {
-		svc, ctx := ss.CreateService(t, dep)
+	ss.WithTestDependencies(ss.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		svc, ctx, _ := ss.CreateService(t, dep)
 		ss.setupFixtures(ctx, svc)
 
 		// Test IS operator
@@ -148,7 +148,7 @@ func (ss *SearchSuite) TestSearchAccountsWithInOperator() {
 			}
 		}
 	}`
-		resultChannel, err := ss.accDB.Search(ctx, query)
+		resultChannel, err := ss.accDB.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
 		accounts, err := toSlice[*models.Account](resultChannel)
 
@@ -165,7 +165,7 @@ func (ss *SearchSuite) TestSearchAccountsWithInOperator() {
 			}
 		}
 	}`
-		resultChannel, err = ss.accDB.Search(ctx, query)
+		resultChannel, err = ss.accDB.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
 		accounts, err = toSlice[*models.Account](resultChannel)
 

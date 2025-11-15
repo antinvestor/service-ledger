@@ -32,8 +32,8 @@ func (ls *LedgersSuite) setupFixtures(ctx context.Context, svc *frame.Service) {
 }
 
 func (ls *LedgersSuite) TestLedgersInfoAPI() {
-	ls.WithTestDependancies(ls.T(), func(t *testing.T, dep *definition.DependancyOption) {
-		svc, ctx := ls.CreateService(t, dep)
+	ls.WithTestDependencies(ls.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		svc, ctx, _ := ls.CreateService(t, dep)
 		ls.setupFixtures(ctx, svc)
 
 		ledgersDB := repository.NewLedgerRepository(svc)

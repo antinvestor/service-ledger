@@ -6,13 +6,15 @@ import (
 	"testing"
 	"time"
 
-	ledgerV1 "github.com/antinvestor/apis/go/ledger/v1"
+	ledgerv1 "buf.build/gen/go/antinvestor/ledger/protocolbuffers/go/ledger/v1"
+
 	"github.com/antinvestor/service-ledger/apps/default/service/models"
 	"github.com/antinvestor/service-ledger/apps/default/service/repository"
 	"github.com/antinvestor/service-ledger/apps/default/tests"
 	"github.com/antinvestor/service-ledger/internal/utility"
 	_ "github.com/lib/pq"
 	"github.com/pitabwire/frame"
+	"github.com/pitabwire/frame/data"
 	"github.com/pitabwire/frame/frametests/definition"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
@@ -35,47 +37,47 @@ func (ts *TransactionsModelSuite) setupFixtures(ctx context.Context, svc *frame.
 	ts.Require().NoError(err, "Unable to create ledger 2 for account")
 	_, err = repository.NewAccountRepository(svc).Create(
 		ctx,
-		&models.Account{BaseModel: frame.BaseModel{ID: "a1"}, LedgerID: ts.ledger.ID, Currency: "UGX"},
+		&models.Account{BaseModel: data.BaseModel{ID: "a1"}, LedgerID: ts.ledger.ID, Currency: "UGX"},
 	)
 	ts.Require().NoError(err, "Unable to create account")
 	_, err = repository.NewAccountRepository(svc).Create(
 		ctx,
-		&models.Account{BaseModel: frame.BaseModel{ID: "a2"}, LedgerID: lg2.ID, Currency: "UGX"},
+		&models.Account{BaseModel: data.BaseModel{ID: "a2"}, LedgerID: lg2.ID, Currency: "UGX"},
 	)
 	ts.Require().NoError(err, "Unable to create account")
 	_, err = repository.NewAccountRepository(svc).Create(
 		ctx,
-		&models.Account{BaseModel: frame.BaseModel{ID: "a3"}, LedgerID: ts.ledger.ID, Currency: "UGX"},
+		&models.Account{BaseModel: data.BaseModel{ID: "a3"}, LedgerID: ts.ledger.ID, Currency: "UGX"},
 	)
 	ts.Require().NoError(err, "Unable to create account")
 	_, err = repository.NewAccountRepository(svc).Create(
 		ctx,
-		&models.Account{BaseModel: frame.BaseModel{ID: "a4"}, LedgerID: ts.ledger.ID, Currency: "UGX"},
+		&models.Account{BaseModel: data.BaseModel{ID: "a4"}, LedgerID: ts.ledger.ID, Currency: "UGX"},
 	)
 	ts.Require().NoError(err, "Unable to create account")
 	_, err = repository.NewAccountRepository(svc).Create(
 		ctx,
-		&models.Account{BaseModel: frame.BaseModel{ID: "b1"}, LedgerID: ts.ledger.ID, Currency: "UGX"},
+		&models.Account{BaseModel: data.BaseModel{ID: "b1"}, LedgerID: ts.ledger.ID, Currency: "UGX"},
 	)
 	ts.Require().NoError(err, "Unable to create account")
 	_, err = repository.NewAccountRepository(svc).Create(
 		ctx,
-		&models.Account{BaseModel: frame.BaseModel{ID: "b2"}, LedgerID: ts.ledger.ID, Currency: "UGX"},
+		&models.Account{BaseModel: data.BaseModel{ID: "b2"}, LedgerID: ts.ledger.ID, Currency: "UGX"},
 	)
 	ts.Require().NoError(err, "Unable to create account")
 }
 
 func (ts *TransactionsModelSuite) TestIsZeroSum() {
-	ts.WithTestDependancies(ts.T(), func(t *testing.T, depOpt *definition.DependancyOption) {
-		svc, ctx := ts.CreateService(t, depOpt)
+	ts.WithTestDependencies(ts.T(), func(t *testing.T, depOpt *definition.DependencyOption) {
+		ctx, svc, _ := ts.CreateService(t, depOpt)
 		ts.setupFixtures(ctx, svc)
 
 		timeNow := time.Now().UTC()
 
 		transaction := &models.Transaction{
-			BaseModel:       frame.BaseModel{ID: "t001"},
+			BaseModel:       data.BaseModel{ID: "t001"},
 			Currency:        "UGX",
-			TransactionType: ledgerV1.TransactionType_NORMAL.String(),
+			TransactionType: ledgerv1.TransactionType_NORMAL.String(),
 			TransactedAt:    timeNow,
 			ClearedAt:       timeNow,
 			Entries: []*models.TransactionEntry{
@@ -101,12 +103,12 @@ func (ts *TransactionsModelSuite) TestIsZeroSum() {
 }
 
 func (ts *TransactionsModelSuite) TestIsTrueDrCr() {
-	ts.WithTestDependancies(ts.T(), func(t *testing.T, depOpt *definition.DependancyOption) {
+	ts.WithTestDependencies(ts.T(), func(t *testing.T, depOpt *definition.DependencyOption) {
 		timeNow := time.Now().UTC()
 		transaction := &models.Transaction{
-			BaseModel:       frame.BaseModel{ID: "t001"},
+			BaseModel:       data.BaseModel{ID: "t001"},
 			Currency:        "UGX",
-			TransactionType: ledgerV1.TransactionType_NORMAL.String(),
+			TransactionType: ledgerv1.TransactionType_NORMAL.String(),
 			TransactedAt:    timeNow,
 			ClearedAt:       timeNow,
 			Entries: []*models.TransactionEntry{
@@ -132,8 +134,8 @@ func (ts *TransactionsModelSuite) TestIsTrueDrCr() {
 }
 
 func (ts *TransactionsModelSuite) TestIsConflict() {
-	ts.WithTestDependancies(ts.T(), func(t *testing.T, depOpt *definition.DependancyOption) {
-		svc, ctx := ts.CreateService(t, depOpt)
+	ts.WithTestDependencies(ts.T(), func(t *testing.T, depOpt *definition.DependencyOption) {
+		ctx, svc, _ := ts.CreateService(t, depOpt)
 		ts.setupFixtures(ctx, svc)
 
 		timeNow := time.Now().UTC()
@@ -141,9 +143,9 @@ func (ts *TransactionsModelSuite) TestIsConflict() {
 
 		transactionRepository := repository.NewTransactionRepository(svc, accountRepo)
 		transaction := &models.Transaction{
-			BaseModel:       frame.BaseModel{ID: "t0015"},
+			BaseModel:       data.BaseModel{ID: "t0015"},
 			Currency:        "UGX",
-			TransactionType: ledgerV1.TransactionType_NORMAL.String(),
+			TransactionType: ledgerv1.TransactionType_NORMAL.String(),
 			TransactedAt:    timeNow,
 			ClearedAt:       timeNow,
 			Entries: []*models.TransactionEntry{
@@ -168,7 +170,7 @@ func (ts *TransactionsModelSuite) TestIsConflict() {
 		assert.False(t, conflicts, "Transaction should not conflict")
 
 		transaction = &models.Transaction{
-			BaseModel:    frame.BaseModel{ID: "t0015"},
+			BaseModel:    data.BaseModel{ID: "t0015"},
 			Currency:     "UGX",
 			TransactedAt: timeNow,
 			ClearedAt:    timeNow,
@@ -191,9 +193,9 @@ func (ts *TransactionsModelSuite) TestIsConflict() {
 		assert.True(t, conflicts, "Transaction should conflict since amounts are different from first received")
 
 		transaction = &models.Transaction{
-			BaseModel:       frame.BaseModel{ID: "t0015"},
+			BaseModel:       data.BaseModel{ID: "t0015"},
 			Currency:        "UGX",
-			TransactionType: ledgerV1.TransactionType_NORMAL.String(),
+			TransactionType: ledgerv1.TransactionType_NORMAL.String(),
 			TransactedAt:    timeNow,
 			ClearedAt:       timeNow,
 			Entries: []*models.TransactionEntry{
@@ -216,8 +218,8 @@ func (ts *TransactionsModelSuite) TestIsConflict() {
 }
 
 func (ts *TransactionsModelSuite) TestTransact() {
-	ts.WithTestDependancies(ts.T(), func(t *testing.T, depOpt *definition.DependancyOption) {
-		svc, ctx := ts.CreateService(t, depOpt)
+	ts.WithTestDependencies(ts.T(), func(t *testing.T, depOpt *definition.DependencyOption) {
+		ctx, svc, _ := ts.CreateService(t, depOpt)
 		ts.setupFixtures(ctx, svc)
 
 		timeNow := time.Now().UTC()
@@ -225,9 +227,9 @@ func (ts *TransactionsModelSuite) TestTransact() {
 		transactionRepository := repository.NewTransactionRepository(svc, accountRepo)
 
 		transaction := &models.Transaction{
-			BaseModel:       frame.BaseModel{ID: "t003"},
+			BaseModel:       data.BaseModel{ID: "t003"},
 			Currency:        "UGX",
-			TransactionType: ledgerV1.TransactionType_NORMAL.String(),
+			TransactionType: ledgerv1.TransactionType_NORMAL.String(),
 			TransactedAt:    timeNow,
 			ClearedAt:       timeNow,
 			Entries: []*models.TransactionEntry{
@@ -258,8 +260,8 @@ func (ts *TransactionsModelSuite) TestTransact() {
 }
 
 func (ts *TransactionsModelSuite) TestReserveTransaction() {
-	ts.WithTestDependancies(ts.T(), func(t *testing.T, depOpt *definition.DependancyOption) {
-		svc, ctx := ts.CreateService(t, depOpt)
+	ts.WithTestDependencies(ts.T(), func(t *testing.T, depOpt *definition.DependencyOption) {
+		ctx, svc, _ := ts.CreateService(t, depOpt)
 		ts.setupFixtures(ctx, svc)
 
 		accountRepo := repository.NewAccountRepository(svc)
@@ -270,9 +272,9 @@ func (ts *TransactionsModelSuite) TestReserveTransaction() {
 
 		timeNow := time.Now().UTC()
 		transaction := &models.Transaction{
-			BaseModel:       frame.BaseModel{ID: "t031"},
+			BaseModel:       data.BaseModel{ID: "t031"},
 			Currency:        "UGX",
-			TransactionType: ledgerV1.TransactionType_RESERVATION.String(),
+			TransactionType: ledgerv1.TransactionType_RESERVATION.String(),
 			TransactedAt:    timeNow,
 			ClearedAt:       timeNow,
 			Entries: []*models.TransactionEntry{
@@ -315,8 +317,8 @@ func (ts *TransactionsModelSuite) TestReserveTransaction() {
 }
 
 func (ts *TransactionsModelSuite) TestTransactBalanceCheck() {
-	ts.WithTestDependancies(ts.T(), func(t *testing.T, depOpt *definition.DependancyOption) {
-		svc, ctx := ts.CreateService(t, depOpt)
+	ts.WithTestDependencies(ts.T(), func(t *testing.T, depOpt *definition.DependencyOption) {
+		ctx, svc, _ := ts.CreateService(t, depOpt)
 		ts.setupFixtures(ctx, svc)
 
 		accountRepo := repository.NewAccountRepository(svc)
@@ -327,9 +329,9 @@ func (ts *TransactionsModelSuite) TestTransactBalanceCheck() {
 
 		timeNow := time.Now().UTC()
 		transaction := &models.Transaction{
-			BaseModel:       frame.BaseModel{ID: "t008"},
+			BaseModel:       data.BaseModel{ID: "t008"},
 			Currency:        "UGX",
-			TransactionType: ledgerV1.TransactionType_NORMAL.String(),
+			TransactionType: ledgerv1.TransactionType_NORMAL.String(),
 			TransactedAt:    timeNow,
 			ClearedAt:       timeNow,
 			Entries: []*models.TransactionEntry{
@@ -371,8 +373,8 @@ func (ts *TransactionsModelSuite) TestTransactBalanceCheck() {
 }
 
 func (ts *TransactionsModelSuite) TestDuplicateTransactions() {
-	ts.WithTestDependancies(ts.T(), func(t *testing.T, depOpt *definition.DependancyOption) {
-		svc, ctx := ts.CreateService(t, depOpt)
+	ts.WithTestDependencies(ts.T(), func(t *testing.T, depOpt *definition.DependencyOption) {
+		ctx, svc, _ := ts.CreateService(t, depOpt)
 		ts.setupFixtures(ctx, svc)
 
 		accountRepo := repository.NewAccountRepository(svc)
@@ -381,9 +383,9 @@ func (ts *TransactionsModelSuite) TestDuplicateTransactions() {
 		timeNow := time.Now().UTC()
 
 		transaction := &models.Transaction{
-			BaseModel:       frame.BaseModel{ID: "t005"},
+			BaseModel:       data.BaseModel{ID: "t005"},
 			Currency:        "UGX",
-			TransactionType: ledgerV1.TransactionType_NORMAL.String(),
+			TransactionType: ledgerv1.TransactionType_NORMAL.String(),
 			TransactedAt:    timeNow,
 			ClearedAt:       timeNow,
 			Entries: []*models.TransactionEntry{
@@ -418,8 +420,8 @@ func (ts *TransactionsModelSuite) TestDuplicateTransactions() {
 }
 
 func (ts *TransactionsModelSuite) TestTransactionReversaL() {
-	ts.WithTestDependancies(ts.T(), func(t *testing.T, depOpt *definition.DependancyOption) {
-		svc, ctx := ts.CreateService(t, depOpt)
+	ts.WithTestDependencies(ts.T(), func(t *testing.T, depOpt *definition.DependencyOption) {
+		ctx, svc, _ := ts.CreateService(t, depOpt)
 		ts.setupFixtures(ctx, svc)
 
 		accountRepo := repository.NewAccountRepository(svc)
@@ -428,9 +430,9 @@ func (ts *TransactionsModelSuite) TestTransactionReversaL() {
 		timeNow := time.Now().UTC()
 
 		transaction := &models.Transaction{
-			BaseModel:       frame.BaseModel{ID: "t053"},
+			BaseModel:       data.BaseModel{ID: "t053"},
 			Currency:        "UGX",
-			TransactionType: ledgerV1.TransactionType_NORMAL.String(),
+			TransactionType: ledgerv1.TransactionType_NORMAL.String(),
 			TransactedAt:    timeNow,
 			ClearedAt:       timeNow,
 			Entries: []*models.TransactionEntry{
@@ -460,7 +462,7 @@ func (ts *TransactionsModelSuite) TestTransactionReversaL() {
 		assert.Equal(t, "t053_REVERSAL", exists.ID, "Transaction should exist")
 		assert.Equal(
 			t,
-			ledgerV1.TransactionType_REVERSAL.String(),
+			ledgerv1.TransactionType_REVERSAL.String(),
 			exists.TransactionType,
 			"Transaction type is not setup correctly",
 		)
@@ -468,8 +470,8 @@ func (ts *TransactionsModelSuite) TestTransactionReversaL() {
 }
 
 func (ts *TransactionsModelSuite) TestUnClearedTransactions() {
-	ts.WithTestDependancies(ts.T(), func(t *testing.T, depOpt *definition.DependancyOption) {
-		svc, ctx := ts.CreateService(t, depOpt)
+	ts.WithTestDependencies(ts.T(), func(t *testing.T, depOpt *definition.DependencyOption) {
+		ctx, svc, _ := ts.CreateService(t, depOpt)
 		ts.setupFixtures(ctx, svc)
 
 		accountRepo := repository.NewAccountRepository(svc)
@@ -481,9 +483,9 @@ func (ts *TransactionsModelSuite) TestUnClearedTransactions() {
 		timeNow := time.Now().UTC()
 
 		transaction := &models.Transaction{
-			BaseModel:       frame.BaseModel{ID: "t051"},
+			BaseModel:       data.BaseModel{ID: "t051"},
 			Currency:        "UGX",
-			TransactionType: ledgerV1.TransactionType_NORMAL.String(),
+			TransactionType: ledgerv1.TransactionType_NORMAL.String(),
 			TransactedAt:    timeNow,
 			Entries: []*models.TransactionEntry{
 				{
@@ -548,8 +550,8 @@ func (ts *TransactionsModelSuite) TestUnClearedTransactions() {
 }
 
 func (ts *TransactionsModelSuite) TestTransactWithBoundaryValues() {
-	ts.WithTestDependancies(ts.T(), func(t *testing.T, depOpt *definition.DependancyOption) {
-		svc, ctx := ts.CreateService(t, depOpt)
+	ts.WithTestDependencies(ts.T(), func(t *testing.T, depOpt *definition.DependencyOption) {
+		ctx, svc, _ := ts.CreateService(t, depOpt)
 		ts.setupFixtures(ctx, svc)
 
 		accountRepo := repository.NewAccountRepository(svc)
@@ -560,9 +562,9 @@ func (ts *TransactionsModelSuite) TestTransactWithBoundaryValues() {
 		// In-boundary value transaction
 		boundaryValue := utility.CleanDecimal(utility.GetMaxDecimalValue()) // Max +ve for 2^64
 		transaction := &models.Transaction{
-			BaseModel:       frame.BaseModel{ID: "t004"},
+			BaseModel:       data.BaseModel{ID: "t004"},
 			Currency:        "UGX",
-			TransactionType: ledgerV1.TransactionType_NORMAL.String(),
+			TransactionType: ledgerv1.TransactionType_NORMAL.String(),
 			TransactedAt:    timeNow,
 			ClearedAt:       timeNow,
 			Entries: []*models.TransactionEntry{

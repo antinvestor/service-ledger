@@ -62,6 +62,9 @@ func convertTermsToSQL(terms []map[string]interface{}) ([]string, []interface{})
 	   -- object value
 	   SELECT id FROM transactions WHERE data->'products' @> '{"qw":{"coupons": ["x001"]}}'::jsonb;
 	*/
+
+	// TODO incooporate ts_vector : db = db.Where(" search_properties @@ plainto_tsquery(?) ", query.Query)
+
 	where := []string{}
 	args := []interface{}{}
 	for _, term := range terms {
