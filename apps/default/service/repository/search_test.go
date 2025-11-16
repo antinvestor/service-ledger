@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type SearchSuite struct {
@@ -40,39 +41,60 @@ func (ss *SearchSuite) setupFixtures(ctx context.Context, resources *tests.Servi
 
 	t.Log("Successfully established connection to database.")
 
-	lg := &models.Ledger{Type: models.LedgerTypeAsset}
-	err := resources.LedgerRepository.Create(ctx, lg)
+	// Create ledger using business layer
+	createLedgerReq := &ledgerv1.CreateLedgerRequest{
+		Id:   "test-ledger",
+		Type: ledgerv1.LedgerType_ASSET,
+		Data: &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"name": {Kind: &structpb.Value_StringValue{StringValue: "Test Ledger"}},
+			},
+		},
+	}
+
+	ledger, err := resources.LedgerBusiness.CreateLedger(ctx, createLedgerReq)
 	require.NoError(t, err, "Unable to create ledger for search account")
 
-	ss.ledger = lg
-	// Create test accounts
-	acc1 := &models.Account{
-		BaseModel: data.BaseModel{ID: "acc1"},
-		LedgerID:  ss.ledger.ID,
-		Currency:  "UGX",
-		Data: map[string]interface{}{
-			"customer_id": "C1",
-			"status":      "active",
-			"created":     "2017-01-01",
+	ss.ledger = &models.Ledger{
+		BaseModel: data.BaseModel{ID: ledger.GetId()},
+		Type:      ledger.GetType().String(),
+	}
+
+	// Create test accounts using business layer
+	createAcc1Req := &ledgerv1.CreateAccountRequest{
+		Id:       "acc1",
+		LedgerId: ledger.GetId(),
+		Currency: "UGX",
+		Data: &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"customer_id": {Kind: &structpb.Value_StringValue{StringValue: "C1"}},
+				"status":      {Kind: &structpb.Value_StringValue{StringValue: "active"}},
+				"created":     {Kind: &structpb.Value_StringValue{StringValue: "2017-01-01"}},
+			},
 		},
 	}
-	err = resources.AccountRepository.Create(ctx, acc1)
-	require.NoError(t, err, "Error creating test account with %s", err)
-	acc2 := &models.Account{
-		BaseModel: data.BaseModel{ID: "acc2"},
-		LedgerID:  ss.ledger.ID,
-		Currency:  "UGX",
-		Data: map[string]interface{}{
-			"customer_id": "C2",
-			"status":      "inactive",
-			"created":     "2017-06-30",
+
+	_, err = resources.AccountBusiness.CreateAccount(ctx, createAcc1Req)
+	require.NoError(t, err, "Error creating test account acc1")
+
+	createAcc2Req := &ledgerv1.CreateAccountRequest{
+		Id:       "acc2",
+		LedgerId: ledger.GetId(),
+		Currency: "UGX",
+		Data: &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"customer_id": {Kind: &structpb.Value_StringValue{StringValue: "C2"}},
+				"status":      {Kind: &structpb.Value_StringValue{StringValue: "inactive"}},
+				"created":     {Kind: &structpb.Value_StringValue{StringValue: "2017-06-30"}},
+			},
 		},
 	}
-	err = resources.AccountRepository.Create(ctx, acc2)
-	require.NoError(t, err, "Error creating test account")
+
+	_, err = resources.AccountBusiness.CreateAccount(ctx, createAcc2Req)
+	require.NoError(t, err, "Error creating test account acc2")
 
 	timeNow := time.Now().UTC()
-	// Create test transactions
+	// Create test transactions using business layer
 	txn1 := &models.Transaction{
 		BaseModel:       data.BaseModel{ID: "txn1"},
 		Currency:        "UGX",
@@ -100,6 +122,7 @@ func (ss *SearchSuite) setupFixtures(ctx context.Context, resources *tests.Servi
 	tx, err := resources.TransactionBusiness.Transact(ctx, txn1)
 	require.NoError(t, err, "Error creating test transaction")
 	require.NotNil(t, tx, "Error creating test transaction")
+
 	txn2 := &models.Transaction{
 		BaseModel:       data.BaseModel{ID: "txn2"},
 		Currency:        "UGX",
@@ -126,6 +149,7 @@ func (ss *SearchSuite) setupFixtures(ctx context.Context, resources *tests.Servi
 	}
 	tx, _ = resources.TransactionBusiness.Transact(ctx, txn2)
 	require.NotNil(t, tx, "Error creating test transaction")
+
 	txn3 := &models.Transaction{
 		BaseModel:       data.BaseModel{ID: "txn3"},
 		Currency:        "UGX",
@@ -151,9 +175,7 @@ func (ss *SearchSuite) setupFixtures(ctx context.Context, resources *tests.Servi
 		},
 	}
 	tx, err = resources.TransactionBusiness.Transact(ctx, txn3)
-
 	require.NoError(t, err)
-
 	require.NotNil(t, tx, "Error creating test transaction")
 }
 

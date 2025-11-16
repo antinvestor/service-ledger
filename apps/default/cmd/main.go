@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"net/http"
+
 	//nolint:gosec // G108: Profiling endpoint deliberately exposed for monitoring and debugging purposes
 	_ "net/http/pprof"
 
@@ -91,9 +92,7 @@ func handleDatabaseMigration(
 	cfg aconfig.LedgerConfig,
 	log *util.LogEntry,
 ) bool {
-
 	if cfg.DoDatabaseMigrate() {
-
 		err := repository.Migrate(ctx, dbManager, cfg.GetDatabaseMigrationPath())
 		if err != nil {
 			log.WithError(err).Fatal("main -- Could not migrate successfully")

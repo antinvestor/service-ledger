@@ -28,9 +28,9 @@ func ToLedgerType(model string) ledgerv1.LedgerType {
 	return ledgerv1.LedgerType(ledgerType)
 }
 
-func (mLg *Ledger) ToAPI() *ledgerv1.Ledger {
-	return &ledgerv1.Ledger{Id: mLg.ID, Type: ToLedgerType(mLg.Type),
-		Parent: mLg.ParentID, Data: mLg.Data.ToProtoStruct()}
+func (lg *Ledger) ToAPI() *ledgerv1.Ledger {
+	return &ledgerv1.Ledger{Id: lg.ID, Type: ToLedgerType(lg.Type),
+		Parent: lg.ParentID, Data: lg.Data.ToProtoStruct()}
 }
 
 // Account represents the ledger account with information such as Reference, balance and JSON data.
@@ -45,30 +45,30 @@ type Account struct {
 	LedgerType       string              `gorm:"type:varchar(50)"                     json:"ledger_type"`
 }
 
-func (mAcc *Account) ToAPI() *ledgerv1.Account {
+func (acc *Account) ToAPI() *ledgerv1.Account {
 	accountBalance := decimal.Zero
-	if mAcc.Balance.Valid {
-		accountBalance = mAcc.Balance.Decimal
+	if acc.Balance.Valid {
+		accountBalance = acc.Balance.Decimal
 	}
-	balance := utility2.ToMoney(mAcc.Currency, accountBalance)
+	balance := utility2.ToMoney(acc.Currency, accountBalance)
 
 	reservedBalanceAmt := decimal.Zero
-	if mAcc.ReservedBalance.Valid {
-		reservedBalanceAmt = mAcc.ReservedBalance.Decimal
+	if acc.ReservedBalance.Valid {
+		reservedBalanceAmt = acc.ReservedBalance.Decimal
 	}
 
-	reservedBalance := utility2.ToMoney(mAcc.Currency, reservedBalanceAmt)
+	reservedBalance := utility2.ToMoney(acc.Currency, reservedBalanceAmt)
 
 	unClearedBalanceAmt := decimal.Zero
-	if mAcc.UnClearedBalance.Valid {
-		unClearedBalanceAmt = mAcc.UnClearedBalance.Decimal
+	if acc.UnClearedBalance.Valid {
+		unClearedBalanceAmt = acc.UnClearedBalance.Decimal
 	}
-	unClearedBalance := utility2.ToMoney(mAcc.Currency, unClearedBalanceAmt)
+	unClearedBalance := utility2.ToMoney(acc.Currency, unClearedBalanceAmt)
 
 	return &ledgerv1.Account{
-		Id: mAcc.ID, Ledger: mAcc.LedgerID,
+		Id: acc.ID, Ledger: acc.LedgerID,
 		Balance: &balance, ReservedBalance: &reservedBalance, UnclearedBalance: &unClearedBalance,
-		Data: mAcc.Data.ToProtoStruct()}
+		Data: acc.Data.ToProtoStruct()}
 }
 
 func TransactionFromAPI(ctx context.Context, aTxn *ledgerv1.Transaction) *Transaction {
@@ -105,28 +105,28 @@ func TransactionFromAPI(ctx context.Context, aTxn *ledgerv1.Transaction) *Transa
 	return transaction
 }
 
-func (mTxn *Transaction) ToAPI() *ledgerv1.Transaction {
-	apiEntries := make([]*ledgerv1.TransactionEntry, len(mTxn.Entries))
-	for index, mEntry := range mTxn.Entries {
+func (tx *Transaction) ToAPI() *ledgerv1.Transaction {
+	apiEntries := make([]*ledgerv1.TransactionEntry, len(tx.Entries))
+	for index, mEntry := range tx.Entries {
 		apiEntries[index] = mEntry.ToAPI()
 	}
 
 	trx := &ledgerv1.Transaction{
-		Id:           mTxn.ID,
-		CurrencyCode: mTxn.Currency,
-		Cleared:      !mTxn.ClearedAt.IsZero(),
-		Data:         mTxn.Data.ToProtoStruct(),
+		Id:           tx.ID,
+		CurrencyCode: tx.Currency,
+		Cleared:      !tx.ClearedAt.IsZero(),
+		Data:         tx.Data.ToProtoStruct(),
 		Entries:      apiEntries,
 	}
 
 	// Convert transaction type
-	if txnType, ok := ledgerv1.TransactionType_value[mTxn.TransactionType]; ok {
+	if txnType, ok := ledgerv1.TransactionType_value[tx.TransactionType]; ok {
 		trx.Type = ledgerv1.TransactionType(txnType)
 	}
 
 	// Format transacted_at timestamp
-	if !mTxn.TransactedAt.IsZero() {
-		trx.TransactedAt = mTxn.TransactedAt.Format(time.RFC3339)
+	if !tx.TransactedAt.IsZero() {
+		trx.TransactedAt = tx.TransactedAt.Format(time.RFC3339)
 	}
 
 	return trx
@@ -140,19 +140,19 @@ func TransactionEntryFromAPI(aEntry *ledgerv1.TransactionEntry) *TransactionEntr
 	}
 }
 
-func (mEntry *TransactionEntry) ToAPI() *ledgerv1.TransactionEntry {
+func (te *TransactionEntry) ToAPI() *ledgerv1.TransactionEntry {
 	var amount *money.Money
-	if mEntry.Amount.Valid {
-		amt := utility2.ToMoney("", mEntry.Amount.Decimal)
+	if te.Amount.Valid {
+		amt := utility2.ToMoney("", te.Amount.Decimal)
 		amount = &amt
 	}
 
 	return &ledgerv1.TransactionEntry{
-		Id:            mEntry.ID,
-		AccountId:     mEntry.AccountID,
-		TransactionId: mEntry.TransactionID,
+		Id:            te.ID,
+		AccountId:     te.AccountID,
+		TransactionId: te.TransactionID,
 		Amount:        amount,
-		Credit:        mEntry.Credit,
+		Credit:        te.Credit,
 	}
 }
 
@@ -180,14 +180,15 @@ type TransactionEntry struct {
 	TransactedAt  time.Time           `gorm:"-"                               json:"transacted_at"`
 }
 
-func (t *TransactionEntry) Equal(ot TransactionEntry) bool {
-	return t.AccountID == ot.AccountID && t.Amount.Valid && ot.Amount.Valid && t.Amount.Decimal.Equal(ot.Amount.Decimal)
+func (te *TransactionEntry) Equal(ot TransactionEntry) bool {
+	return te.AccountID == ot.AccountID && te.Amount.Valid && ot.Amount.Valid &&
+		te.Amount.Decimal.Equal(ot.Amount.Decimal)
 }
 
 // IsZeroSum validates the Amount list of a transaction.
-func (t *Transaction) IsZeroSum() bool {
+func (tx *Transaction) IsZeroSum() bool {
 	sum := decimal.NewFromInt(0)
-	for _, entry := range t.Entries {
+	for _, entry := range tx.Entries {
 		if entry.Credit {
 			sum = sum.Add(entry.Amount.Decimal)
 		} else {
@@ -198,11 +199,11 @@ func (t *Transaction) IsZeroSum() bool {
 }
 
 // IsTrueDrCr validates that there is one debit and at least one credit entry.
-func (t *Transaction) IsTrueDrCr() bool {
+func (tx *Transaction) IsTrueDrCr() bool {
 	crEntries := 0
 	drEntries := 0
 
-	for _, entry := range t.Entries {
+	for _, entry := range tx.Entries {
 		if entry.Credit {
 			crEntries++
 		} else {

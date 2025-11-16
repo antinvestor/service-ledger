@@ -84,8 +84,10 @@ func (bs *BaseTestSuite) CreateService(
 	cfg.DatabasePrimaryURL = []string{testDS.String()}
 	cfg.DatabaseReplicaURL = []string{testDS.String()}
 
-	frameOpts = append([]frame.Option{frame.WithName("ledger tests"),
-		frame.WithConfig(&cfg), frame.WithDatastore(), frametests.WithNoopDriver()})
+	frameOpts = append(
+		[]frame.Option{
+			frame.WithName("ledger tests"), frame.WithConfig(&cfg),
+			frame.WithDatastore(), frametests.WithNoopDriver()}, frameOpts...)
 
 	ctx, svc := frame.NewServiceWithContext(ctx, frameOpts...)
 

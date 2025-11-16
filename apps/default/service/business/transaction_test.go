@@ -62,7 +62,7 @@ func (ts *TransactionBusinessSuite) setupFixtures(ctx context.Context, resources
 	// Create test accounts
 	assetAccountReq := &ledgerv1.CreateAccountRequest{
 		Id:       "asset-account",
-		LedgerId:  assetLedger.GetId(),
+		LedgerId: assetLedger.GetId(),
 		Currency: "USD",
 	}
 	assetAccount, err := accountBusiness.CreateAccount(ctx, assetAccountReq)
@@ -71,7 +71,7 @@ func (ts *TransactionBusinessSuite) setupFixtures(ctx context.Context, resources
 
 	incomeAccountReq := &ledgerv1.CreateAccountRequest{
 		Id:       "income-account",
-		LedgerId:  incomeLedger.GetId(),
+		LedgerId: incomeLedger.GetId(),
 		Currency: "USD",
 	}
 	incomeAccount, err := accountBusiness.CreateAccount(ctx, incomeAccountReq)
@@ -119,7 +119,12 @@ func (ts *TransactionBusinessSuite) TestCreateTransactionWithBusinessValidation(
 		require.NoError(t, err, "Error creating transaction through business layer")
 		require.NotNil(t, transaction, "Transaction should be created")
 
-		assert.Equal(t, "test-transaction-"+timeNow.Format("20060102150405"), transaction.GetId(), "Invalid transaction ID")
+		assert.Equal(
+			t,
+			"test-transaction-"+timeNow.Format("20060102150405"),
+			transaction.GetId(),
+			"Invalid transaction ID",
+		)
 		assert.Equal(t, "USD", transaction.GetCurrencyCode(), "Invalid currency")
 		assert.Equal(t, ledgerv1.TransactionType_NORMAL, transaction.GetType(), "Invalid transaction type")
 		assert.Len(t, transaction.GetEntries(), 2, "Should have 2 entries")
@@ -183,7 +188,11 @@ func (ts *TransactionBusinessSuite) TestCreateTransactionInvalidDebitCredit() {
 					Id:        "entry2",
 					AccountId: "income-account",
 					Credit:    false, // Also debit - invalid but amounts equal for zero sum
-					Amount:    &money.Money{CurrencyCode: "USD", Units: -100, Nanos: 0}, // Negative amount to make zero sum
+					Amount: &money.Money{
+						CurrencyCode: "USD",
+						Units:        -100,
+						Nanos:        0,
+					}, // Negative amount to make zero sum
 				},
 			},
 		}
@@ -410,8 +419,18 @@ func (ts *TransactionBusinessSuite) TestGetTransaction() {
 		retrievedTransaction, err := transactionBusiness.GetTransaction(ctx, "get-test-transaction")
 		require.NoError(t, err, "Error retrieving transaction")
 
-		assert.Equal(t, createdTransaction.GetId(), retrievedTransaction.GetId(), "Retrieved transaction should match created transaction")
-		assert.Equal(t, createdTransaction.GetCurrencyCode(), retrievedTransaction.GetCurrencyCode(), "Currency should match")
+		assert.Equal(
+			t,
+			createdTransaction.GetId(),
+			retrievedTransaction.GetId(),
+			"Retrieved transaction should match created transaction",
+		)
+		assert.Equal(
+			t,
+			createdTransaction.GetCurrencyCode(),
+			retrievedTransaction.GetCurrencyCode(),
+			"Currency should match",
+		)
 		assert.Equal(t, createdTransaction.GetType(), retrievedTransaction.GetType(), "Type should match")
 	})
 }

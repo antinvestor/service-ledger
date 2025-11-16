@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type TransactionsModelSuite struct {
@@ -25,48 +26,70 @@ type TransactionsModelSuite struct {
 }
 
 func (ts *TransactionsModelSuite) setupFixtures(ctx context.Context, resources *tests.ServiceResources) {
-	// Create test ledgers.
+	// Create test ledgers using business layer
 
-	ledgersDB := resources.LedgerRepository
-	accountsDB := resources.AccountRepository
+	// Create first ledger (Asset)
+	createLedgerReq1 := &ledgerv1.CreateLedgerRequest{
+		Id:   "test-ledger-asset",
+		Type: ledgerv1.LedgerType_ASSET,
+		Data: &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"name": {Kind: &structpb.Value_StringValue{StringValue: "Test Asset Ledger"}},
+			},
+		},
+	}
 
-	lg1 := &models.Ledger{Type: models.LedgerTypeAsset}
-	err := ledgersDB.Create(ctx, lg1)
-	ts.Require().NoError(err, "Unable to create ledger for account")
-	ts.ledger = lg1
-	lg2 := &models.Ledger{Type: models.LedgerTypeIncome}
-	err = ledgersDB.Create(ctx, lg2)
-	ts.Require().NoError(err, "Unable to create ledger 2 for account")
-	err = accountsDB.Create(
-		ctx,
-		&models.Account{BaseModel: data.BaseModel{ID: "a1"}, LedgerID: ts.ledger.ID, Currency: "UGX"},
-	)
-	ts.Require().NoError(err, "Unable to create account")
-	err = accountsDB.Create(
-		ctx,
-		&models.Account{BaseModel: data.BaseModel{ID: "a2"}, LedgerID: lg2.ID, Currency: "UGX"},
-	)
-	ts.Require().NoError(err, "Unable to create account")
-	err = accountsDB.Create(
-		ctx,
-		&models.Account{BaseModel: data.BaseModel{ID: "a3"}, LedgerID: ts.ledger.ID, Currency: "UGX"},
-	)
-	ts.Require().NoError(err, "Unable to create account")
-	err = accountsDB.Create(
-		ctx,
-		&models.Account{BaseModel: data.BaseModel{ID: "a4"}, LedgerID: ts.ledger.ID, Currency: "UGX"},
-	)
-	ts.Require().NoError(err, "Unable to create account")
-	err = accountsDB.Create(
-		ctx,
-		&models.Account{BaseModel: data.BaseModel{ID: "b1"}, LedgerID: ts.ledger.ID, Currency: "UGX"},
-	)
-	ts.Require().NoError(err, "Unable to create account")
-	err = accountsDB.Create(
-		ctx,
-		&models.Account{BaseModel: data.BaseModel{ID: "b2"}, LedgerID: ts.ledger.ID, Currency: "UGX"},
-	)
-	ts.Require().NoError(err, "Unable to create account")
+	ledger1, err := resources.LedgerBusiness.CreateLedger(ctx, createLedgerReq1)
+	ts.Require().NoError(err, "Unable to create asset ledger")
+
+	ts.ledger = &models.Ledger{
+		BaseModel: data.BaseModel{ID: ledger1.GetId()},
+		Type:      ledger1.GetType().String(),
+	}
+
+	// Create second ledger (Income)
+	createLedgerReq2 := &ledgerv1.CreateLedgerRequest{
+		Id:   "test-ledger-income",
+		Type: ledgerv1.LedgerType_INCOME,
+		Data: &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"name": {Kind: &structpb.Value_StringValue{StringValue: "Test Income Ledger"}},
+			},
+		},
+	}
+
+	ledger2, err := resources.LedgerBusiness.CreateLedger(ctx, createLedgerReq2)
+	ts.Require().NoError(err, "Unable to create income ledger")
+
+	// Create test accounts using business layer
+	accounts := []struct {
+		id         string
+		ledgerID   string
+		ledgerType string
+	}{
+		{"a1", ledger1.GetId(), models.LedgerTypeAsset},
+		{"a2", ledger2.GetId(), models.LedgerTypeIncome},
+		{"a3", ledger1.GetId(), models.LedgerTypeAsset},
+		{"a4", ledger1.GetId(), models.LedgerTypeAsset},
+		{"b1", ledger1.GetId(), models.LedgerTypeAsset},
+		{"b2", ledger1.GetId(), models.LedgerTypeAsset},
+	}
+
+	for _, acc := range accounts {
+		createAccReq := &ledgerv1.CreateAccountRequest{
+			Id:       acc.id,
+			LedgerId: acc.ledgerID,
+			Currency: "UGX",
+			Data: &structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					"name": {Kind: &structpb.Value_StringValue{StringValue: "Test Account " + acc.id}},
+				},
+			},
+		}
+
+		_, err = resources.AccountBusiness.CreateAccount(ctx, createAccReq)
+		ts.Require().NoError(err, "Unable to create account %s", acc.id)
+	}
 }
 
 func (ts *TransactionsModelSuite) TestIsZeroSum() {
@@ -404,7 +427,10 @@ func (ts *TransactionsModelSuite) TestDuplicateTransactions() {
 		wg.Add(5)
 		for i := 1; i <= 5; i++ {
 			go func(txn *models.Transaction) {
-				trxn, _ := txnBusiness.Transact(ctx, txn)
+				trxn, err := txnBusiness.Transact(ctx, txn)
+				if err != nil {
+					t.Logf("Transaction creation failed: %v", err)
+				}
 				assert.NotNil(t, trxn, "Transaction creation should be success")
 				wg.Done()
 			}(transaction)

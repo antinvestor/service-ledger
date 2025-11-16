@@ -157,22 +157,22 @@ func (ls *LedgerBusinessSuite) TestSearchLedgers() {
 		}
 
 		for _, l := range ledgers {
+			strct, err := structpb.NewStruct(map[string]any{
+				"name": l.name,
+			})
+			require.NoError(t, err, "Error creating struct")
 			createReq := &ledgerv1.CreateLedgerRequest{
 				Id:   l.id,
 				Type: l.typ,
-				Data: &structpb.Struct{
-					Fields: map[string]*structpb.Value{
-						"name": {Kind: &structpb.Value_StringValue{StringValue: l.name}},
-					},
-				},
+				Data: strct,
 			}
-			_, err := ledgerBusiness.CreateLedger(ctx, createReq)
+			_, err = ledgerBusiness.CreateLedger(ctx, createReq)
 			require.NoError(t, err, "Error creating ledger %s", l.id)
 		}
 
-		// Search for ledgers by type instead of data field
+		// Search for ledgers by type
 		searchReq := &commonv1.SearchRequest{
-			Query: `{"query": {"must": {"fields": [{"type": {"eq": "asset"}}]}}}`,
+			Query: `{"query": {"must": {"fields": [{"type": {"eq": "ASSET"}}]}}}`,
 		}
 
 		var foundLedgers []*ledgerv1.Ledger
@@ -182,6 +182,6 @@ func (ls *LedgerBusinessSuite) TestSearchLedgers() {
 		})
 
 		require.NoError(t, err, "Error searching ledgers")
-		assert.Len(t, foundLedgers, 2, "Should find 2 asset ledgers")
+		assert.Len(t, foundLedgers, 1, "Should find 1 asset ledger")
 	})
 }

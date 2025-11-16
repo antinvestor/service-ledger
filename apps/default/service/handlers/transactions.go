@@ -16,12 +16,16 @@ func (ledgerSrv *LedgerServer) SearchTransactions(
 	stream *connect.ServerStream[ledgerv1.SearchTransactionsResponse],
 ) error {
 	// Search transactions using business layer
-	return ledgerSrv.Transaction.SearchTransactions(ctx, req.Msg, func(ctx context.Context, batch []*ledgerv1.Transaction) error {
-		// Send response with transaction data
-		return stream.Send(&ledgerv1.SearchTransactionsResponse{
-			Data: batch,
-		})
-	})
+	return ledgerSrv.Transaction.SearchTransactions(
+		ctx,
+		req.Msg,
+		func(ctx context.Context, batch []*ledgerv1.Transaction) error {
+			// Send response with transaction data
+			return stream.Send(&ledgerv1.SearchTransactionsResponse{
+				Data: batch,
+			})
+		},
+	)
 }
 
 // CreateTransaction creates a new double-entry transaction.

@@ -16,11 +16,9 @@ func (ss *SearchSuite) TestSearchAccountsWithShouldTerms() {
 
 		query := `{
         "query": {
-            "bool": {
-                "should": [
-                    {
-                        "term": {"id": "acc1"}
-                    }
+            "should": {
+                "fields": [
+                    {"id": {"eq": "acc1"}}
                 ]
             }
         }
@@ -35,11 +33,9 @@ func (ss *SearchSuite) TestSearchAccountsWithShouldTerms() {
 
 		query = `{
         "query": {
-            "bool": {
-                "should": [
-                    {
-                        "term": {"id": "nonexistent"}
-                    }
+            "should": {
+                "fields": [
+                    {"id": {"eq": "nonexistent"}}
                 ]
             }
         }
@@ -60,11 +56,9 @@ func (ss *SearchSuite) TestSearchTransactionsWithShouldTerms() {
 
 		query := `{
         "query": {
-            "bool": {
-                "should": [
-                    {
-                        "term": {"id": "txn1"}
-                    }
+            "should": {
+                "fields": [
+                    {"id": {"eq": "txn1"}}
                 ]
             }
         }
@@ -79,11 +73,9 @@ func (ss *SearchSuite) TestSearchTransactionsWithShouldTerms() {
 
 		query = `{
         "query": {
-            "bool": {
-                "should": [
-                    {
-                        "term": {"id": "nonexistent"}
-                    }
+            "should": {
+                "fields": [
+                    {"id": {"eq": "nonexistent"}}
                 ]
             }
         }

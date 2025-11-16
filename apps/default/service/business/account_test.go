@@ -36,7 +36,7 @@ func (as *AccountBusinessSuite) setupFixtures(ctx context.Context, resources *te
 
 	ledger, err := ledgerBusiness.CreateLedger(ctx, createLedgerReq)
 	as.Require().NoError(err, "Unable to create ledger for account")
-	
+
 	// Convert to model for test use
 	as.ledger = &models.Ledger{
 		BaseModel: data.BaseModel{ID: ledger.GetId()},
@@ -54,7 +54,7 @@ func (as *AccountBusinessSuite) TestCreateAccountWithBusinessValidation() {
 
 		createAccountReq := &ledgerv1.CreateAccountRequest{
 			Id:       "test-account",
-			LedgerId:  as.ledger.ID,
+			LedgerId: as.ledger.ID,
 			Currency: "USD",
 		}
 
@@ -79,7 +79,7 @@ func (as *AccountBusinessSuite) TestCreateAccountWithInvalidCurrency() {
 
 		createAccountReq := &ledgerv1.CreateAccountRequest{
 			Id:       "invalid-account",
-			LedgerId:  as.ledger.ID,
+			LedgerId: as.ledger.ID,
 			Currency: "INVALID", // Invalid currency code
 		}
 
@@ -98,7 +98,7 @@ func (as *AccountBusinessSuite) TestCreateAccountWithMissingLedger() {
 
 		createAccountReq := &ledgerv1.CreateAccountRequest{
 			Id:       "orphan-account",
-			LedgerId:  "non-existent-ledger",
+			LedgerId: "non-existent-ledger",
 			Currency: "USD",
 		}
 
@@ -118,7 +118,7 @@ func (as *AccountBusinessSuite) TestGetAccount() {
 		// First create an account
 		createAccountReq := &ledgerv1.CreateAccountRequest{
 			Id:       "get-test-account",
-			LedgerId:  as.ledger.ID,
+			LedgerId: as.ledger.ID,
 			Currency: "EUR",
 		}
 
@@ -129,9 +129,19 @@ func (as *AccountBusinessSuite) TestGetAccount() {
 		retrievedAccount, err := accountBusiness.GetAccount(ctx, "get-test-account")
 		require.NoError(t, err, "Error retrieving account")
 
-		assert.Equal(t, createdAccount.GetId(), retrievedAccount.GetId(), "Retrieved account should match created account")
+		assert.Equal(
+			t,
+			createdAccount.GetId(),
+			retrievedAccount.GetId(),
+			"Retrieved account should match created account",
+		)
 		assert.Equal(t, createdAccount.GetLedger(), retrievedAccount.GetLedger(), "Ledger ID should match")
-		assert.Equal(t, createdAccount.GetBalance().GetCurrencyCode(), retrievedAccount.GetBalance().GetCurrencyCode(), "Currency should match")
+		assert.Equal(
+			t,
+			createdAccount.GetBalance().GetCurrencyCode(),
+			retrievedAccount.GetBalance().GetCurrencyCode(),
+			"Currency should match",
+		)
 	})
 }
 
@@ -157,7 +167,7 @@ func (as *AccountBusinessSuite) TestUpdateAccount() {
 		// Create an account first
 		createAccountReq := &ledgerv1.CreateAccountRequest{
 			Id:       "update-test-account",
-			LedgerId:  as.ledger.ID,
+			LedgerId: as.ledger.ID,
 			Currency: "GBP",
 		}
 

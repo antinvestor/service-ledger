@@ -31,7 +31,11 @@ type accountBusiness struct {
 }
 
 // NewAccountBusiness creates a new account business instance.
-func NewAccountBusiness(workMan workerpool.Manager, ledgerRepo repository.LedgerRepository, accountRepo repository.AccountRepository) AccountBusiness {
+func NewAccountBusiness(
+	workMan workerpool.Manager,
+	ledgerRepo repository.LedgerRepository,
+	accountRepo repository.AccountRepository,
+) AccountBusiness {
 	return &accountBusiness{
 		workMan:     workMan,
 		accountRepo: accountRepo,
@@ -44,41 +48,32 @@ func (b *accountBusiness) CreateAccount(
 	ctx context.Context,
 	req *ledgerv1.CreateAccountRequest,
 ) (*ledgerv1.Account, error) {
-	// Business logic validation
-	if req.GetId() == "" {
-		return nil, ErrAccountReferenceRequired
+	// Validate and normalize currency
+	currencyUnit, err := currency.ParseISO(req.GetCurrency())
+	if err != nil {
+		return nil, ErrAccountCurrencyInvalid
 	}
 
 	if req.GetLedgerId() == "" {
 		return nil, ErrAccountLedgerIDRequired
 	}
 
+	ledger, err := b.ledgerRepo.GetByID(ctx, req.GetLedgerId())
+	if err != nil {
+		return nil, err
+	}
+
 	// Convert API request to model
 	accountModel := &models.Account{
-		LedgerID: req.GetLedgerId(),
-		Currency: req.GetCurrency(),
-		Balance:  decimal.NewNullDecimal(decimal.Zero),
-		Data:     req.GetData().AsMap()}
+		LedgerID:   ledger.GetID(),
+		LedgerType: ledger.Type,
+		Currency:   req.GetCurrency(),
+		Balance:    decimal.NewNullDecimal(decimal.Zero),
+		Data:       req.GetData().AsMap()}
 
 	accountModel.GenID(ctx)
 	if req.GetId() != "" {
 		accountModel.ID = req.GetId()
-	}
-
-	// Validate and populate ledger information if ledger ID is provided
-	if accountModel.LedgerID != "" {
-		ledger, err := b.ledgerRepo.GetByID(ctx, accountModel.LedgerID)
-		if err != nil {
-			return nil, err
-		}
-		accountModel.LedgerID = ledger.ID
-		accountModel.LedgerType = ledger.Type
-	}
-
-	// Validate and normalize currency
-	currencyUnit, err := currency.ParseISO(accountModel.Currency)
-	if err != nil {
-		return nil, ErrAccountCurrencyInvalid
 	}
 
 	accountModel.Currency = currencyUnit.String()

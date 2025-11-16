@@ -26,7 +26,11 @@ type TransactionBusiness interface {
 	UpdateTransaction(ctx context.Context, req *ledgerv1.UpdateTransactionRequest) (*ledgerv1.Transaction, error)
 	ReverseTransaction(ctx context.Context, req *ledgerv1.ReverseTransactionRequest) (*ledgerv1.Transaction, error)
 	DeleteTransaction(ctx context.Context, id string) error
-	SearchEntries(ctx context.Context, req *commonv1.SearchRequest, consumer func(ctx context.Context, batch []*ledgerv1.TransactionEntry) error) error
+	SearchEntries(
+		ctx context.Context,
+		req *commonv1.SearchRequest,
+		consumer func(ctx context.Context, batch []*ledgerv1.TransactionEntry) error,
+	) error
 
 	IsConflict(
 		ctx context.Context, transaction2 *models.Transaction) (bool, error)
@@ -124,7 +128,7 @@ func (b *transactionBusiness) CreateTransaction(
 	return result.ToAPI(), nil
 }
 
-// validateTransaction performs business validation for a transaction
+// validateTransaction performs business validation for a transaction.
 func (b *transactionBusiness) validateTransaction(ctx context.Context, txn *models.Transaction) error {
 	if ledgerv1.TransactionType_NORMAL.String() == txn.TransactionType ||
 		ledgerv1.TransactionType_REVERSAL.String() == txn.TransactionType {
@@ -150,17 +154,29 @@ func (b *transactionBusiness) validateTransaction(ctx context.Context, txn *mode
 	return nil
 }
 
-// validateTransactionEntries validates transaction entries against accounts
-func (b *transactionBusiness) validateTransactionEntries(txn *models.Transaction, accountsMap map[string]*models.Account) error {
+// validateTransactionEntries validates transaction entries against accounts.
+func (b *transactionBusiness) validateTransactionEntries(
+	txn *models.Transaction,
+	accountsMap map[string]*models.Account,
+) error {
 	for _, entry := range txn.Entries {
 		if entry.Amount.Decimal.IsZero() {
-			return fmt.Errorf("%w: entry [id=%s, account_id=%s] amount is zero", ErrTransactionEntryZeroAmount, entry.ID, entry.AccountID)
+			return fmt.Errorf(
+				"%w: entry [id=%s, account_id=%s] amount is zero",
+				ErrTransactionEntryZeroAmount,
+				entry.ID,
+				entry.AccountID,
+			)
 		}
 
 		account, ok := accountsMap[entry.AccountID]
 		if !ok {
 			// Accounts have to be predefined hence check all references exist.
-			return fmt.Errorf("%w: Account %s was not found in the system", ErrTransactionAccountNotFound, entry.AccountID)
+			return fmt.Errorf(
+				"%w: Account %s was not found in the system",
+				ErrTransactionAccountNotFound,
+				entry.AccountID,
+			)
 		}
 
 		if !strings.EqualFold(txn.Currency, account.Currency) {
@@ -171,8 +187,11 @@ func (b *transactionBusiness) validateTransactionEntries(txn *models.Transaction
 	return nil
 }
 
-// processTransactionEntries applies business logic to transaction entries
-func (b *transactionBusiness) processTransactionEntries(txn *models.Transaction, accountsMap map[string]*models.Account) {
+// processTransactionEntries applies business logic to transaction entries.
+func (b *transactionBusiness) processTransactionEntries(
+	txn *models.Transaction,
+	accountsMap map[string]*models.Account,
+) {
 	typedLedgerMap := make(map[string][]string)
 	typedLedgerMap[models.LedgerTypeAsset] = []string{"CR", "DR"}
 	typedLedgerMap[models.LedgerTypeExpense] = []string{"DR", "CR"}
@@ -231,7 +250,6 @@ func (b *transactionBusiness) SearchTransactions(ctx context.Context, req *commo
 			return jobErr
 		}
 	}
-
 }
 
 // GetTransaction retrieves a transaction by ID.
@@ -278,10 +296,8 @@ func (b *transactionBusiness) UpdateTransaction(
 	}
 
 	if existingTransaction.ClearedAt.IsZero() {
-
-		if req.ClearedAt != "" {
-
-			clearanceTime, parseErr := time.Parse(DefaultTimestamLayout, req.ClearedAt)
+		if req.GetClearedAt() != "" {
+			clearanceTime, parseErr := time.Parse(DefaultTimestamLayout, req.GetClearedAt())
 			if parseErr != nil {
 				return nil, parseErr
 			}
@@ -331,20 +347,26 @@ func (b *transactionBusiness) ReverseTransaction(
 		)
 	}
 
-	for _, entry := range originalTxn.Entries {
-		entry.ID = fmt.Sprintf("%s_REVERSAL", entry.ID)
-		entry.Credit = !entry.Credit
+	// Create a new reversal transaction instead of modifying the original
+	reversalTxn := &models.Transaction{
+		BaseModel:       data.BaseModel{ID: fmt.Sprintf("%s_REVERSAL", originalTxn.ID)},
+		Currency:        originalTxn.Currency,
+		TransactionType: ledgerv1.TransactionType_REVERSAL.String(),
+		TransactedAt:    time.Now(),
+		Data:            originalTxn.Data,
 	}
 
-	originalTxn.ID = fmt.Sprintf("%s_REVERSAL", originalTxn.ID)
-	originalTxn.TransactionType = ledgerv1.TransactionType_REVERSAL.String()
+	// Create reversed entries
+	for _, entry := range originalTxn.Entries {
+		reversalTxn.Entries = append(reversalTxn.Entries, &models.TransactionEntry{
+			BaseModel: data.BaseModel{ID: fmt.Sprintf("%s_REVERSAL", entry.ID)},
+			AccountID: entry.AccountID,
+			Amount:    entry.Amount,
+			Credit:    !entry.Credit, // Reverse the credit/debit
+		})
+	}
 
-	timeNow := time.Now()
-	originalTxn.TransactedAt = timeNow
-	originalTxn.CreatedAt = timeNow
-	originalTxn.ModifiedAt = timeNow
-
-	reversedTxn, err := b.Transact(ctx, originalTxn)
+	reversedTxn, err := b.Transact(ctx, reversalTxn)
 	if err != nil {
 		return nil, err
 	}
@@ -364,7 +386,11 @@ func (b *transactionBusiness) DeleteTransaction(ctx context.Context, id string) 
 }
 
 // SearchEntries searches for transaction entries based on query.
-func (b *transactionBusiness) SearchEntries(ctx context.Context, req *commonv1.SearchRequest, consumer func(ctx context.Context, batch []*ledgerv1.TransactionEntry) error) error {
+func (b *transactionBusiness) SearchEntries(
+	ctx context.Context,
+	req *commonv1.SearchRequest,
+	consumer func(ctx context.Context, batch []*ledgerv1.TransactionEntry) error,
+) error {
 	// Business logic for search validation
 	query := req.GetQuery()
 	if query == "" {
@@ -491,7 +517,6 @@ func (b *transactionBusiness) Transact(
 	// Check if a transaction with Reference already exists
 	existingTransaction, aerr := b.transactionRepo.GetByID(ctx, transaction.GetID())
 	if aerr != nil {
-
 		if !data.ErrorIsNoRows(aerr) {
 			return nil, apperrors.ErrSystemFailure.Override(aerr)
 		}
