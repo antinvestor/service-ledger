@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -41,7 +42,12 @@ type transactionRepository struct {
 }
 
 // NewTransactionRepository returns a new instance of `transactionRepository`.
-func NewTransactionRepository(ctx context.Context, dbPool pool.Pool, workMan workerpool.Manager, accountRepo AccountRepository) TransactionRepository {
+func NewTransactionRepository(
+	ctx context.Context,
+	dbPool pool.Pool,
+	workMan workerpool.Manager,
+	accountRepo AccountRepository,
+) TransactionRepository {
 	return &transactionRepository{
 		BaseRepository: datastore.NewBaseRepository[*models.Transaction](
 			ctx, dbPool, workMan, func() *models.Transaction { return &models.Transaction{} },
@@ -88,31 +94,32 @@ func (t *transactionRepository) searchTransactions(
 func (t *transactionRepository) SearchAsESQ(
 	ctx context.Context, queryStr string,
 ) (workerpool.JobResultPipe[[]*models.Transaction], error) {
-	job := workerpool.NewJob(func(ctx context.Context, jobResult workerpool.JobResultPipe[[]*models.Transaction]) error {
-
-		rawQuery, err := NewSearchRawQuery(ctx, queryStr)
-		if err != nil {
-			return jobResult.WriteError(ctx, err)
-		}
-
-		sqlQuery := rawQuery.ToQueryConditions()
-
-		for sqlQuery.canLoad() {
-			transactionList, dbErr := t.searchTransactions(ctx, sqlQuery)
-			if dbErr != nil {
-				return jobResult.WriteError(ctx, apperrors.ErrSystemFailure.Override(dbErr))
-			}
-			dbErr = jobResult.WriteResult(ctx, transactionList)
-			if dbErr != nil {
-				return dbErr
+	job := workerpool.NewJob(
+		func(ctx context.Context, jobResult workerpool.JobResultPipe[[]*models.Transaction]) error {
+			rawQuery, err := NewSearchRawQuery(ctx, queryStr)
+			if err != nil {
+				return jobResult.WriteError(ctx, err)
 			}
 
-			if sqlQuery.stop(len(transactionList)) {
-				break
+			sqlQuery := rawQuery.ToQueryConditions()
+
+			for sqlQuery.canLoad() {
+				transactionList, dbErr := t.searchTransactions(ctx, sqlQuery)
+				if dbErr != nil {
+					return jobResult.WriteError(ctx, apperrors.ErrSystemFailure.Override(dbErr))
+				}
+				dbErr = jobResult.WriteResult(ctx, transactionList)
+				if dbErr != nil {
+					return dbErr
+				}
+
+				if sqlQuery.stop(len(transactionList)) {
+					break
+				}
 			}
-		}
-		return nil
-	})
+			return nil
+		},
+	)
 
 	err := workerpool.SubmitJob(ctx, t.WorkManager(), job)
 	if err != nil {
@@ -188,37 +195,38 @@ func (t *transactionRepository) SearchEntries(
 	ctx context.Context,
 	query string,
 ) (workerpool.JobResultPipe[[]*models.TransactionEntry], error) {
-
-	job := workerpool.NewJob(func(ctx context.Context, jobResult workerpool.JobResultPipe[[]*models.TransactionEntry]) error {
-		rawQuery, err := NewSearchRawQuery(ctx, query)
-		if err != nil {
-			return jobResult.WriteError(ctx, err)
-		}
-
-		sqlQuery := rawQuery.ToQueryConditions()
-		var transactionEntriesList []*models.TransactionEntry
-
-		for sqlQuery.canLoad() {
-			result := t.Pool().DB(ctx, true).Offset(sqlQuery.offset).Limit(sqlQuery.batchSize).
-				Where(sqlQuery.sql, sqlQuery.args...).Find(&transactionEntriesList)
-
-			err1 := result.Error
-			if err1 != nil {
-				return jobResult.WriteError(ctx, apperrors.ErrSystemFailure.Override(err1))
+	job := workerpool.NewJob(
+		func(ctx context.Context, jobResult workerpool.JobResultPipe[[]*models.TransactionEntry]) error {
+			rawQuery, err := NewSearchRawQuery(ctx, query)
+			if err != nil {
+				return jobResult.WriteError(ctx, err)
 			}
 
-			err1 = jobResult.WriteResult(ctx, transactionEntriesList)
-			if err1 != nil {
-				return err1
+			sqlQuery := rawQuery.ToQueryConditions()
+			var transactionEntriesList []*models.TransactionEntry
+
+			for sqlQuery.canLoad() {
+				result := t.Pool().DB(ctx, true).Offset(sqlQuery.offset).Limit(sqlQuery.batchSize).
+					Where(sqlQuery.sql, sqlQuery.args...).Find(&transactionEntriesList)
+
+				err1 := result.Error
+				if err1 != nil {
+					return jobResult.WriteError(ctx, apperrors.ErrSystemFailure.Override(err1))
+				}
+
+				err1 = jobResult.WriteResult(ctx, transactionEntriesList)
+				if err1 != nil {
+					return err1
+				}
+
+				if sqlQuery.stop(len(transactionEntriesList)) {
+					break
+				}
 			}
 
-			if sqlQuery.stop(len(transactionEntriesList)) {
-				break
-			}
-		}
-
-		return nil
-	})
+			return nil
+		},
+	)
 
 	err := workerpool.SubmitJob(ctx, t.WorkManager(), job)
 	if err != nil {
@@ -339,7 +347,8 @@ func (t *transactionRepository) Transact(
 
 	accountsMap, aerr := t.Validate(ctx, transaction)
 	if aerr != nil {
-		if appErr, ok := aerr.(apperrors.ApplicationError); ok {
+		var appErr apperrors.ApplicationError
+		if errors.As(aerr, &appErr) {
 			return nil, appErr
 		}
 		return nil, apperrors.ErrSystemFailure.Override(aerr)

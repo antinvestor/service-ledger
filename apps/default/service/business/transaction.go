@@ -11,10 +11,13 @@ import (
 	"github.com/pitabwire/frame/workerpool"
 )
 
-// TransactionBusiness defines the business interface for transaction operations
+// TransactionBusiness defines the business interface for transaction operations.
 type TransactionBusiness interface {
 	CreateTransaction(ctx context.Context, req *ledgerv1.CreateTransactionRequest) (*ledgerv1.Transaction, error)
-	SearchTransactions(ctx context.Context, req *commonv1.SearchRequest) (workerpool.JobResultPipe[[]*ledgerv1.Transaction], error)
+	SearchTransactions(
+		ctx context.Context,
+		req *commonv1.SearchRequest,
+	) (workerpool.JobResultPipe[[]*ledgerv1.Transaction], error)
 	GetTransaction(ctx context.Context, id string) (*ledgerv1.Transaction, error)
 	UpdateTransaction(ctx context.Context, req *ledgerv1.UpdateTransactionRequest) (*ledgerv1.Transaction, error)
 	ReverseTransaction(ctx context.Context, req *ledgerv1.ReverseTransactionRequest) (*ledgerv1.Transaction, error)
@@ -22,40 +25,46 @@ type TransactionBusiness interface {
 	SearchEntries(ctx context.Context, query string) ([]*models.TransactionEntry, error)
 }
 
-// transactionBusiness implements the TransactionBusiness interface
+// transactionBusiness implements the TransactionBusiness interface.
 type transactionBusiness struct {
 	workMan         workerpool.Manager
 	transactionRepo repository.TransactionRepository
 }
 
-// NewTransactionBusiness creates a new transaction business instance
-func NewTransactionBusiness(workMan workerpool.Manager, transactionRepo repository.TransactionRepository) TransactionBusiness {
+// NewTransactionBusiness creates a new transaction business instance.
+func NewTransactionBusiness(
+	workMan workerpool.Manager,
+	transactionRepo repository.TransactionRepository,
+) TransactionBusiness {
 	return &transactionBusiness{
 		workMan:         workMan,
 		transactionRepo: transactionRepo,
 	}
 }
 
-// CreateTransaction creates a new transaction with business validation
-func (b *transactionBusiness) CreateTransaction(ctx context.Context, req *ledgerv1.CreateTransactionRequest) (*ledgerv1.Transaction, error) {
+// CreateTransaction creates a new transaction with business validation.
+func (b *transactionBusiness) CreateTransaction(
+	ctx context.Context,
+	req *ledgerv1.CreateTransactionRequest,
+) (*ledgerv1.Transaction, error) {
 	// Business logic validation
-	if req.Id == "" {
+	if req.GetId() == "" {
 		return nil, ErrTransactionReferenceRequired
 	}
 
-	if req.Currency == "" {
+	if req.GetCurrency() == "" {
 		return nil, ErrTransactionAccountIDRequired
 	}
 
 	// Convert API request to model
 	transactionModel := models.TransactionFromAPI(ctx, &ledgerv1.Transaction{
-		Id:           req.Id,
-		CurrencyCode: req.Currency,
-		TransactedAt: req.TransactedAt,
-		Data:         req.Data,
-		Entries:      req.Entries,
-		Cleared:      req.Cleared,
-		Type:         req.Type,
+		Id:           req.GetId(),
+		CurrencyCode: req.GetCurrency(),
+		TransactedAt: req.GetTransactedAt(),
+		Data:         req.GetData(),
+		Entries:      req.GetEntries(),
+		Cleared:      req.GetCleared(),
+		Type:         req.GetType(),
 	})
 
 	// Create the transaction through repository
@@ -68,45 +77,47 @@ func (b *transactionBusiness) CreateTransaction(ctx context.Context, req *ledger
 	return transactionModel.ToAPI(), nil
 }
 
-// SearchTransactions searches for transactions based on query
-func (b *transactionBusiness) SearchTransactions(ctx context.Context, req *commonv1.SearchRequest) (workerpool.JobResultPipe[[]*ledgerv1.Transaction], error) {
+// SearchTransactions searches for transactions based on query.
+func (b *transactionBusiness) SearchTransactions(
+	ctx context.Context,
+	req *commonv1.SearchRequest,
+) (workerpool.JobResultPipe[[]*ledgerv1.Transaction], error) {
 	// Business logic for search validation
 	query := req.GetQuery()
 	if query == "" {
 		query = "{}" // Default empty query
 	}
 
-	job := workerpool.NewJob[[]*ledgerv1.Transaction](func(ctx context.Context, pipe workerpool.JobResultPipe[[]*ledgerv1.Transaction]) error {
-
-		// Search through repository
-		result, err := b.transactionRepo.SearchAsESQ(ctx, query)
-		if err != nil {
-			return err
-		}
-
-		for {
-
-			res, ok := result.ReadResult(ctx)
-			if !ok {
-				return nil
+	job := workerpool.NewJob[[]*ledgerv1.Transaction](
+		func(ctx context.Context, pipe workerpool.JobResultPipe[[]*ledgerv1.Transaction]) error {
+			// Search through repository
+			result, err := b.transactionRepo.SearchAsESQ(ctx, query)
+			if err != nil {
+				return err
 			}
 
-			if res.IsError() {
-				return res.Error()
-			}
+			for {
+				res, ok := result.ReadResult(ctx)
+				if !ok {
+					return nil
+				}
 
-			var apiResults []*ledgerv1.Transaction
-			for _, transaction := range res.Item() {
-				apiResults = append(apiResults, transaction.ToAPI())
-			}
+				if res.IsError() {
+					return res.Error()
+				}
 
-			jobErr := pipe.WriteResult(ctx, apiResults)
-			if jobErr != nil {
-				return jobErr
-			}
-		}
+				var apiResults []*ledgerv1.Transaction
+				for _, transaction := range res.Item() {
+					apiResults = append(apiResults, transaction.ToAPI())
+				}
 
-	})
+				jobErr := pipe.WriteResult(ctx, apiResults)
+				if jobErr != nil {
+					return jobErr
+				}
+			}
+		},
+	)
 
 	err := workerpool.SubmitJob(ctx, b.workMan, job)
 	if err != nil {
@@ -114,10 +125,9 @@ func (b *transactionBusiness) SearchTransactions(ctx context.Context, req *commo
 	}
 
 	return job, nil
-
 }
 
-// GetTransaction retrieves a transaction by ID
+// GetTransaction retrieves a transaction by ID.
 func (b *transactionBusiness) GetTransaction(ctx context.Context, id string) (*ledgerv1.Transaction, error) {
 	if id == "" {
 		return nil, ErrTransactionIDRequired
@@ -132,23 +142,26 @@ func (b *transactionBusiness) GetTransaction(ctx context.Context, id string) (*l
 	return transaction.ToAPI(), nil
 }
 
-// UpdateTransaction updates an existing transaction
-func (b *transactionBusiness) UpdateTransaction(ctx context.Context, req *ledgerv1.UpdateTransactionRequest) (*ledgerv1.Transaction, error) {
+// UpdateTransaction updates an existing transaction.
+func (b *transactionBusiness) UpdateTransaction(
+	ctx context.Context,
+	req *ledgerv1.UpdateTransactionRequest,
+) (*ledgerv1.Transaction, error) {
 	// Business logic validation
-	if req.Id == "" {
+	if req.GetId() == "" {
 		return nil, ErrTransactionIDRequired
 	}
 
 	// Convert API request to model - need to get existing transaction first
-	existingTransaction, err := b.transactionRepo.GetByID(ctx, req.Id)
+	existingTransaction, err := b.transactionRepo.GetByID(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
 
 	// Update fields from request
-	if req.Data != nil {
+	if req.GetData() != nil {
 		dataMap := &data.JSONMap{}
-		existingTransaction.Data = dataMap.FromProtoStruct(req.Data)
+		existingTransaction.Data = dataMap.FromProtoStruct(req.GetData())
 	}
 
 	// Update through repository
@@ -161,15 +174,18 @@ func (b *transactionBusiness) UpdateTransaction(ctx context.Context, req *ledger
 	return existingTransaction.ToAPI(), nil
 }
 
-// ReverseTransaction reverses a transaction by creating offsetting entries
-func (b *transactionBusiness) ReverseTransaction(ctx context.Context, req *ledgerv1.ReverseTransactionRequest) (*ledgerv1.Transaction, error) {
+// ReverseTransaction reverses a transaction by creating offsetting entries.
+func (b *transactionBusiness) ReverseTransaction(
+	ctx context.Context,
+	req *ledgerv1.ReverseTransactionRequest,
+) (*ledgerv1.Transaction, error) {
 	// Business logic validation
-	if req.Id == "" {
+	if req.GetId() == "" {
 		return nil, ErrTransactionIDRequired
 	}
 
 	// Get the original transaction to reverse
-	originalTransaction, err := b.transactionRepo.GetByID(ctx, req.Id)
+	originalTransaction, err := b.transactionRepo.GetByID(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -184,7 +200,7 @@ func (b *transactionBusiness) ReverseTransaction(ctx context.Context, req *ledge
 	return reversedTransaction.ToAPI(), nil
 }
 
-// DeleteTransaction deletes a transaction by ID
+// DeleteTransaction deletes a transaction by ID.
 func (b *transactionBusiness) DeleteTransaction(ctx context.Context, id string) error {
 	if id == "" {
 		return ErrTransactionIDRequired
@@ -194,7 +210,7 @@ func (b *transactionBusiness) DeleteTransaction(ctx context.Context, id string) 
 	return nil // Implementation depends on repository interface
 }
 
-// SearchEntries searches for transaction entries based on query
+// SearchEntries searches for transaction entries based on query.
 func (b *transactionBusiness) SearchEntries(ctx context.Context, query string) ([]*models.TransactionEntry, error) {
 	// Business logic for search validation
 	if query == "" {

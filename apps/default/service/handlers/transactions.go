@@ -35,7 +35,7 @@ func (ledgerSrv *LedgerServer) SearchTransactions(
 		response := &ledgerv1.SearchTransactionsResponse{
 			Data: res.Item(),
 		}
-		
+
 		if err := stream.Send(response); err != nil {
 			return err
 		}

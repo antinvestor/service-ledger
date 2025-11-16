@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"net/http"
+
 	//nolint:gosec // G108: Profiling endpoint deliberately exposed for monitoring and debugging purposes
 	_ "net/http/pprof"
 
@@ -22,7 +23,6 @@ import (
 )
 
 func main() {
-
 	ctx := context.Background()
 
 	// Create frame service
@@ -36,7 +36,13 @@ func main() {
 		cfg.ServiceName = "service_ledger"
 	}
 
-	_, service := frame.NewServiceWithContext(ctx, frame.WithConfig(&cfg), frame.WithRegisterServerOauth2Client(), frame.WithDatastore(), frame.WithTranslation("en"))
+	_, service := frame.NewServiceWithContext(
+		ctx,
+		frame.WithConfig(&cfg),
+		frame.WithRegisterServerOauth2Client(),
+		frame.WithDatastore(),
+		frame.WithTranslation("en"),
+	)
 	defer service.Stop(ctx)
 
 	log := service.Log(ctx)

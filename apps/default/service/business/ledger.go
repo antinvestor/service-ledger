@@ -11,22 +11,25 @@ import (
 	"github.com/pitabwire/frame/workerpool"
 )
 
-// LedgerBusiness defines the business interface for ledger operations
+// LedgerBusiness defines the business interface for ledger operations.
 type LedgerBusiness interface {
 	CreateLedger(ctx context.Context, req *ledgerv1.CreateLedgerRequest) (*ledgerv1.Ledger, error)
-	SearchLedgers(ctx context.Context, req *commonv1.SearchRequest) (workerpool.JobResultPipe[[]*ledgerv1.Ledger], error)
+	SearchLedgers(
+		ctx context.Context,
+		req *commonv1.SearchRequest,
+	) (workerpool.JobResultPipe[[]*ledgerv1.Ledger], error)
 	GetLedger(ctx context.Context, id string) (*ledgerv1.Ledger, error)
 	UpdateLedger(ctx context.Context, req *ledgerv1.UpdateLedgerRequest) (*ledgerv1.Ledger, error)
 	DeleteLedger(ctx context.Context, id string) error
 }
 
-// ledgerBusiness implements the LedgerBusiness interface
+// ledgerBusiness implements the LedgerBusiness interface.
 type ledgerBusiness struct {
 	workMan    workerpool.Manager
 	ledgerRepo repository.LedgerRepository
 }
 
-// NewLedgerBusiness creates a new ledger business instance
+// NewLedgerBusiness creates a new ledger business instance.
 func NewLedgerBusiness(workMan workerpool.Manager, ledgerRepo repository.LedgerRepository) LedgerBusiness {
 	return &ledgerBusiness{
 		workMan:    workMan,
@@ -34,10 +37,13 @@ func NewLedgerBusiness(workMan workerpool.Manager, ledgerRepo repository.LedgerR
 	}
 }
 
-// CreateLedger creates a new ledger with business validation
-func (b *ledgerBusiness) CreateLedger(ctx context.Context, req *ledgerv1.CreateLedgerRequest) (*ledgerv1.Ledger, error) {
+// CreateLedger creates a new ledger with business validation.
+func (b *ledgerBusiness) CreateLedger(
+	ctx context.Context,
+	req *ledgerv1.CreateLedgerRequest,
+) (*ledgerv1.Ledger, error) {
 	// Business logic validation
-	if req.Id == "" {
+	if req.GetId() == "" {
 		return nil, ErrLedgerReferenceRequired
 	}
 
@@ -63,45 +69,47 @@ func (b *ledgerBusiness) CreateLedger(ctx context.Context, req *ledgerv1.CreateL
 	return ledgerModel.ToAPI(), nil
 }
 
-// SearchLedgers searches for ledgers based on query
-func (b *ledgerBusiness) SearchLedgers(ctx context.Context, req *commonv1.SearchRequest) (workerpool.JobResultPipe[[]*ledgerv1.Ledger], error) {
+// SearchLedgers searches for ledgers based on query.
+func (b *ledgerBusiness) SearchLedgers(
+	ctx context.Context,
+	req *commonv1.SearchRequest,
+) (workerpool.JobResultPipe[[]*ledgerv1.Ledger], error) {
 	// Business logic for search validation
 	query := req.GetQuery()
 	if query == "" {
 		query = "{}" // Default empty query
 	}
 
-	job := workerpool.NewJob[[]*ledgerv1.Ledger](func(ctx context.Context, pipe workerpool.JobResultPipe[[]*ledgerv1.Ledger]) error {
-
-		// Search through repository
-		result, err := b.ledgerRepo.SearchAsESQ(ctx, query)
-		if err != nil {
-			return err
-		}
-
-		for {
-
-			res, ok := result.ReadResult(ctx)
-			if !ok {
-				return nil
+	job := workerpool.NewJob[[]*ledgerv1.Ledger](
+		func(ctx context.Context, pipe workerpool.JobResultPipe[[]*ledgerv1.Ledger]) error {
+			// Search through repository
+			result, err := b.ledgerRepo.SearchAsESQ(ctx, query)
+			if err != nil {
+				return err
 			}
 
-			if res.IsError() {
-				return res.Error()
-			}
+			for {
+				res, ok := result.ReadResult(ctx)
+				if !ok {
+					return nil
+				}
 
-			var apiResults []*ledgerv1.Ledger
-			for _, ledger := range res.Item() {
-				apiResults = append(apiResults, ledger.ToAPI())
-			}
+				if res.IsError() {
+					return res.Error()
+				}
 
-			jobErr := pipe.WriteResult(ctx, apiResults)
-			if jobErr != nil {
-				return jobErr
-			}
-		}
+				var apiResults []*ledgerv1.Ledger
+				for _, ledger := range res.Item() {
+					apiResults = append(apiResults, ledger.ToAPI())
+				}
 
-	})
+				jobErr := pipe.WriteResult(ctx, apiResults)
+				if jobErr != nil {
+					return jobErr
+				}
+			}
+		},
+	)
 
 	err := workerpool.SubmitJob(ctx, b.workMan, job)
 	if err != nil {
@@ -109,10 +117,9 @@ func (b *ledgerBusiness) SearchLedgers(ctx context.Context, req *commonv1.Search
 	}
 
 	return job, nil
-
 }
 
-// GetLedger retrieves a ledger by ID
+// GetLedger retrieves a ledger by ID.
 func (b *ledgerBusiness) GetLedger(ctx context.Context, id string) (*ledgerv1.Ledger, error) {
 	if id == "" {
 		return nil, ErrLedgerIDRequired
@@ -127,23 +134,26 @@ func (b *ledgerBusiness) GetLedger(ctx context.Context, id string) (*ledgerv1.Le
 	return ledger.ToAPI(), nil
 }
 
-// UpdateLedger updates an existing ledger
-func (b *ledgerBusiness) UpdateLedger(ctx context.Context, req *ledgerv1.UpdateLedgerRequest) (*ledgerv1.Ledger, error) {
+// UpdateLedger updates an existing ledger.
+func (b *ledgerBusiness) UpdateLedger(
+	ctx context.Context,
+	req *ledgerv1.UpdateLedgerRequest,
+) (*ledgerv1.Ledger, error) {
 	// Business logic validation
-	if req.Id == "" {
+	if req.GetId() == "" {
 		return nil, ErrLedgerIDRequired
 	}
 
 	// Convert API request to model - need to get existing ledger first
-	existingLedger, err := b.ledgerRepo.GetByID(ctx, req.Id)
+	existingLedger, err := b.ledgerRepo.GetByID(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
 
 	// Update fields from request
-	if req.Data != nil {
+	if req.GetData() != nil {
 		dataMap := &data.JSONMap{}
-		existingLedger.Data = dataMap.FromProtoStruct(req.Data)
+		existingLedger.Data = dataMap.FromProtoStruct(req.GetData())
 	}
 
 	// Update through repository
@@ -156,7 +166,7 @@ func (b *ledgerBusiness) UpdateLedger(ctx context.Context, req *ledgerv1.UpdateL
 	return existingLedger.ToAPI(), nil
 }
 
-// DeleteLedger deletes a ledger by ID
+// DeleteLedger deletes a ledger by ID.
 func (b *ledgerBusiness) DeleteLedger(ctx context.Context, id string) error {
 	if id == "" {
 		return ErrLedgerIDRequired

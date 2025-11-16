@@ -12,22 +12,25 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// AccountBusiness defines the business interface for account operations
+// AccountBusiness defines the business interface for account operations.
 type AccountBusiness interface {
 	CreateAccount(ctx context.Context, req *ledgerv1.CreateAccountRequest) (*ledgerv1.Account, error)
-	SearchAccounts(ctx context.Context, req *commonv1.SearchRequest) (workerpool.JobResultPipe[[]*ledgerv1.Account], error)
+	SearchAccounts(
+		ctx context.Context,
+		req *commonv1.SearchRequest,
+	) (workerpool.JobResultPipe[[]*ledgerv1.Account], error)
 	GetAccount(ctx context.Context, id string) (*ledgerv1.Account, error)
 	UpdateAccount(ctx context.Context, req *ledgerv1.UpdateAccountRequest) (*ledgerv1.Account, error)
 	DeleteAccount(ctx context.Context, id string) error
 }
 
-// accountBusiness implements the AccountBusiness interface
+// accountBusiness implements the AccountBusiness interface.
 type accountBusiness struct {
 	workMan     workerpool.Manager
 	accountRepo repository.AccountRepository
 }
 
-// NewAccountBusiness creates a new account business instance
+// NewAccountBusiness creates a new account business instance.
 func NewAccountBusiness(workMan workerpool.Manager, accountRepo repository.AccountRepository) AccountBusiness {
 	return &accountBusiness{
 		workMan:     workMan,
@@ -35,14 +38,17 @@ func NewAccountBusiness(workMan workerpool.Manager, accountRepo repository.Accou
 	}
 }
 
-// CreateAccount creates a new account with business validation
-func (b *accountBusiness) CreateAccount(ctx context.Context, req *ledgerv1.CreateAccountRequest) (*ledgerv1.Account, error) {
+// CreateAccount creates a new account with business validation.
+func (b *accountBusiness) CreateAccount(
+	ctx context.Context,
+	req *ledgerv1.CreateAccountRequest,
+) (*ledgerv1.Account, error) {
 	// Business logic validation
-	if req.Id == "" {
+	if req.GetId() == "" {
 		return nil, ErrAccountReferenceRequired
 	}
 
-	if req.LedgerId == "" {
+	if req.GetLedgerId() == "" {
 		return nil, ErrAccountLedgerIDRequired
 	}
 
@@ -70,45 +76,47 @@ func (b *accountBusiness) CreateAccount(ctx context.Context, req *ledgerv1.Creat
 	return accountModel.ToAPI(), nil
 }
 
-// SearchAccounts searches for accounts based on query
-func (b *accountBusiness) SearchAccounts(ctx context.Context, req *commonv1.SearchRequest) (workerpool.JobResultPipe[[]*ledgerv1.Account], error) {
+// SearchAccounts searches for accounts based on query.
+func (b *accountBusiness) SearchAccounts(
+	ctx context.Context,
+	req *commonv1.SearchRequest,
+) (workerpool.JobResultPipe[[]*ledgerv1.Account], error) {
 	// Business logic for search validation
 	query := req.GetQuery()
 	if query == "" {
 		query = "{}" // Default empty query
 	}
 
-	job := workerpool.NewJob[[]*ledgerv1.Account](func(ctx context.Context, pipe workerpool.JobResultPipe[[]*ledgerv1.Account]) error {
-
-		// Search through repository
-		result, err := b.accountRepo.SearchAsESQ(ctx, query)
-		if err != nil {
-			return err
-		}
-
-		for {
-
-			res, ok := result.ReadResult(ctx)
-			if !ok {
-				return nil
+	job := workerpool.NewJob[[]*ledgerv1.Account](
+		func(ctx context.Context, pipe workerpool.JobResultPipe[[]*ledgerv1.Account]) error {
+			// Search through repository
+			result, err := b.accountRepo.SearchAsESQ(ctx, query)
+			if err != nil {
+				return err
 			}
 
-			if res.IsError() {
-				return res.Error()
-			}
+			for {
+				res, ok := result.ReadResult(ctx)
+				if !ok {
+					return nil
+				}
 
-			var apiResults []*ledgerv1.Account
-			for _, account := range res.Item() {
-				apiResults = append(apiResults, account.ToAPI())
-			}
+				if res.IsError() {
+					return res.Error()
+				}
 
-			jobErr := pipe.WriteResult(ctx, apiResults)
-			if jobErr != nil {
-				return jobErr
-			}
-		}
+				var apiResults []*ledgerv1.Account
+				for _, account := range res.Item() {
+					apiResults = append(apiResults, account.ToAPI())
+				}
 
-	})
+				jobErr := pipe.WriteResult(ctx, apiResults)
+				if jobErr != nil {
+					return jobErr
+				}
+			}
+		},
+	)
 
 	err := workerpool.SubmitJob(ctx, b.workMan, job)
 	if err != nil {
@@ -116,10 +124,9 @@ func (b *accountBusiness) SearchAccounts(ctx context.Context, req *commonv1.Sear
 	}
 
 	return job, nil
-
 }
 
-// GetAccount retrieves an account by ID
+// GetAccount retrieves an account by ID.
 func (b *accountBusiness) GetAccount(ctx context.Context, id string) (*ledgerv1.Account, error) {
 	if id == "" {
 		return nil, ErrAccountIDRequired
@@ -134,23 +141,26 @@ func (b *accountBusiness) GetAccount(ctx context.Context, id string) (*ledgerv1.
 	return account.ToAPI(), nil
 }
 
-// UpdateAccount updates an existing account
-func (b *accountBusiness) UpdateAccount(ctx context.Context, req *ledgerv1.UpdateAccountRequest) (*ledgerv1.Account, error) {
+// UpdateAccount updates an existing account.
+func (b *accountBusiness) UpdateAccount(
+	ctx context.Context,
+	req *ledgerv1.UpdateAccountRequest,
+) (*ledgerv1.Account, error) {
 	// Business logic validation
-	if req.Id == "" {
+	if req.GetId() == "" {
 		return nil, ErrAccountIDRequired
 	}
 
 	// Convert API request to model - need to get existing account first
-	existingAccount, err := b.accountRepo.GetByID(ctx, req.Id)
+	existingAccount, err := b.accountRepo.GetByID(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
 
 	// Update fields from request
-	if req.Data != nil {
+	if req.GetData() != nil {
 		dataMap := &data.JSONMap{}
-		existingAccount.Data = dataMap.FromProtoStruct(req.Data)
+		existingAccount.Data = dataMap.FromProtoStruct(req.GetData())
 	}
 
 	// Update through repository
@@ -163,7 +173,7 @@ func (b *accountBusiness) UpdateAccount(ctx context.Context, req *ledgerv1.Updat
 	return existingAccount.ToAPI(), nil
 }
 
-// DeleteAccount deletes an account by ID
+// DeleteAccount deletes an account by ID.
 func (b *accountBusiness) DeleteAccount(ctx context.Context, id string) error {
 	if id == "" {
 		return ErrAccountIDRequired

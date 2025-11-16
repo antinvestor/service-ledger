@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"buf.build/gen/go/antinvestor/ledger/connectrpc/go/ledger/v1/ledgerv1connect"
-	"connectrpc.com/connect"
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
+	"buf.build/gen/go/antinvestor/ledger/connectrpc/go/ledger/v1/ledgerv1connect"
 	ledgerv1 "buf.build/gen/go/antinvestor/ledger/protocolbuffers/go/ledger/v1"
+	"connectrpc.com/connect"
 	"github.com/antinvestor/service-ledger/apps/default/tests"
 	"github.com/antinvestor/service-ledger/internal/utility"
 	"github.com/docker/docker/api/types/container"
@@ -72,7 +72,6 @@ func (as *ConnectAPISuite) setupServiceContainer(
 	datastoreDS data.DSN,
 	doMigration bool,
 ) (testcontainers.Container, error) {
-
 	environmentVars := []string{
 		"OTEL_TRACES_EXPORTER=none",
 		"LOG_LEVEL=debug",
@@ -121,7 +120,10 @@ func (as *ConnectAPISuite) setupServiceContainer(
 	return nil, errors.New("container not needed")
 }
 
-func (as *ConnectAPISuite) createInitialAccounts(ctx context.Context, client ledgerv1connect.LedgerServiceClient) error {
+func (as *ConnectAPISuite) createInitialAccounts(
+	ctx context.Context,
+	client ledgerv1connect.LedgerServiceClient,
+) error {
 	ledgers := []*ledgerv1.Ledger{
 		{Id: "ilAsset", Type: ledgerv1.LedgerType_ASSET},
 		{Id: "ilIncome", Type: ledgerv1.LedgerType_INCOME},
@@ -139,8 +141,8 @@ func (as *ConnectAPISuite) createInitialAccounts(ctx context.Context, client led
 
 	for _, req := range ledgers {
 		_, err := client.CreateLedger(ctx, connect.NewRequest(&ledgerv1.CreateLedgerRequest{
-			Id:   req.Id,
-			Type: req.Type,
+			Id:   req.GetId(),
+			Type: req.GetType(),
 		}))
 		if err != nil {
 			return err
@@ -149,8 +151,8 @@ func (as *ConnectAPISuite) createInitialAccounts(ctx context.Context, client led
 
 	for _, req := range accounts {
 		_, err := client.CreateAccount(ctx, connect.NewRequest(&ledgerv1.CreateAccountRequest{
-			Id:       req.Id,
-			LedgerId: req.Ledger,
+			Id:       req.GetId(),
+			LedgerId: req.GetLedger(),
 			Currency: "UGX", // Default currency
 		}))
 		if err != nil {
@@ -234,14 +236,14 @@ func (as *ConnectAPISuite) TestTransactions() {
 		for _, tt := range testcases {
 			t.Run(tt.name, func(t *testing.T) {
 				result, err := lc.CreateTransaction(ctx, connect.NewRequest(&ledgerv1.CreateTransactionRequest{
-				Id:           tt.request.Id,
-				Currency:     tt.request.CurrencyCode,
-				TransactedAt: tt.request.TransactedAt,
-				Data:         tt.request.Data,
-				Entries:      tt.request.Entries,
-				Cleared:      tt.request.Cleared,
-				Type:         tt.request.Type,
-			}))
+					Id:           tt.request.GetId(),
+					Currency:     tt.request.GetCurrencyCode(),
+					TransactedAt: tt.request.GetTransactedAt(),
+					Data:         tt.request.GetData(),
+					Entries:      tt.request.GetEntries(),
+					Cleared:      tt.request.GetCleared(),
+					Type:         tt.request.GetType(),
+				}))
 				if err != nil {
 					if !tt.wantErr {
 						t.Errorf("Create Transaction () error = %v, wantErr %v", err, tt.wantErr)
@@ -249,7 +251,7 @@ func (as *ConnectAPISuite) TestTransactions() {
 					return
 				}
 
-				accRef := result.Msg.Data.Entries[0].AccountId
+				accRef := result.Msg.GetData().GetEntries()[0].GetAccountId()
 				searchReq := &commonv1.SearchRequest{
 					Query: fmt.Sprintf(
 						"{\"query\": {\"must\": { \"fields\": [{\"id\": {\"eq\": \"%s\"}}]}}}",
@@ -265,9 +267,9 @@ func (as *ConnectAPISuite) TestTransactions() {
 					break // We only need the first result for this test
 				}
 				require.NotNil(t, acc, "No account received")
-				require.NotEmpty(t, acc.Data, "No account data in response")
+				require.NotEmpty(t, acc.GetData(), "No account data in response")
 
-				accountData := acc.Data[0]
+				accountData := acc.GetData()[0]
 				assert.True(t, utility.CompareMoney(tt.balance, accountData.GetBalance()))
 				assert.True(t, utility.CompareMoney(tt.reserve, accountData.GetReservedBalance()))
 				assert.True(t, utility.CompareMoney(tt.uncleared, accountData.GetUnclearedBalance()))
@@ -355,29 +357,29 @@ func (as *ConnectAPISuite) TestClearBalances() {
 		for _, tt := range testcases {
 			t.Run(tt.name, func(t *testing.T) {
 				result, err := lc.CreateTransaction(ctx, connect.NewRequest(&ledgerv1.CreateTransactionRequest{
-				Id:           tt.request.Id,
-				Currency:     tt.request.CurrencyCode,
-				TransactedAt: tt.request.TransactedAt,
-				Data:         tt.request.Data,
-				Entries:      tt.request.Entries,
-				Cleared:      tt.request.Cleared,
-				Type:         tt.request.Type,
-			}))
-			if err != nil {
-				if !tt.wantErr {
-					t.Fatalf("Transaction processing error = %v, wantErr %v", err, tt.wantErr)
+					Id:           tt.request.GetId(),
+					Currency:     tt.request.GetCurrencyCode(),
+					TransactedAt: tt.request.GetTransactedAt(),
+					Data:         tt.request.GetData(),
+					Entries:      tt.request.GetEntries(),
+					Cleared:      tt.request.GetCleared(),
+					Type:         tt.request.GetType(),
+				}))
+				if err != nil {
+					if !tt.wantErr {
+						t.Fatalf("Transaction processing error = %v, wantErr %v", err, tt.wantErr)
+					}
+					return
 				}
-				return
-			}
 
-			accRef := result.Msg.Data.Entries[0].AccountId
+				accRef := result.Msg.GetData().GetEntries()[0].GetAccountId()
 
 				accountsStream, err := lc.SearchAccounts(ctx, connect.NewRequest(&commonv1.SearchRequest{
-				Query: fmt.Sprintf(
-					"{\"query\": {\"must\": { \"fields\": [{\"id\": {\"eq\": \"%s\"}}]}}}",
-					accRef,
-				),
-			}))
+					Query: fmt.Sprintf(
+						"{\"query\": {\"must\": { \"fields\": [{\"id\": {\"eq\": \"%s\"}}]}}}",
+						accRef,
+					),
+				}))
 				require.NoError(t, err)
 
 				var acc *ledgerv1.SearchAccountsResponse
@@ -386,9 +388,9 @@ func (as *ConnectAPISuite) TestClearBalances() {
 					break // We only need the first result for this test
 				}
 				require.NotNil(t, acc, "No account received")
-				require.NotEmpty(t, acc.Data, "No account data in response")
+				require.NotEmpty(t, acc.GetData(), "No account data in response")
 
-				accountData := acc.Data[0]
+				accountData := acc.GetData()[0]
 				assert.True(t, utility.CompareMoney(tt.balance, accountData.GetBalance()))
 				assert.True(t, utility.CompareMoney(tt.reserve, accountData.GetReservedBalance()))
 				assert.True(t, utility.CompareMoney(tt.uncleared, accountData.GetUnclearedBalance()))
@@ -396,4 +398,3 @@ func (as *ConnectAPISuite) TestClearBalances() {
 		}
 	})
 }
-

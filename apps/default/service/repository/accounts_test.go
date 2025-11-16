@@ -45,7 +45,7 @@ func (as *AccountsSuite) TestAccountsInfoAPI() {
 		if err != nil {
 			require.NoError(t, err, "Error getting account info api account")
 		} else {
-			assert.Nil(t, err, "Error while getting acccount")
+			assert.NoError(t, err, "Error while getting acccount")
 			assert.Equal(t, "100", account.ID, "Invalid account Reference")
 			assert.True(t, account.Balance.Valid && account.Balance.Decimal.IsZero(), "Invalid account balance")
 		}

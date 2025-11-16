@@ -16,7 +16,7 @@ type LedgerServer struct {
 	Transaction business.TransactionBusiness
 }
 
-// NewLedgerServer creates a new LedgerServer with injected dependencies
+// NewLedgerServer creates a new LedgerServer with injected dependencies.
 func NewLedgerServer(
 	ledgerBusiness business.LedgerBusiness,
 	accountBusiness business.AccountBusiness,
@@ -56,7 +56,7 @@ func (ledgerSrv *LedgerServer) SearchLedgers(
 		response := &ledgerv1.SearchLedgersResponse{
 			Data: res.Item(),
 		}
-		
+
 		if err := stream.Send(response); err != nil {
 			return err
 		}

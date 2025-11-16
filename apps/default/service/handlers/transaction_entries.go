@@ -5,9 +5,9 @@ import (
 
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	ledgerv1 "buf.build/gen/go/antinvestor/ledger/protocolbuffers/go/ledger/v1"
+	"connectrpc.com/connect"
 	"github.com/antinvestor/service-ledger/apps/default/service/models"
 	utility2 "github.com/antinvestor/service-ledger/internal/utility"
-	"connectrpc.com/connect"
 )
 
 func transactionEntryToAPI(mEntry *models.TransactionEntry) *ledgerv1.TransactionEntry {
@@ -40,11 +40,11 @@ func (ledgerSrv *LedgerServer) SearchTransactionEntries(
 	for i, entry := range result {
 		apiEntries[i] = transactionEntryToAPI(entry)
 	}
-	
+
 	response := &ledgerv1.SearchTransactionEntriesResponse{
 		Data: apiEntries,
 	}
-	
+
 	if err := stream.Send(response); err != nil {
 		return err
 	}

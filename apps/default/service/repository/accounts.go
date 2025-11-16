@@ -58,8 +58,12 @@ type accountRepository struct {
 }
 
 // NewAccountRepository provides instance of `accountRepository`.
-func NewAccountRepository(ctx context.Context, dbPool pool.Pool, workMan workerpool.Manager, ledgerRepository LedgerRepository) AccountRepository {
-
+func NewAccountRepository(
+	ctx context.Context,
+	dbPool pool.Pool,
+	workMan workerpool.Manager,
+	ledgerRepository LedgerRepository,
+) AccountRepository {
 	return &accountRepository{
 		BaseRepository: datastore.NewBaseRepository[*models.Account](
 			ctx, dbPool, workMan, func() *models.Account { return &models.Account{} },
@@ -164,8 +168,11 @@ func (a *accountRepository) searchAccounts(ctx context.Context, sqlQuery *Search
 
 	return accountList, nil
 }
-func (a *accountRepository) SearchAsESQ(ctx context.Context, query string) (workerpool.JobResultPipe[[]*models.Account], error) {
 
+func (a *accountRepository) SearchAsESQ(
+	ctx context.Context,
+	query string,
+) (workerpool.JobResultPipe[[]*models.Account], error) {
 	job := workerpool.NewJob(func(ctx context.Context, jobResult workerpool.JobResultPipe[[]*models.Account]) error {
 		rawQuery, aerr := NewSearchRawQuery(ctx, query)
 		if aerr != nil {

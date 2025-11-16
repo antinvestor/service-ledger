@@ -7,7 +7,6 @@ import (
 	"time"
 
 	ledgerv1 "buf.build/gen/go/antinvestor/ledger/protocolbuffers/go/ledger/v1"
-
 	"github.com/antinvestor/service-ledger/apps/default/service/models"
 	"github.com/antinvestor/service-ledger/apps/default/tests"
 	"github.com/antinvestor/service-ledger/internal/utility"

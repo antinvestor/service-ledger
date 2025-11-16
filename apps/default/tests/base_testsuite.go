@@ -37,7 +37,7 @@ type BaseTestSuite struct {
 	resources *ServiceResources
 }
 
-// ServiceResources returns the shared service dependencies for the test suite
+// ServiceResources returns the shared service dependencies for the test suite.
 func (bs *BaseTestSuite) ServiceResources() *ServiceResources {
 	// Create resources once and cache them to avoid unnecessary reinstantiation
 	if bs.resources == nil {
@@ -48,24 +48,9 @@ func (bs *BaseTestSuite) ServiceResources() *ServiceResources {
 	return bs.resources
 }
 
-// WithTestDependencies Creates subtests with each known DependancyOption.
-func (bs *BaseTestSuite) WithTestDependencies(
-	t *testing.T,
-	testFn func(t *testing.T, dep *definition.DependencyOption),
-) {
-	// Use the original working pattern
-	resources := bs.Resources()
-	deps := make([]definition.DependancyConn, len(resources))
-	for i, r := range resources {
-		deps[i] = r
-	}
-	testFn(t, definition.NewDependancyOption("default", util.RandomString(DefaultRandomStringLength), deps))
-}
-
 func initResources(_ context.Context) []definition.TestResource {
-	pg := testpostgres.NewWithOpts("service_ledger", definition.WithUserName("ant"), definition.WithPassword("s3cr3t"))
-	resources := []definition.TestResource{pg}
-	return resources
+	pg := testpostgres.NewWithOpts("service_ledger", definition.WithUserName("ant"))
+	return []definition.TestResource{pg}
 }
 
 func (bs *BaseTestSuite) SetupSuite() {
@@ -73,7 +58,11 @@ func (bs *BaseTestSuite) SetupSuite() {
 	bs.FrameBaseTestSuite.SetupSuite()
 }
 
-func (bs *BaseTestSuite) CreateService(t *testing.T, depOpts *definition.DependencyOption, frameOpts ...frame.Option, ) (context.Context, *frame.Service, *ServiceResources) {
+func (bs *BaseTestSuite) CreateService(
+	t *testing.T,
+	depOpts *definition.DependencyOption,
+	frameOpts ...frame.Option,
+) (context.Context, *frame.Service, *ServiceResources) {
 	ctx := t.Context()
 	cfg, err := config.FromEnv[aconfig.LedgerConfig]()
 	require.NoError(t, err)
@@ -138,4 +127,16 @@ func (bs *BaseTestSuite) CreateService(t *testing.T, depOpts *definition.Depende
 
 func (bs *BaseTestSuite) TearDownSuite() {
 	bs.FrameBaseTestSuite.TearDownSuite()
+}
+
+// WithTestDependencies Creates subtests with each known DependancyOption.
+func (bs *BaseTestSuite) WithTestDependencies(
+	t *testing.T,
+	testFn func(t *testing.T, dep *definition.DependencyOption),
+) {
+	options := []*definition.DependencyOption{
+		definition.NewDependancyOption("default", util.RandomString(DefaultRandomStringLength), bs.Resources()),
+	}
+
+	frametests.WithTestDependencies(t, options, testFn)
 }

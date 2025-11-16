@@ -57,8 +57,11 @@ func (l *ledgerRepository) searchLedgers(ctx context.Context, sqlQuery *SearchSQ
 
 	return ledgerList, nil
 }
-func (l *ledgerRepository) SearchAsESQ(ctx context.Context, query string) (workerpool.JobResultPipe[[]*models.Ledger], error) {
 
+func (l *ledgerRepository) SearchAsESQ(
+	ctx context.Context,
+	query string,
+) (workerpool.JobResultPipe[[]*models.Ledger], error) {
 	job := workerpool.NewJob(func(ctxI context.Context, jobResult workerpool.JobResultPipe[[]*models.Ledger]) error {
 		rawQuery, err := NewSearchRawQuery(ctxI, query)
 		if err != nil {

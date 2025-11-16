@@ -43,7 +43,7 @@ func (ls *LedgersSuite) TestLedgersInfoAPI() {
 		workMan := svc.WorkManager()
 		ledgersDB := repository.NewLedgerRepository(ctx, dbPool, workMan)
 		lg, err := ledgersDB.GetByID(ctx, ls.ledger.ID)
-		assert.Nil(t, err, "Error while getting ledger "+lg.ID)
+		assert.NoError(t, err, "Error while getting ledger "+lg.ID)
 		assert.Equal(t, ls.ledger.ID, lg.ID, "Invalid ledger id")
 	})
 }
