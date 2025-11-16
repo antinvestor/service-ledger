@@ -403,37 +403,38 @@ func (ts *TransactionsModelSuite) TestDuplicateTransactions() {
 
 		timeNow := time.Now().UTC()
 
-		transaction := &models.Transaction{
-			BaseModel:       data.BaseModel{ID: "t005"},
-			Currency:        "UGX",
-			TransactionType: ledgerv1.TransactionType_NORMAL.String(),
-			TransactedAt:    timeNow,
-			ClearedAt:       timeNow,
-			Entries: []*models.TransactionEntry{
-				{
-					AccountID: "a1",
-					Credit:    false,
-					Amount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
-				},
-				{
-					AccountID: "a2",
-					Credit:    true,
-					Amount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
-				},
-			},
-		}
-
 		var wg sync.WaitGroup
 		wg.Add(5)
 		for i := 1; i <= 5; i++ {
-			go func(txn *models.Transaction) {
-				trxn, err := txnBusiness.Transact(ctx, txn)
+			go func(txnID string) {
+				// Create a fresh transaction instance for each goroutine
+				transactionCopy := &models.Transaction{
+					BaseModel:       data.BaseModel{ID: txnID},
+					Currency:        "UGX",
+					TransactionType: ledgerv1.TransactionType_NORMAL.String(),
+					TransactedAt:    timeNow,
+					ClearedAt:       timeNow,
+					Entries: []*models.TransactionEntry{
+						{
+							AccountID: "a1",
+							Credit:    false,
+							Amount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
+						},
+						{
+							AccountID: "a2",
+							Credit:    true,
+							Amount:    decimal.NewNullDecimal(decimal.NewFromInt(100)),
+						},
+					},
+				}
+				
+				trxn, err := txnBusiness.Transact(ctx, transactionCopy)
 				if err != nil {
 					t.Logf("Transaction creation failed: %v", err)
 				}
 				assert.NotNil(t, trxn, "Transaction creation should be success")
 				wg.Done()
-			}(transaction)
+			}("t005")
 		}
 		wg.Wait()
 

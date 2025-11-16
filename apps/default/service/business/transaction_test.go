@@ -2,6 +2,9 @@ package business_test
 
 import (
 	"context"
+	"fmt"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -484,5 +487,433 @@ func (ts *TransactionBusinessSuite) TestUpdateTransaction() {
 		// Verify the update
 		assert.Equal(t, "Updated reference", updatedTransaction.GetData().GetFields()["reference"].GetStringValue())
 		assert.Equal(t, "Payment", updatedTransaction.GetData().GetFields()["category"].GetStringValue())
+	})
+}
+
+func (ts *TransactionBusinessSuite) TestDuplicateTransactionExactDuplicate() {
+	ts.WithTestDependencies(ts.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, _, resources := ts.CreateService(t, dep)
+		ts.setupFixtures(ctx, resources)
+
+		transactionBusiness := resources.TransactionBusiness
+
+		// Create first transaction
+		createTransactionReq := &ledgerv1.CreateTransactionRequest{
+			Id:       "duplicate-test-transaction",
+			Currency: "USD",
+			Type:     ledgerv1.TransactionType_NORMAL,
+			Entries: []*ledgerv1.TransactionEntry{
+				{
+					Id:        "entry1",
+					AccountId: "asset-account",
+					Credit:    false,
+					Amount:    &money.Money{CurrencyCode: "USD", Units: 100, Nanos: 0},
+				},
+				{
+					Id:        "entry2",
+					AccountId: "income-account",
+					Credit:    true,
+					Amount:    &money.Money{CurrencyCode: "USD", Units: 100, Nanos: 0},
+				},
+			},
+			TransactedAt: time.Now().UTC().Format(time.RFC3339),
+			Cleared:      true,
+		}
+
+		// Create the same transaction twice - should be idempotent
+		firstTransaction, err := transactionBusiness.CreateTransaction(ctx, createTransactionReq)
+		require.NoError(t, err, "Error creating first transaction")
+		require.NotNil(t, firstTransaction, "First transaction should be created")
+
+		secondTransaction, err := transactionBusiness.CreateTransaction(ctx, createTransactionReq)
+		require.NoError(t, err, "Error creating duplicate transaction")
+		require.NotNil(t, secondTransaction, "Duplicate transaction should be returned")
+
+		// Should return the same transaction (idempotent behavior)
+		assert.Equal(t, firstTransaction.GetId(), secondTransaction.GetId(), "Should return same transaction ID")
+		assert.Equal(t, firstTransaction.GetCurrencyCode(), secondTransaction.GetCurrencyCode(), "Should have same currency")
+		assert.Len(t, secondTransaction.GetEntries(), 2, "Should have 2 entries")
+	})
+}
+
+func (ts *TransactionBusinessSuite) TestDuplicateTransactionConflictingEntries() {
+	ts.WithTestDependencies(ts.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, _, resources := ts.CreateService(t, dep)
+		ts.setupFixtures(ctx, resources)
+
+		transactionBusiness := resources.TransactionBusiness
+
+		// Create first transaction
+		firstTransactionReq := &ledgerv1.CreateTransactionRequest{
+			Id:       "conflicting-duplicate-transaction",
+			Currency: "USD",
+			Type:     ledgerv1.TransactionType_NORMAL,
+			Entries: []*ledgerv1.TransactionEntry{
+				{
+					Id:        "entry1",
+					AccountId: "asset-account",
+					Credit:    false,
+					Amount:    &money.Money{CurrencyCode: "USD", Units: 100, Nanos: 0},
+				},
+				{
+					Id:        "entry2",
+					AccountId: "income-account",
+					Credit:    true,
+					Amount:    &money.Money{CurrencyCode: "USD", Units: 100, Nanos: 0},
+				},
+			},
+		}
+
+		firstTransaction, err := transactionBusiness.CreateTransaction(ctx, firstTransactionReq)
+		require.NoError(t, err, "Error creating first transaction")
+		require.NotNil(t, firstTransaction, "First transaction should be created")
+
+		// Try to create transaction with same ID but different entries (conflict)
+		conflictingTransactionReq := &ledgerv1.CreateTransactionRequest{
+			Id:       "conflicting-duplicate-transaction", // Same ID
+			Currency: "USD",
+			Type:     ledgerv1.TransactionType_NORMAL,
+			Entries: []*ledgerv1.TransactionEntry{
+				{
+					Id:        "entry1",
+					AccountId: "asset-account",
+					Credit:    false,
+					Amount:    &money.Money{CurrencyCode: "USD", Units: 200, Nanos: 0}, // Different amount
+				},
+				{
+					Id:        "entry2",
+					AccountId: "income-account",
+					Credit:    true,
+					Amount:    &money.Money{CurrencyCode: "USD", Units: 200, Nanos: 0}, // Different amount
+				},
+			},
+		}
+
+		conflictingTransaction, err := transactionBusiness.CreateTransaction(ctx, conflictingTransactionReq)
+		require.Error(t, err, "Should fail with conflicting transaction")
+		assert.Nil(t, conflictingTransaction, "Conflicting transaction should not be created")
+		assert.Contains(t, err.Error(), "conflict", "Error should mention conflict")
+	})
+}
+
+func (ts *TransactionBusinessSuite) TestDuplicateTransactionConflictingAccounts() {
+	ts.WithTestDependencies(ts.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, _, resources := ts.CreateService(t, dep)
+		ts.setupFixtures(ctx, resources)
+
+		transactionBusiness := resources.TransactionBusiness
+
+		// Create first transaction
+		firstTransactionReq := &ledgerv1.CreateTransactionRequest{
+			Id:       "conflicting-accounts-transaction",
+			Currency: "USD",
+			Type:     ledgerv1.TransactionType_NORMAL,
+			Entries: []*ledgerv1.TransactionEntry{
+				{
+					Id:        "entry1",
+					AccountId: "asset-account",
+					Credit:    false,
+					Amount:    &money.Money{CurrencyCode: "USD", Units: 100, Nanos: 0},
+				},
+				{
+					Id:        "entry2",
+					AccountId: "income-account",
+					Credit:    true,
+					Amount:    &money.Money{CurrencyCode: "USD", Units: 100, Nanos: 0},
+				},
+			},
+		}
+
+		firstTransaction, err := transactionBusiness.CreateTransaction(ctx, firstTransactionReq)
+		require.NoError(t, err, "Error creating first transaction")
+		require.NotNil(t, firstTransaction, "First transaction should be created")
+
+		// Create additional accounts for conflicting test
+		createAdditionalAccountReq := &ledgerv1.CreateAccountRequest{
+			Id:       "additional-account",
+			LedgerId: ts.assetLedger.ID,
+			Currency: "USD",
+		}
+		_, err = resources.AccountBusiness.CreateAccount(ctx, createAdditionalAccountReq)
+		require.NoError(t, err, "Error creating additional account")
+
+		// Try to create transaction with same ID but different accounts
+		conflictingAccountsReq := &ledgerv1.CreateTransactionRequest{
+			Id:       "conflicting-accounts-transaction", // Same ID
+			Currency: "USD",
+			Type:     ledgerv1.TransactionType_NORMAL,
+			Entries: []*ledgerv1.TransactionEntry{
+				{
+					Id:        "entry1",
+					AccountId: "additional-account", // Different account
+					Credit:    false,
+					Amount:    &money.Money{CurrencyCode: "USD", Units: 100, Nanos: 0},
+				},
+				{
+					Id:        "entry2",
+					AccountId: "income-account",
+					Credit:    true,
+					Amount:    &money.Money{CurrencyCode: "USD", Units: 100, Nanos: 0},
+				},
+			},
+		}
+
+		conflictingTransaction, err := transactionBusiness.CreateTransaction(ctx, conflictingAccountsReq)
+		require.Error(t, err, "Should fail with conflicting accounts")
+		assert.Nil(t, conflictingTransaction, "Conflicting transaction should not be created")
+		assert.Contains(t, err.Error(), "conflict", "Error should mention conflict")
+	})
+}
+
+func (ts *TransactionBusinessSuite) TestDuplicateTransactionDifferentEntryOrder() {
+	ts.WithTestDependencies(ts.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, _, resources := ts.CreateService(t, dep)
+		ts.setupFixtures(ctx, resources)
+
+		transactionBusiness := resources.TransactionBusiness
+
+		// Create first transaction
+		firstTransactionReq := &ledgerv1.CreateTransactionRequest{
+			Id:       "order-test-transaction",
+			Currency: "USD",
+			Type:     ledgerv1.TransactionType_NORMAL,
+			Entries: []*ledgerv1.TransactionEntry{
+				{
+					Id:        "entry1",
+					AccountId: "asset-account",
+					Credit:    false,
+					Amount:    &money.Money{CurrencyCode: "USD", Units: 100, Nanos: 0},
+				},
+				{
+					Id:        "entry2",
+					AccountId: "income-account",
+					Credit:    true,
+					Amount:    &money.Money{CurrencyCode: "USD", Units: 100, Nanos: 0},
+				},
+			},
+		}
+
+		firstTransaction, err := transactionBusiness.CreateTransaction(ctx, firstTransactionReq)
+		require.NoError(t, err, "Error creating first transaction")
+		require.NotNil(t, firstTransaction, "First transaction should be created")
+
+		// Create transaction with same entries but different order
+		reversedOrderReq := &ledgerv1.CreateTransactionRequest{
+			Id:       "order-test-transaction", // Same ID
+			Currency: "USD",
+			Type:     ledgerv1.TransactionType_NORMAL,
+			Entries: []*ledgerv1.TransactionEntry{
+				{
+					Id:        "entry2", // Different entry ID order
+					AccountId: "income-account",
+					Credit:    true,
+					Amount:    &money.Money{CurrencyCode: "USD", Units: 100, Nanos: 0},
+				},
+				{
+					Id:        "entry1", // Different entry ID order
+					AccountId: "asset-account",
+					Credit:    false,
+					Amount:    &money.Money{CurrencyCode: "USD", Units: 100, Nanos: 0},
+				},
+			},
+		}
+
+		reversedOrderTransaction, err := transactionBusiness.CreateTransaction(ctx, reversedOrderReq)
+		require.NoError(t, err, "Should succeed with same entries in different order")
+		require.NotNil(t, reversedOrderTransaction, "Transaction should be returned")
+
+		// Should return the same transaction (idempotent behavior)
+		assert.Equal(t, firstTransaction.GetId(), reversedOrderTransaction.GetId(), "Should return same transaction ID")
+	})
+}
+
+func (ts *TransactionBusinessSuite) TestDuplicateReservationTransaction() {
+	ts.WithTestDependencies(ts.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, _, resources := ts.CreateService(t, dep)
+		ts.setupFixtures(ctx, resources)
+
+		transactionBusiness := resources.TransactionBusiness
+
+		// Create first reservation transaction
+		reservationReq := &ledgerv1.CreateTransactionRequest{
+			Id:       "duplicate-reservation-transaction",
+			Currency: "USD",
+			Type:     ledgerv1.TransactionType_RESERVATION,
+			Entries: []*ledgerv1.TransactionEntry{
+				{
+					Id:        "reservation-entry",
+					AccountId: "asset-account",
+					Credit:    false,
+					Amount:    &money.Money{CurrencyCode: "USD", Units: 500, Nanos: 0},
+				},
+			},
+		}
+
+		firstReservation, err := transactionBusiness.CreateTransaction(ctx, reservationReq)
+		require.NoError(t, err, "Error creating first reservation transaction")
+		require.NotNil(t, firstReservation, "First reservation should be created")
+
+		// Try to create the same reservation transaction again
+		duplicateReservation, err := transactionBusiness.CreateTransaction(ctx, reservationReq)
+		require.NoError(t, err, "Error creating duplicate reservation transaction")
+		require.NotNil(t, duplicateReservation, "Duplicate reservation should be returned")
+
+		// Should return the same reservation (idempotent behavior)
+		assert.Equal(t, firstReservation.GetId(), duplicateReservation.GetId(), "Should return same reservation ID")
+		assert.Equal(t, ledgerv1.TransactionType_RESERVATION, duplicateReservation.GetType(), "Should be reservation type")
+	})
+}
+
+func (ts *TransactionBusinessSuite) TestConcurrentTransactionStress() {
+	ts.WithTestDependencies(ts.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, _, resources := ts.CreateService(t, dep)
+		ts.setupFixtures(ctx, resources)
+
+		transactionBusiness := resources.TransactionBusiness
+
+		// Create additional accounts for concurrent testing
+		for i := 0; i < 10; i++ {
+			accountReq := &ledgerv1.CreateAccountRequest{
+				Id:       fmt.Sprintf("concurrent-account-%d", i),
+				LedgerId: ts.assetLedger.ID,
+				Currency: "USD",
+			}
+			_, err := resources.AccountBusiness.CreateAccount(ctx, accountReq)
+			require.NoError(t, err, "Error creating concurrent account %d", i)
+		}
+
+		// Test parameters
+		numGoroutines := 50
+		numTransactions := 10
+		var wg sync.WaitGroup
+		var mu sync.Mutex
+		successCount := 0
+		duplicateCount := 0
+		conflictCount := 0
+		errorCount := 0
+		createdTransactions := make(map[string]*ledgerv1.Transaction)
+
+		// Launch multiple goroutines creating transactions concurrently
+		for i := 0; i < numGoroutines; i++ {
+			wg.Add(1)
+			go func(goroutineID int) {
+				defer wg.Done()
+				
+				for j := 0; j < numTransactions; j++ {
+					transactionID := fmt.Sprintf("concurrent-txn-%d-%d", goroutineID, j)
+					
+					// Create transaction with unique ID
+					createReq := &ledgerv1.CreateTransactionRequest{
+						Id:       transactionID,
+						Currency: "USD",
+						Type:     ledgerv1.TransactionType_NORMAL,
+						Entries: []*ledgerv1.TransactionEntry{
+							{
+								Id:        "entry1",
+								AccountId: "concurrent-account-0",
+								Credit:    false,
+								Amount:    &money.Money{CurrencyCode: "USD", Units: 100, Nanos: 0},
+							},
+							{
+								Id:        "entry2",
+								AccountId: "income-account",
+								Credit:    true,
+								Amount:    &money.Money{CurrencyCode: "USD", Units: 100, Nanos: 0},
+							},
+						},
+					}
+
+					// First attempt - should succeed
+					transaction, err := transactionBusiness.CreateTransaction(ctx, createReq)
+					if err != nil {
+						mu.Lock()
+						errorCount++
+						mu.Unlock()
+						continue
+					}
+
+					// Second attempt with same ID - should be idempotent
+					duplicateTransaction, err := transactionBusiness.CreateTransaction(ctx, createReq)
+					if err != nil {
+						if strings.Contains(err.Error(), "conflict") {
+							mu.Lock()
+							conflictCount++
+							mu.Unlock()
+						} else {
+							mu.Lock()
+							errorCount++
+							mu.Unlock()
+						}
+						continue
+					}
+
+					// Verify idempotent behavior - should return same transaction
+					mu.Lock()
+					if transaction.GetId() == duplicateTransaction.GetId() {
+						if _, exists := createdTransactions[transactionID]; !exists {
+							successCount++
+							createdTransactions[transactionID] = transaction
+						}
+						duplicateCount++ // Count successful idempotent calls
+					} else {
+						// This shouldn't happen - different transaction returned for same ID
+						errorCount++
+					}
+					mu.Unlock()
+
+					// Test conflicting transaction with same ID
+					conflictReq := &ledgerv1.CreateTransactionRequest{
+						Id:       transactionID,
+						Currency: "USD",
+						Type:     ledgerv1.TransactionType_NORMAL,
+						Entries: []*ledgerv1.TransactionEntry{
+							{
+								Id:        "entry1",
+								AccountId: "concurrent-account-1",
+								Credit:    false,
+								Amount:    &money.Money{CurrencyCode: "USD", Units: 200, Nanos: 0}, // Different amount
+							},
+							{
+								Id:        "entry2",
+								AccountId: "income-account",
+								Credit:    true,
+								Amount:    &money.Money{CurrencyCode: "USD", Units: 200, Nanos: 0},
+							},
+						},
+					}
+
+					_, conflictErr := transactionBusiness.CreateTransaction(ctx, conflictReq)
+					if conflictErr != nil && strings.Contains(conflictErr.Error(), "conflict") {
+						mu.Lock()
+						conflictCount++
+						mu.Unlock()
+					}
+				}
+			}(i)
+		}
+
+		wg.Wait()
+
+		// Verify results
+		expectedTransactions := numGoroutines * numTransactions
+		t.Logf("Concurrent transaction test results:")
+		t.Logf("- Expected unique transactions: %d", expectedTransactions)
+		t.Logf("- Successful transactions: %d", successCount)
+		t.Logf("- Duplicate (idempotent) calls: %d", duplicateCount)
+		t.Logf("- Conflicting transactions rejected: %d", conflictCount)
+		t.Logf("- Other errors: %d", errorCount)
+
+		assert.Equal(t, expectedTransactions, successCount, "All unique transactions should be created")
+		assert.Equal(t, expectedTransactions, duplicateCount, "All duplicate calls should be handled idempotently")
+		assert.Greater(t, conflictCount, 0, "Conflicting transactions should be rejected")
+		assert.Equal(t, 0, errorCount, "There should be no unexpected errors")
+
+		// Verify all transactions were actually created
+		for transactionID, transaction := range createdTransactions {
+			retrieved, err := transactionBusiness.GetTransaction(ctx, transactionID)
+			assert.NoError(t, err, "Should be able to retrieve created transaction %s", transactionID)
+			assert.Equal(t, transaction.GetId(), retrieved.GetId(), "Retrieved transaction should match")
+			assert.Len(t, retrieved.GetEntries(), 2, "Transaction should have 2 entries")
+		}
 	})
 }
