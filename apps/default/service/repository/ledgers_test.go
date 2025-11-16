@@ -12,6 +12,7 @@ import (
 	"github.com/pitabwire/frame/datastore"
 	"github.com/pitabwire/frame/frametests/definition"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -43,7 +44,7 @@ func (ls *LedgersSuite) TestLedgersInfoAPI() {
 		workMan := svc.WorkManager()
 		ledgersDB := repository.NewLedgerRepository(ctx, dbPool, workMan)
 		lg, err := ledgersDB.GetByID(ctx, ls.ledger.ID)
-		assert.NoError(t, err, "Error while getting ledger "+lg.ID)
+		require.NoError(t, err, "Error while getting ledger")
 		assert.Equal(t, ls.ledger.ID, lg.ID, "Invalid ledger id")
 	})
 }

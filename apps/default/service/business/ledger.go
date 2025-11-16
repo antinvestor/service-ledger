@@ -152,7 +152,7 @@ func (b *ledgerBusiness) UpdateLedger(
 }
 
 // DeleteLedger deletes a ledger by ID.
-func (b *ledgerBusiness) DeleteLedger(ctx context.Context, id string) error {
+func (b *ledgerBusiness) DeleteLedger(_ context.Context, id string) error {
 	if id == "" {
 		return ErrLedgerIDRequired
 	}

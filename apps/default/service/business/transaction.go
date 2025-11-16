@@ -99,9 +99,9 @@ func (b *transactionBusiness) CreateTransaction(
 	// Try to get accounts one by one as a workaround
 	accountsMap := make(map[string]*models.Account)
 	for _, accountID := range accountIDs {
-		account, err := b.accountRepo.GetByID(ctx, accountID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get account %s: %w", accountID, err)
+		account, getErr := b.accountRepo.GetByID(ctx, accountID)
+		if getErr != nil {
+			return nil, fmt.Errorf("failed to get account %s: %w", accountID, getErr)
 		}
 		if account == nil {
 			return nil, fmt.Errorf("account %s not found", accountID)
@@ -129,7 +129,7 @@ func (b *transactionBusiness) CreateTransaction(
 }
 
 // validateTransaction performs business validation for a transaction.
-func (b *transactionBusiness) validateTransaction(ctx context.Context, txn *models.Transaction) error {
+func (b *transactionBusiness) validateTransaction(_ context.Context, txn *models.Transaction) error {
 	if ledgerv1.TransactionType_NORMAL.String() == txn.TransactionType ||
 		ledgerv1.TransactionType_REVERSAL.String() == txn.TransactionType {
 		// Skip if the transaction is invalid
@@ -296,22 +296,9 @@ func (b *transactionBusiness) UpdateTransaction(
 	}
 
 	if existingTransaction.ClearedAt.IsZero() {
-		if req.GetClearedAt() != "" {
-			clearanceTime, parseErr := time.Parse(DefaultTimestamLayout, req.GetClearedAt())
-			if parseErr != nil {
-				return nil, parseErr
-			}
-
-			accountsMap, validationErr := b.Validate(ctx, existingTransaction)
-			if validationErr != nil {
-				return nil, validationErr
-			}
-
-			for _, line := range existingTransaction.Entries {
-				account := accountsMap[line.AccountID]
-				line.Balance = decimal.NewNullDecimal(account.Balance.Decimal)
-			}
-			existingTransaction.ClearedAt = clearanceTime
+		err = b.processClearanceUpdate(ctx, req, existingTransaction)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -376,7 +363,7 @@ func (b *transactionBusiness) ReverseTransaction(
 }
 
 // DeleteTransaction deletes a transaction by ID.
-func (b *transactionBusiness) DeleteTransaction(ctx context.Context, id string) error {
+func (b *transactionBusiness) DeleteTransaction(_ context.Context, id string) error {
 	if id == "" {
 		return ErrTransactionIDRequired
 	}
@@ -426,7 +413,7 @@ func (b *transactionBusiness) SearchEntries(
 }
 
 // Validate checks all issues around transaction are satisfied.
-func (t *transactionBusiness) Validate(
+func (b *transactionBusiness) Validate(
 	ctx context.Context,
 	txn *models.Transaction,
 ) (map[string]*models.Account, error) {
@@ -462,7 +449,7 @@ func (t *transactionBusiness) Validate(
 	}
 
 	// Retrieve accounts from database
-	accountsMap, errAcc := t.accountRepo.ListByID(ctx, accountIDs...)
+	accountsMap, errAcc := b.accountRepo.ListByID(ctx, accountIDs...)
 	if errAcc != nil {
 		return nil, errAcc
 	}
@@ -511,6 +498,8 @@ func (b *transactionBusiness) IsConflict(
 }
 
 // Transact creates the input transaction in the DB.
+//
+//nolint:gocognit // High cognitive complexity is unavoidable due to comprehensive transaction validation logic
 func (b *transactionBusiness) Transact(
 	ctx context.Context, transaction *models.Transaction,
 ) (*models.Transaction, error) {
@@ -583,4 +572,32 @@ func (b *transactionBusiness) Transact(
 		return nil, apperrors.ErrSystemFailure.Override(err)
 	}
 	return result, nil
+}
+
+// processClearanceUpdate handles the clearance time update for a transaction.
+func (b *transactionBusiness) processClearanceUpdate(
+	ctx context.Context,
+	req *ledgerv1.UpdateTransactionRequest,
+	existingTransaction *models.Transaction,
+) error {
+	if req.GetClearedAt() == "" {
+		return nil
+	}
+
+	clearanceTime, parseErr := time.Parse(DefaultTimestamLayout, req.GetClearedAt())
+	if parseErr != nil {
+		return parseErr
+	}
+
+	accountsMap, validationErr := b.Validate(ctx, existingTransaction)
+	if validationErr != nil {
+		return validationErr
+	}
+
+	for _, line := range existingTransaction.Entries {
+		account := accountsMap[line.AccountID]
+		line.Balance = decimal.NewNullDecimal(account.Balance.Decimal)
+	}
+	existingTransaction.ClearedAt = clearanceTime
+	return nil
 }

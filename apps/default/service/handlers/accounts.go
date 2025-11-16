@@ -16,7 +16,7 @@ func (ledgerSrv *LedgerServer) SearchAccounts(
 	stream *connect.ServerStream[ledgerv1.SearchAccountsResponse],
 ) error {
 	// Search accounts using business layer
-	err := ledgerSrv.Account.SearchAccounts(ctx, req.Msg, func(ctx context.Context, batch []*ledgerv1.Account) error {
+	err := ledgerSrv.Account.SearchAccounts(ctx, req.Msg, func(_ context.Context, batch []*ledgerv1.Account) error {
 		// Send response with account data
 		return stream.Send(&ledgerv1.SearchAccountsResponse{
 			Data: batch,

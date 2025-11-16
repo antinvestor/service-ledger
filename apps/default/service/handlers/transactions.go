@@ -19,7 +19,7 @@ func (ledgerSrv *LedgerServer) SearchTransactions(
 	return ledgerSrv.Transaction.SearchTransactions(
 		ctx,
 		req.Msg,
-		func(ctx context.Context, batch []*ledgerv1.Transaction) error {
+		func(_ context.Context, batch []*ledgerv1.Transaction) error {
 			// Send response with transaction data
 			return stream.Send(&ledgerv1.SearchTransactionsResponse{
 				Data: batch,

@@ -159,7 +159,7 @@ func (ts *TransactionBusinessSuite) TestCreateTransactionNonZeroSum() {
 		}
 
 		transaction, err := transactionBusiness.CreateTransaction(ctx, createTransactionReq)
-		assert.Error(t, err, "Should fail with non-zero sum transaction")
+		require.Error(t, err, "Should fail with non-zero sum transaction")
 		assert.Nil(t, transaction, "Transaction should not be created")
 		assert.Contains(t, err.Error(), "non-zero sum", "Error should mention zero sum validation")
 	})
@@ -198,7 +198,7 @@ func (ts *TransactionBusinessSuite) TestCreateTransactionInvalidDebitCredit() {
 		}
 
 		transaction, err := transactionBusiness.CreateTransaction(ctx, createTransactionReq)
-		assert.Error(t, err, "Should fail with invalid debit/credit entry")
+		require.Error(t, err, "Should fail with invalid debit/credit entry")
 		assert.Nil(t, transaction, "Transaction should not be created")
 		assert.Contains(t, err.Error(), "invalid debit/credit", "Error should mention debit/credit validation")
 	})
@@ -232,7 +232,7 @@ func (ts *TransactionBusinessSuite) TestCreateTransactionWithNonExistentAccount(
 		}
 
 		transaction, err := transactionBusiness.CreateTransaction(ctx, createTransactionReq)
-		assert.Error(t, err, "Should fail with non-existent account")
+		require.Error(t, err, "Should fail with non-existent account")
 		assert.Nil(t, transaction, "Transaction should not be created")
 		assert.Contains(t, err.Error(), "not found", "Error should mention account not found")
 	})
@@ -267,7 +267,7 @@ func (ts *TransactionBusinessSuite) TestCreateTransactionWithCurrencyMismatch() 
 		}
 
 		transaction, err := transactionBusiness.CreateTransaction(ctx, createTransactionReq)
-		assert.Error(t, err, "Should fail with currency mismatch")
+		require.Error(t, err, "Should fail with currency mismatch")
 		assert.Nil(t, transaction, "Transaction should not be created")
 		assert.Contains(t, err.Error(), "currency", "Error should mention currency mismatch")
 	})
@@ -332,7 +332,7 @@ func (ts *TransactionBusinessSuite) TestCreateReservationTransactionInvalidEntri
 		}
 
 		transaction, err := transactionBusiness.CreateTransaction(ctx, createTransactionReq)
-		assert.Error(t, err, "Should fail with invalid reservation transaction")
+		require.Error(t, err, "Should fail with invalid reservation transaction")
 		assert.Nil(t, transaction, "Reservation transaction should not be created")
 		assert.Contains(t, err.Error(), "invalid debit/credit", "Error should mention entry validation")
 	})

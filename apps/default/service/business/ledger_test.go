@@ -61,7 +61,7 @@ func (ls *LedgerBusinessSuite) TestCreateLedgerWithMissingId() {
 		}
 
 		ledger, err := ledgerBusiness.CreateLedger(ctx, createLedgerReq)
-		assert.Error(t, err, "Should fail with missing ledger ID")
+		require.Error(t, err, "Should fail with missing ledger ID")
 		assert.Nil(t, ledger, "Ledger should not be created")
 		assert.Contains(t, err.Error(), "reference is required", "Error should mention missing reference")
 	})
@@ -98,7 +98,7 @@ func (ls *LedgerBusinessSuite) TestGetLedgerNotFound() {
 		ledgerBusiness := resources.LedgerBusiness
 
 		ledger, err := ledgerBusiness.GetLedger(ctx, "non-existent-ledger")
-		assert.Error(t, err, "Should fail with non-existent ledger")
+		require.Error(t, err, "Should fail with non-existent ledger")
 		assert.Nil(t, ledger, "Ledger should be nil")
 	})
 }
@@ -176,7 +176,7 @@ func (ls *LedgerBusinessSuite) TestSearchLedgers() {
 		}
 
 		var foundLedgers []*ledgerv1.Ledger
-		err := ledgerBusiness.SearchLedgers(ctx, searchReq, func(ctx context.Context, batch []*ledgerv1.Ledger) error {
+		err := ledgerBusiness.SearchLedgers(ctx, searchReq, func(_ context.Context, batch []*ledgerv1.Ledger) error {
 			foundLedgers = append(foundLedgers, batch...)
 			return nil
 		})

@@ -178,7 +178,7 @@ func (b *accountBusiness) UpdateAccount(
 }
 
 // DeleteAccount deletes an account by ID.
-func (b *accountBusiness) DeleteAccount(ctx context.Context, id string) error {
+func (b *accountBusiness) DeleteAccount(_ context.Context, id string) error {
 	if id == "" {
 		return ErrAccountIDRequired
 	}

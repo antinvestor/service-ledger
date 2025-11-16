@@ -7,6 +7,8 @@ import (
 	aconfig "github.com/antinvestor/service-ledger/apps/default/config"
 	"github.com/antinvestor/service-ledger/apps/default/service/business"
 	"github.com/antinvestor/service-ledger/apps/default/service/repository"
+
+	// Register PostgreSQL driver for database connections.
 	_ "github.com/lib/pq"
 	"github.com/pitabwire/frame"
 	"github.com/pitabwire/frame/config"

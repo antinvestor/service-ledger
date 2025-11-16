@@ -46,12 +46,8 @@ func (as *AccountsSuite) TestAccountsInfoAPI() {
 
 		// Use cached account repository from dependencies
 		account, err := resources.AccountRepository.GetByID(ctx, "100")
-		if err != nil {
-			require.NoError(t, err, "Error getting account info api account")
-		} else {
-			assert.NoError(t, err, "Error while getting acccount")
-			assert.Equal(t, "100", account.ID, "Invalid account Reference")
-			assert.True(t, account.Balance.Valid && account.Balance.Decimal.IsZero(), "Invalid account balance")
-		}
+		require.NoError(t, err, "Error getting account info api account")
+		assert.Equal(t, "100", account.ID, "Invalid account Reference")
+		assert.True(t, account.Balance.Valid && account.Balance.Decimal.IsZero(), "Invalid account balance")
 	})
 }

@@ -84,7 +84,7 @@ func (as *AccountBusinessSuite) TestCreateAccountWithInvalidCurrency() {
 		}
 
 		account, err := accountBusiness.CreateAccount(ctx, createAccountReq)
-		assert.Error(t, err, "Should fail with invalid currency")
+		require.Error(t, err, "Should fail with invalid currency")
 		assert.Nil(t, account, "Account should not be created")
 		assert.Contains(t, err.Error(), "currency is invalid", "Error should mention currency validation")
 	})
@@ -103,7 +103,7 @@ func (as *AccountBusinessSuite) TestCreateAccountWithMissingLedger() {
 		}
 
 		account, err := accountBusiness.CreateAccount(ctx, createAccountReq)
-		assert.Error(t, err, "Should fail with non-existent ledger")
+		require.Error(t, err, "Should fail with non-existent ledger")
 		assert.Nil(t, account, "Account should not be created")
 	})
 }
@@ -152,7 +152,7 @@ func (as *AccountBusinessSuite) TestGetAccountNotFound() {
 		accountBusiness := resources.AccountBusiness
 
 		account, err := accountBusiness.GetAccount(ctx, "non-existent-account")
-		assert.Error(t, err, "Should fail with non-existent account")
+		require.Error(t, err, "Should fail with non-existent account")
 		assert.Nil(t, account, "Account should be nil")
 	})
 }

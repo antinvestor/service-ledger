@@ -128,7 +128,7 @@ func (ts *TransactionsModelSuite) TestIsZeroSum() {
 }
 
 func (ts *TransactionsModelSuite) TestIsTrueDrCr() {
-	ts.WithTestDependencies(ts.T(), func(t *testing.T, depOpt *definition.DependencyOption) {
+	ts.WithTestDependencies(ts.T(), func(t *testing.T, _ *definition.DependencyOption) {
 		timeNow := time.Now().UTC()
 		transaction := &models.Transaction{
 			BaseModel:       data.BaseModel{ID: "t001"},

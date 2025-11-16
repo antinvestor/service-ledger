@@ -1,10 +1,11 @@
-package handlers
+package handlers_test
 
 import (
 	"testing"
 
 	ledgerv1 "buf.build/gen/go/antinvestor/ledger/protocolbuffers/go/ledger/v1"
 	"connectrpc.com/connect"
+	"github.com/antinvestor/service-ledger/apps/default/service/handlers"
 	"github.com/antinvestor/service-ledger/apps/default/tests"
 	"github.com/pitabwire/frame/frametests/definition"
 	"github.com/stretchr/testify/assert"
@@ -24,7 +25,7 @@ func (s *LedgerHandlersTestSuite) TestCreateLedger() {
 		defer svc.Stop(ctx)
 
 		// Create handler with injected business layer
-		ledgerServer := NewLedgerServer(
+		ledgerServer := handlers.NewLedgerServer(
 			resources.LedgerBusiness,
 			resources.AccountBusiness,
 			resources.TransactionBusiness,

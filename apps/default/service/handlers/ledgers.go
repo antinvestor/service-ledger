@@ -37,7 +37,7 @@ func (ledgerSrv *LedgerServer) SearchLedgers(
 	stream *connect.ServerStream[ledgerv1.SearchLedgersResponse],
 ) error {
 	// Search ledgers using business layer
-	return ledgerSrv.Ledger.SearchLedgers(ctx, req.Msg, func(ctx context.Context, batch []*ledgerv1.Ledger) error {
+	return ledgerSrv.Ledger.SearchLedgers(ctx, req.Msg, func(_ context.Context, batch []*ledgerv1.Ledger) error {
 		// Send response with ledger data
 		return stream.Send(&ledgerv1.SearchLedgersResponse{
 			Data: batch,
