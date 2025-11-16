@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"net/http"
-
 	//nolint:gosec // G108: Profiling endpoint deliberately exposed for monitoring and debugging purposes
 	_ "net/http/pprof"
 
@@ -48,7 +47,8 @@ func main() {
 	log := service.Log(ctx)
 
 	// Get the default database pool and work manager
-	dbPool := service.DatastoreManager().GetPool(ctx, datastore.DefaultPoolName)
+	dbManager := service.DatastoreManager()
+	dbPool := dbManager.GetPool(ctx, datastore.DefaultPoolName)
 	workMan := service.WorkManager()
 
 	// Create repositories with proper dependency injection
@@ -64,7 +64,7 @@ func main() {
 	ledgerServer := handlers.NewLedgerServer(ledgerBusiness, accountBusiness, transactionBusiness)
 
 	// Handle database migration if requested
-	if handleDatabaseMigration(ctx, service, cfg, log) {
+	if handleDatabaseMigration(ctx, dbManager, cfg, log) {
 		return
 	}
 
@@ -87,16 +87,14 @@ func main() {
 // handleDatabaseMigration performs database migration if configured to do so.
 func handleDatabaseMigration(
 	ctx context.Context,
-	svc *frame.Service,
+	dbManager datastore.Manager,
 	cfg aconfig.LedgerConfig,
 	log *util.LogEntry,
 ) bool {
-	serviceOptions := []frame.Option{frame.WithDatastore()}
 
 	if cfg.DoDatabaseMigrate() {
-		svc.Init(ctx, serviceOptions...)
 
-		err := repository.Migrate(ctx, svc, cfg.GetDatabaseMigrationPath())
+		err := repository.Migrate(ctx, dbManager, cfg.GetDatabaseMigrationPath())
 		if err != nil {
 			log.WithError(err).Fatal("main -- Could not migrate successfully")
 		}

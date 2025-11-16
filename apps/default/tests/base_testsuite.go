@@ -69,6 +69,7 @@ func (bs *BaseTestSuite) CreateService(
 
 	cfg.LogLevel = "debug"
 	cfg.DatabaseMigrate = true
+	cfg.DatabaseTraceQueries = true
 	cfg.RunServiceSecurely = false
 	cfg.ServerPort = ""
 
@@ -87,18 +88,10 @@ func (bs *BaseTestSuite) CreateService(
 		}
 	}
 
-	if len(frameOpts) == 0 {
-		frameOpts = append(frameOpts, frametests.WithNoopDriver())
-	}
+	frameOpts = append([]frame.Option{frame.WithName("ledger tests"),
+		frame.WithConfig(&cfg), frame.WithDatastore(), frametests.WithNoopDriver()})
 
-	ctx, svc := frame.NewServiceWithContext(ctx, frame.WithName("ledger tests"),
-		frame.WithConfig(&cfg),
-		frame.WithDatastore())
-
-	svc.Init(ctx, frameOpts...)
-
-	err = repository.Migrate(ctx, svc, "../../migrations/0001")
-	require.NoError(t, err)
+	ctx, svc := frame.NewServiceWithContext(ctx, frameOpts...)
 
 	dbPool := svc.DatastoreManager().GetPool(ctx, datastore.DefaultPoolName)
 	workMan := svc.WorkManager()
@@ -118,6 +111,9 @@ func (bs *BaseTestSuite) CreateService(
 		AccountBusiness:       accountBusiness,
 		TransactionBusiness:   transactionBusiness,
 	}
+
+	err = repository.Migrate(ctx, svc.DatastoreManager(), "../../migrations/0001")
+	require.NoError(t, err)
 
 	err = svc.Run(ctx, "")
 	require.NoError(t, err)

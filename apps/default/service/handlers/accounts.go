@@ -36,7 +36,8 @@ func (ledgerSrv *LedgerServer) SearchAccounts(
 			Data: res.Item(),
 		}
 
-		if err := stream.Send(response); err != nil {
+		err = stream.Send(response)
+		if err != nil {
 			return err
 		}
 	}
