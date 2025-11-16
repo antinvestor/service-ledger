@@ -531,7 +531,12 @@ func (ts *TransactionBusinessSuite) TestDuplicateTransactionExactDuplicate() {
 
 		// Should return the same transaction (idempotent behavior)
 		assert.Equal(t, firstTransaction.GetId(), secondTransaction.GetId(), "Should return same transaction ID")
-		assert.Equal(t, firstTransaction.GetCurrencyCode(), secondTransaction.GetCurrencyCode(), "Should have same currency")
+		assert.Equal(
+			t,
+			firstTransaction.GetCurrencyCode(),
+			secondTransaction.GetCurrencyCode(),
+			"Should have same currency",
+		)
 		assert.Len(t, secondTransaction.GetEntries(), 2, "Should have 2 entries")
 	})
 }
@@ -760,8 +765,148 @@ func (ts *TransactionBusinessSuite) TestDuplicateReservationTransaction() {
 
 		// Should return the same reservation (idempotent behavior)
 		assert.Equal(t, firstReservation.GetId(), duplicateReservation.GetId(), "Should return same reservation ID")
-		assert.Equal(t, ledgerv1.TransactionType_RESERVATION, duplicateReservation.GetType(), "Should be reservation type")
+		assert.Equal(
+			t,
+			ledgerv1.TransactionType_RESERVATION,
+			duplicateReservation.GetType(),
+			"Should be reservation type",
+		)
 	})
+}
+
+// setupConcurrentTestAccounts creates additional accounts needed for concurrent testing.
+func (ts *TransactionBusinessSuite) setupConcurrentTestAccounts(
+	ctx context.Context,
+	resources *tests.ServiceResources,
+	numAccounts int,
+) {
+	for i := range numAccounts {
+		accountReq := &ledgerv1.CreateAccountRequest{
+			Id:       fmt.Sprintf("concurrent-account-%d", i),
+			LedgerId: ts.assetLedger.ID,
+			Currency: "USD",
+		}
+		_, err := resources.AccountBusiness.CreateAccount(ctx, accountReq)
+		ts.Require().NoError(err, "Error creating concurrent account %d", i)
+	}
+}
+
+// createTestTransaction creates a test transaction request with the specified parameters.
+func (ts *TransactionBusinessSuite) createTestTransaction(
+	transactionID string,
+	accountIndex int,
+	amount int64,
+) *ledgerv1.CreateTransactionRequest {
+	return &ledgerv1.CreateTransactionRequest{
+		Id:       transactionID,
+		Currency: "USD",
+		Type:     ledgerv1.TransactionType_NORMAL,
+		Entries: []*ledgerv1.TransactionEntry{
+			{
+				Id:        "entry1",
+				AccountId: fmt.Sprintf("concurrent-account-%d", accountIndex),
+				Credit:    false,
+				Amount:    &money.Money{CurrencyCode: "USD", Units: amount, Nanos: 0},
+			},
+			{
+				Id:        "entry2",
+				AccountId: "income-account",
+				Credit:    true,
+				Amount:    &money.Money{CurrencyCode: "USD", Units: amount, Nanos: 0},
+			},
+		},
+	}
+}
+
+// runConcurrentTransactionTest executes the concurrent transaction logic for a single goroutine.
+func (ts *TransactionBusinessSuite) runConcurrentTransactionTest(
+	ctx context.Context,
+	transactionBusiness *tests.ServiceResources,
+	goroutineID, numTransactions int,
+	results *concurrentTestResults,
+	wg *sync.WaitGroup,
+) {
+	defer wg.Done()
+
+	for j := range numTransactions {
+		transactionID := fmt.Sprintf("concurrent-txn-%d-%d", goroutineID, j)
+
+		// Create transaction with unique ID
+		createReq := ts.createTestTransaction(transactionID, 0, 100)
+
+		// First attempt - should succeed
+		transaction, err := transactionBusiness.TransactionBusiness.CreateTransaction(ctx, createReq)
+		if err != nil {
+			results.mu.Lock()
+			results.errorCount++
+			results.mu.Unlock()
+			continue
+		}
+
+		// Second attempt with same ID - should be idempotent
+		duplicateTransaction, err := transactionBusiness.TransactionBusiness.CreateTransaction(ctx, createReq)
+		if err != nil {
+			ts.handleDuplicateError(err, results)
+			continue
+		}
+
+		// Verify idempotent behavior
+		results.verifyIdempotentBehavior(transactionID, transaction, duplicateTransaction)
+
+		// Test conflicting transaction with same ID
+		conflictReq := ts.createTestTransaction(transactionID, 1, 200) // Different account and amount
+		_, conflictErr := transactionBusiness.TransactionBusiness.CreateTransaction(ctx, conflictReq)
+		if conflictErr != nil && strings.Contains(conflictErr.Error(), "conflict") {
+			results.mu.Lock()
+			results.conflictCount++
+			results.mu.Unlock()
+		}
+	}
+}
+
+// handleDuplicateError processes errors from duplicate transaction attempts.
+func (ts *TransactionBusinessSuite) handleDuplicateError(
+	err error,
+	results *concurrentTestResults,
+) {
+	results.mu.Lock()
+	defer results.mu.Unlock()
+
+	if strings.Contains(err.Error(), "conflict") {
+		results.conflictCount++
+	} else {
+		results.errorCount++
+	}
+}
+
+// concurrentTestResults tracks the results of concurrent transaction testing.
+type concurrentTestResults struct {
+	mu                  sync.Mutex
+	successCount        int
+	duplicateCount      int
+	conflictCount       int
+	errorCount          int
+	createdTransactions map[string]*ledgerv1.Transaction
+}
+
+// verifyIdempotentBehavior checks that duplicate transactions return the same result.
+func (r *concurrentTestResults) verifyIdempotentBehavior(
+	transactionID string,
+	transaction, duplicateTransaction *ledgerv1.Transaction,
+) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if transaction.GetId() == duplicateTransaction.GetId() {
+		if _, exists := r.createdTransactions[transactionID]; !exists {
+			r.successCount++
+			r.createdTransactions[transactionID] = transaction
+		}
+		r.duplicateCount++ // Count successful idempotent calls
+	} else {
+		// This shouldn't happen - different transaction returned for same ID
+		r.errorCount++
+	}
 }
 
 func (ts *TransactionBusinessSuite) TestConcurrentTransactionStress() {
@@ -772,124 +917,21 @@ func (ts *TransactionBusinessSuite) TestConcurrentTransactionStress() {
 		transactionBusiness := resources.TransactionBusiness
 
 		// Create additional accounts for concurrent testing
-		for i := 0; i < 10; i++ {
-			accountReq := &ledgerv1.CreateAccountRequest{
-				Id:       fmt.Sprintf("concurrent-account-%d", i),
-				LedgerId: ts.assetLedger.ID,
-				Currency: "USD",
-			}
-			_, err := resources.AccountBusiness.CreateAccount(ctx, accountReq)
-			require.NoError(t, err, "Error creating concurrent account %d", i)
-		}
+		ts.setupConcurrentTestAccounts(ctx, resources, 10)
 
 		// Test parameters
 		numGoroutines := 50
 		numTransactions := 10
 		var wg sync.WaitGroup
-		var mu sync.Mutex
-		successCount := 0
-		duplicateCount := 0
-		conflictCount := 0
-		errorCount := 0
-		createdTransactions := make(map[string]*ledgerv1.Transaction)
+
+		results := &concurrentTestResults{
+			createdTransactions: make(map[string]*ledgerv1.Transaction),
+		}
 
 		// Launch multiple goroutines creating transactions concurrently
-		for i := 0; i < numGoroutines; i++ {
+		for i := range numGoroutines {
 			wg.Add(1)
-			go func(goroutineID int) {
-				defer wg.Done()
-				
-				for j := 0; j < numTransactions; j++ {
-					transactionID := fmt.Sprintf("concurrent-txn-%d-%d", goroutineID, j)
-					
-					// Create transaction with unique ID
-					createReq := &ledgerv1.CreateTransactionRequest{
-						Id:       transactionID,
-						Currency: "USD",
-						Type:     ledgerv1.TransactionType_NORMAL,
-						Entries: []*ledgerv1.TransactionEntry{
-							{
-								Id:        "entry1",
-								AccountId: "concurrent-account-0",
-								Credit:    false,
-								Amount:    &money.Money{CurrencyCode: "USD", Units: 100, Nanos: 0},
-							},
-							{
-								Id:        "entry2",
-								AccountId: "income-account",
-								Credit:    true,
-								Amount:    &money.Money{CurrencyCode: "USD", Units: 100, Nanos: 0},
-							},
-						},
-					}
-
-					// First attempt - should succeed
-					transaction, err := transactionBusiness.CreateTransaction(ctx, createReq)
-					if err != nil {
-						mu.Lock()
-						errorCount++
-						mu.Unlock()
-						continue
-					}
-
-					// Second attempt with same ID - should be idempotent
-					duplicateTransaction, err := transactionBusiness.CreateTransaction(ctx, createReq)
-					if err != nil {
-						if strings.Contains(err.Error(), "conflict") {
-							mu.Lock()
-							conflictCount++
-							mu.Unlock()
-						} else {
-							mu.Lock()
-							errorCount++
-							mu.Unlock()
-						}
-						continue
-					}
-
-					// Verify idempotent behavior - should return same transaction
-					mu.Lock()
-					if transaction.GetId() == duplicateTransaction.GetId() {
-						if _, exists := createdTransactions[transactionID]; !exists {
-							successCount++
-							createdTransactions[transactionID] = transaction
-						}
-						duplicateCount++ // Count successful idempotent calls
-					} else {
-						// This shouldn't happen - different transaction returned for same ID
-						errorCount++
-					}
-					mu.Unlock()
-
-					// Test conflicting transaction with same ID
-					conflictReq := &ledgerv1.CreateTransactionRequest{
-						Id:       transactionID,
-						Currency: "USD",
-						Type:     ledgerv1.TransactionType_NORMAL,
-						Entries: []*ledgerv1.TransactionEntry{
-							{
-								Id:        "entry1",
-								AccountId: "concurrent-account-1",
-								Credit:    false,
-								Amount:    &money.Money{CurrencyCode: "USD", Units: 200, Nanos: 0}, // Different amount
-							},
-							{
-								Id:        "entry2",
-								AccountId: "income-account",
-								Credit:    true,
-								Amount:    &money.Money{CurrencyCode: "USD", Units: 200, Nanos: 0},
-							},
-						},
-					}
-
-					_, conflictErr := transactionBusiness.CreateTransaction(ctx, conflictReq)
-					if conflictErr != nil && strings.Contains(conflictErr.Error(), "conflict") {
-						mu.Lock()
-						conflictCount++
-						mu.Unlock()
-					}
-				}
-			}(i)
+			go ts.runConcurrentTransactionTest(ctx, resources, i, numTransactions, results, &wg)
 		}
 
 		wg.Wait()
@@ -898,20 +940,25 @@ func (ts *TransactionBusinessSuite) TestConcurrentTransactionStress() {
 		expectedTransactions := numGoroutines * numTransactions
 		t.Logf("Concurrent transaction test results:")
 		t.Logf("- Expected unique transactions: %d", expectedTransactions)
-		t.Logf("- Successful transactions: %d", successCount)
-		t.Logf("- Duplicate (idempotent) calls: %d", duplicateCount)
-		t.Logf("- Conflicting transactions rejected: %d", conflictCount)
-		t.Logf("- Other errors: %d", errorCount)
+		t.Logf("- Successful transactions: %d", results.successCount)
+		t.Logf("- Duplicate (idempotent) calls: %d", results.duplicateCount)
+		t.Logf("- Conflicting transactions rejected: %d", results.conflictCount)
+		t.Logf("- Other errors: %d", results.errorCount)
 
-		assert.Equal(t, expectedTransactions, successCount, "All unique transactions should be created")
-		assert.Equal(t, expectedTransactions, duplicateCount, "All duplicate calls should be handled idempotently")
-		assert.Greater(t, conflictCount, 0, "Conflicting transactions should be rejected")
-		assert.Equal(t, 0, errorCount, "There should be no unexpected errors")
+		assert.Equal(t, expectedTransactions, results.successCount, "All unique transactions should be created")
+		assert.Equal(
+			t,
+			expectedTransactions,
+			results.duplicateCount,
+			"All duplicate calls should be handled idempotently",
+		)
+		assert.Positive(t, results.conflictCount, "Conflicting transactions should be rejected")
+		assert.Equal(t, 0, results.errorCount, "There should be no unexpected errors")
 
 		// Verify all transactions were actually created
-		for transactionID, transaction := range createdTransactions {
+		for transactionID, transaction := range results.createdTransactions {
 			retrieved, err := transactionBusiness.GetTransaction(ctx, transactionID)
-			assert.NoError(t, err, "Should be able to retrieve created transaction %s", transactionID)
+			require.NoError(t, err, "Should be able to retrieve created transaction %s", transactionID)
 			assert.Equal(t, transaction.GetId(), retrieved.GetId(), "Retrieved transaction should match")
 			assert.Len(t, retrieved.GetEntries(), 2, "Transaction should have 2 entries")
 		}

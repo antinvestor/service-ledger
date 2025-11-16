@@ -427,7 +427,7 @@ func (ts *TransactionsModelSuite) TestDuplicateTransactions() {
 						},
 					},
 				}
-				
+
 				trxn, err := txnBusiness.Transact(ctx, transactionCopy)
 				if err != nil {
 					t.Logf("Transaction creation failed: %v", err)

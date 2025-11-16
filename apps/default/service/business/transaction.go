@@ -116,7 +116,7 @@ func (b *transactionBusiness) CreateTransaction(
 	}
 
 	// Process transaction entries (apply business logic for balances and signage)
-	b.processTransactionEntries(transactionModel, accountsMap)
+	b.processTransactionEntriesWithAccounts(transactionModel, accountsMap)
 
 	// Create the transaction through repository
 	result, err := b.Transact(ctx, transactionModel)
@@ -185,34 +185,6 @@ func (b *transactionBusiness) validateTransactionEntries(
 		}
 	}
 	return nil
-}
-
-// processTransactionEntries applies business logic to transaction entries.
-func (b *transactionBusiness) processTransactionEntries(
-	txn *models.Transaction,
-	accountsMap map[string]*models.Account,
-) {
-	typedLedgerMap := make(map[string][]string)
-	typedLedgerMap[models.LedgerTypeAsset] = []string{"CR", "DR"}
-	typedLedgerMap[models.LedgerTypeExpense] = []string{"DR", "CR"}
-	typedLedgerMap[models.LedgerTypeLiability] = []string{"CR", "DR"}
-	typedLedgerMap[models.LedgerTypeIncome] = []string{"CR", "DR"}
-	typedLedgerMap[models.LedgerTypeCapital] = []string{"CR", "DR"}
-
-	// Add transaction Entries in one go to succeed or fail all
-	for _, line := range txn.Entries {
-		account := accountsMap[line.AccountID]
-
-		line.Balance = decimal.NewNullDecimal(account.Balance.Decimal)
-
-		// Decide the signage of entry based on : https://en.wikipedia.org/wiki/Double-entry_bookkeeping :DEADCLIC
-		if line.Credit &&
-			(account.LedgerType == models.LedgerTypeAsset || account.LedgerType == models.LedgerTypeExpense) ||
-			!line.Credit &&
-				(account.LedgerType == models.LedgerTypeLiability || account.LedgerType == models.LedgerTypeIncome || account.LedgerType == models.LedgerTypeCapital) {
-			line.Amount = decimal.NewNullDecimal(line.Amount.Decimal.Neg())
-		}
-	}
 }
 
 // SearchTransactions searches for transactions based on query.
@@ -500,7 +472,7 @@ func (b *transactionBusiness) IsConflict(
 
 // Transact creates the input transaction in the DB with improved concurrency handling.
 //
-//nolint:gocognit // High cognitive complexity is unavoidable due to comprehensive transaction validation logic
+
 func (b *transactionBusiness) Transact(
 	ctx context.Context, transaction *models.Transaction,
 ) (*models.Transaction, error) {
@@ -525,32 +497,33 @@ func (b *transactionBusiness) Transact(
 	// Try to create transaction with built-in conflict detection
 	// This handles the race condition between existence check and creation
 	err := b.transactionRepo.Create(ctx, transaction)
-	if err != nil {
-		// Check if this is a duplicate transaction error
-		if b.isDuplicateTransactionError(err) {
-			// Transaction already exists, check for conflicts
-			existingTransaction, getErr := b.transactionRepo.GetByID(ctx, transaction.GetID())
-			if getErr != nil {
-				return nil, apperrors.ErrSystemFailure.Override(getErr)
-			}
+	if err == nil {
+		// Return the created transaction (no need for another GetByID call)
+		return transaction, nil
+	}
 
-			// Validate that the existing transaction matches our request
-			isConflict, conflictErr := b.IsConflict(ctx, transaction)
-			if conflictErr != nil {
-				return nil, conflictErr
-			}
-			if isConflict {
-				return nil, apperrors.ErrTransactionIsConfilicting
-			}
-
-			// Return existing transaction for idempotent behavior
-			return existingTransaction, nil
-		}
+	// Handle duplicate transaction error
+	if !b.isDuplicateTransactionError(err) {
 		return nil, apperrors.ErrSystemFailure.Override(err)
 	}
 
-	// Return the created transaction (no need for another GetByID call)
-	return transaction, nil
+	// Transaction already exists, check for conflicts
+	existingTransaction, getErr := b.transactionRepo.GetByID(ctx, transaction.GetID())
+	if getErr != nil {
+		return nil, apperrors.ErrSystemFailure.Override(getErr)
+	}
+
+	// Validate that the existing transaction matches our request
+	isConflict, conflictErr := b.IsConflict(ctx, transaction)
+	if conflictErr != nil {
+		return nil, conflictErr
+	}
+	if isConflict {
+		return nil, apperrors.ErrTransactionIsConfilicting
+	}
+
+	// Return existing transaction for idempotent behavior
+	return existingTransaction, nil
 }
 
 // processTransactionEntriesWithAccounts processes transaction entries with balance and signage logic.
@@ -569,7 +542,7 @@ func (b *transactionBusiness) processTransactionEntriesWithAccounts(
 	// Process all transaction entries atomically
 	for _, line := range transaction.Entries {
 		account := accountsMap[line.AccountID]
-		
+
 		// Set the account balance snapshot at transaction time
 		line.Balance = decimal.NewNullDecimal(account.Balance.Decimal)
 
@@ -589,34 +562,34 @@ func (b *transactionBusiness) isDuplicateTransactionError(err error) bool {
 	if err == nil {
 		return false
 	}
-	
+
 	// Check for unique constraint violations or duplicate key errors
 	errStr := strings.ToLower(err.Error())
-	
+
 	// PostgreSQL unique constraint violation
-	if strings.Contains(errStr, "unique constraint") || 
-	   strings.Contains(errStr, "duplicate key") ||
-	   strings.Contains(errStr, "violates unique constraint") {
+	if strings.Contains(errStr, "unique constraint") ||
+		strings.Contains(errStr, "duplicate key") ||
+		strings.Contains(errStr, "violates unique constraint") {
 		return true
 	}
-	
+
 	// MySQL duplicate entry
 	if strings.Contains(errStr, "duplicate entry") ||
-	   strings.Contains(errStr, "duplicate key value") {
+		strings.Contains(errStr, "duplicate key value") {
 		return true
 	}
-	
+
 	// SQLite unique constraint failure
 	if strings.Contains(errStr, "unique constraint failed") {
 		return true
 	}
-	
+
 	// Generic database uniqueness errors
 	if strings.Contains(errStr, "already exists") ||
-	   strings.Contains(errStr, "duplicate") {
+		strings.Contains(errStr, "duplicate") {
 		return true
 	}
-	
+
 	return false
 }
 
