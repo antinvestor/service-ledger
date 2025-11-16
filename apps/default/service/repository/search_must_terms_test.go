@@ -11,8 +11,8 @@ import (
 
 func (ss *SearchSuite) TestSearchAccountsWithMustTerms() {
 	ss.WithTestDependencies(ss.T(), func(t *testing.T, dep *definition.DependencyOption) {
-		svc, ctx, _ := ss.CreateService(t, dep)
-		ss.setupFixtures(ctx, svc)
+		ctx, _, resources := ss.CreateService(t, dep)
+		ss.setupFixtures(ctx, resources)
 
 		query := `{
         "query": {
@@ -25,7 +25,7 @@ func (ss *SearchSuite) TestSearchAccountsWithMustTerms() {
             }
         }
     }`
-		resultChannel, err := ss.accDB.SearchAsESQ(ctx, query)
+		resultChannel, err := resources.AccountRepository.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
 		accounts, err := toSlice[*models.Account](resultChannel)
 
@@ -44,7 +44,7 @@ func (ss *SearchSuite) TestSearchAccountsWithMustTerms() {
             }
         }
     }`
-		resultChannel, err = ss.accDB.SearchAsESQ(ctx, query)
+		resultChannel, err = resources.AccountRepository.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
 		accounts, err = toSlice[*models.Account](resultChannel)
 
@@ -55,8 +55,8 @@ func (ss *SearchSuite) TestSearchAccountsWithMustTerms() {
 
 func (ss *SearchSuite) TestSearchTransactionsWithMustTerms() {
 	ss.WithTestDependencies(ss.T(), func(t *testing.T, dep *definition.DependencyOption) {
-		svc, ctx, _ := ss.CreateService(t, dep)
-		ss.setupFixtures(ctx, svc)
+		ctx, _, resources := ss.CreateService(t, dep)
+		ss.setupFixtures(ctx, resources)
 
 		query := `{
         "query": {
@@ -69,7 +69,7 @@ func (ss *SearchSuite) TestSearchTransactionsWithMustTerms() {
             }
         }
     }`
-		resultChannel, err := ss.txnDB.SearchAsESQ(ctx, query)
+		resultChannel, err := resources.TransactionRepository.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
 		transactions, err := toSlice[*models.Transaction](resultChannel)
 
@@ -88,7 +88,7 @@ func (ss *SearchSuite) TestSearchTransactionsWithMustTerms() {
             }
         }
     }`
-		resultChannel, err = ss.txnDB.SearchAsESQ(ctx, query)
+		resultChannel, err = resources.TransactionRepository.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
 		transactions, err = toSlice[*models.Transaction](resultChannel)
 

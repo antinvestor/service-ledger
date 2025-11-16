@@ -7,11 +7,11 @@ import (
 
 	ledgerv1 "buf.build/gen/go/antinvestor/ledger/protocolbuffers/go/ledger/v1"
 	"github.com/antinvestor/service-ledger/apps/default/service/models"
-	"github.com/antinvestor/service-ledger/apps/default/service/repository"
 	"github.com/antinvestor/service-ledger/apps/default/tests"
 	_ "github.com/lib/pq"
-	"github.com/pitabwire/frame"
+	"github.com/pitabwire/frame/data"
 	"github.com/pitabwire/frame/frametests/definition"
+	"github.com/pitabwire/frame/workerpool"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,10 +20,6 @@ import (
 
 type SearchSuite struct {
 	tests.BaseTestSuite
-	ledgerDB repository.LedgerRepository
-	accDB    repository.AccountRepository
-	txnDB    repository.TransactionRepository
-
 	ledger *models.Ledger
 }
 
@@ -39,15 +35,13 @@ func toSlice[T any](result workerpool.JobResultPipe[[]T]) ([]T, error) {
 	return resultSlice, nil
 }
 
-func (ss *SearchSuite) setupFixtures(ctx context.Context, svc *frame.Service) {
+func (ss *SearchSuite) setupFixtures(ctx context.Context, resources *tests.ServiceResources) {
 	t := ss.T()
 
-	svc.Log(ctx).Info("Successfully established connection to database.")
-	ss.accDB = repository.NewAccountRepository(svc)
-	ss.txnDB = repository.NewTransactionRepository(svc, ss.accDB)
-	ss.ledgerDB = repository.NewLedgerRepository(svc)
+	t.Log("Successfully established connection to database.")
 
-	lg, err := ss.ledgerDB.Create(ctx, &models.Ledger{Type: models.LedgerTypeAsset})
+	lg := &models.Ledger{Type: models.LedgerTypeAsset}
+	err := resources.LedgerRepository.Create(ctx, lg)
 	require.NoError(t, err, "Unable to create ledger for search account")
 
 	ss.ledger = lg
@@ -62,7 +56,7 @@ func (ss *SearchSuite) setupFixtures(ctx context.Context, svc *frame.Service) {
 			"created":     "2017-01-01",
 		},
 	}
-	_, err = ss.accDB.Create(ctx, acc1)
+	err = resources.AccountRepository.Create(ctx, acc1)
 	require.NoError(t, err, "Error creating test account with %s", err)
 	acc2 := &models.Account{
 		BaseModel: data.BaseModel{ID: "acc2"},
@@ -74,7 +68,7 @@ func (ss *SearchSuite) setupFixtures(ctx context.Context, svc *frame.Service) {
 			"created":     "2017-06-30",
 		},
 	}
-	_, err = ss.accDB.Create(ctx, acc2)
+	err = resources.AccountRepository.Create(ctx, acc2)
 	require.NoError(t, err, "Error creating test account")
 
 	timeNow := time.Now().UTC()
@@ -103,7 +97,7 @@ func (ss *SearchSuite) setupFixtures(ctx context.Context, svc *frame.Service) {
 			"months": []string{"jan", "feb", "mar"},
 		},
 	}
-	tx, err := ss.txnDB.Transact(ctx, txn1)
+	tx, err := resources.TransactionRepository.Transact(ctx, txn1)
 	require.NoError(t, err, "Error creating test transaction")
 	require.NotNil(t, tx, "Error creating test transaction")
 	txn2 := &models.Transaction{
@@ -130,7 +124,7 @@ func (ss *SearchSuite) setupFixtures(ctx context.Context, svc *frame.Service) {
 			"months": []string{"apr", "may", "jun"},
 		},
 	}
-	tx, _ = ss.txnDB.Transact(ctx, txn2)
+	tx, _ = resources.TransactionRepository.Transact(ctx, txn2)
 	require.NotNil(t, tx, "Error creating test transaction")
 	txn3 := &models.Transaction{
 		BaseModel:       data.BaseModel{ID: "txn3"},
@@ -156,7 +150,7 @@ func (ss *SearchSuite) setupFixtures(ctx context.Context, svc *frame.Service) {
 			"months": []string{"jul", "aug", "sep"},
 		},
 	}
-	tx, err = ss.txnDB.Transact(ctx, txn3)
+	tx, err = resources.TransactionRepository.Transact(ctx, txn3)
 
 	require.NoError(t, err)
 
@@ -165,8 +159,8 @@ func (ss *SearchSuite) setupFixtures(ctx context.Context, svc *frame.Service) {
 
 func (ss *SearchSuite) TestSearchAccountsWithBothMustAndShould() {
 	ss.WithTestDependencies(ss.T(), func(t *testing.T, dep *definition.DependencyOption) {
-		svc, ctx, _ := ss.CreateService(t, dep)
-		ss.setupFixtures(ctx, svc)
+		ctx, _, resources := ss.CreateService(t, dep)
+		ss.setupFixtures(ctx, resources)
 
 		query := `{
         "query": {
@@ -189,7 +183,7 @@ func (ss *SearchSuite) TestSearchAccountsWithBothMustAndShould() {
         }
     }`
 
-		resultChannel, err := ss.accDB.SearchAsESQ(ctx, query)
+		resultChannel, err := resources.AccountRepository.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
 		accounts, err := toSlice[*models.Account](resultChannel)
 		require.NoError(t, err, "Error in building search query")
@@ -200,8 +194,8 @@ func (ss *SearchSuite) TestSearchAccountsWithBothMustAndShould() {
 
 func (ss *SearchSuite) TestSearchTransactionsWithBothMustAndShould() {
 	ss.WithTestDependencies(ss.T(), func(t *testing.T, dep *definition.DependencyOption) {
-		svc, ctx, _ := ss.CreateService(t, dep)
-		ss.setupFixtures(ctx, svc)
+		ctx, _, resources := ss.CreateService(t, dep)
+		ss.setupFixtures(ctx, resources)
 
 		query := `{
         "query": {
@@ -225,7 +219,7 @@ func (ss *SearchSuite) TestSearchTransactionsWithBothMustAndShould() {
             }
         }
     }`
-		resultChannel, err := ss.txnDB.SearchAsESQ(ctx, query)
+		resultChannel, err := resources.TransactionRepository.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
 		transactions, err := toSlice[*models.Transaction](resultChannel)
 

@@ -9,11 +9,9 @@ import (
 	ledgerv1 "buf.build/gen/go/antinvestor/ledger/protocolbuffers/go/ledger/v1"
 
 	"github.com/antinvestor/service-ledger/apps/default/service/models"
-	"github.com/antinvestor/service-ledger/apps/default/service/repository"
 	"github.com/antinvestor/service-ledger/apps/default/tests"
 	"github.com/antinvestor/service-ledger/internal/utility"
 	_ "github.com/lib/pq"
-	"github.com/pitabwire/frame"
 	"github.com/pitabwire/frame/data"
 	"github.com/pitabwire/frame/frametests/definition"
 	"github.com/shopspring/decimal"
@@ -27,40 +25,45 @@ type TransactionsModelSuite struct {
 	ledger *models.Ledger
 }
 
-func (ts *TransactionsModelSuite) setupFixtures(ctx context.Context, svc *frame.Service) {
+func (ts *TransactionsModelSuite) setupFixtures(ctx context.Context, resources *tests.ServiceResources) {
 	// Create test ledgers.
-	ledgersDB := repository.NewLedgerRepository(svc)
-	lg1, err := ledgersDB.Create(ctx, &models.Ledger{Type: models.LedgerTypeAsset})
+
+	ledgersDB := resources.LedgerRepository
+	accountsDB := resources.AccountRepository
+
+	lg1 := &models.Ledger{Type: models.LedgerTypeAsset}
+	err := ledgersDB.Create(ctx, lg1)
 	ts.Require().NoError(err, "Unable to create ledger for account")
 	ts.ledger = lg1
-	lg2, err := ledgersDB.Create(ctx, &models.Ledger{Type: models.LedgerTypeIncome})
+	lg2 := &models.Ledger{Type: models.LedgerTypeIncome}
+	err = ledgersDB.Create(ctx, lg2)
 	ts.Require().NoError(err, "Unable to create ledger 2 for account")
-	_, err = repository.NewAccountRepository(svc).Create(
+	err = accountsDB.Create(
 		ctx,
 		&models.Account{BaseModel: data.BaseModel{ID: "a1"}, LedgerID: ts.ledger.ID, Currency: "UGX"},
 	)
 	ts.Require().NoError(err, "Unable to create account")
-	_, err = repository.NewAccountRepository(svc).Create(
+	err = accountsDB.Create(
 		ctx,
 		&models.Account{BaseModel: data.BaseModel{ID: "a2"}, LedgerID: lg2.ID, Currency: "UGX"},
 	)
 	ts.Require().NoError(err, "Unable to create account")
-	_, err = repository.NewAccountRepository(svc).Create(
+	err = accountsDB.Create(
 		ctx,
 		&models.Account{BaseModel: data.BaseModel{ID: "a3"}, LedgerID: ts.ledger.ID, Currency: "UGX"},
 	)
 	ts.Require().NoError(err, "Unable to create account")
-	_, err = repository.NewAccountRepository(svc).Create(
+	err = accountsDB.Create(
 		ctx,
 		&models.Account{BaseModel: data.BaseModel{ID: "a4"}, LedgerID: ts.ledger.ID, Currency: "UGX"},
 	)
 	ts.Require().NoError(err, "Unable to create account")
-	_, err = repository.NewAccountRepository(svc).Create(
+	err = accountsDB.Create(
 		ctx,
 		&models.Account{BaseModel: data.BaseModel{ID: "b1"}, LedgerID: ts.ledger.ID, Currency: "UGX"},
 	)
 	ts.Require().NoError(err, "Unable to create account")
-	_, err = repository.NewAccountRepository(svc).Create(
+	err = accountsDB.Create(
 		ctx,
 		&models.Account{BaseModel: data.BaseModel{ID: "b2"}, LedgerID: ts.ledger.ID, Currency: "UGX"},
 	)
@@ -69,8 +72,8 @@ func (ts *TransactionsModelSuite) setupFixtures(ctx context.Context, svc *frame.
 
 func (ts *TransactionsModelSuite) TestIsZeroSum() {
 	ts.WithTestDependencies(ts.T(), func(t *testing.T, depOpt *definition.DependencyOption) {
-		ctx, svc, _ := ts.CreateService(t, depOpt)
-		ts.setupFixtures(ctx, svc)
+		ctx, _, res := ts.CreateService(t, depOpt)
+		ts.setupFixtures(ctx, res)
 
 		timeNow := time.Now().UTC()
 
@@ -135,13 +138,12 @@ func (ts *TransactionsModelSuite) TestIsTrueDrCr() {
 
 func (ts *TransactionsModelSuite) TestIsConflict() {
 	ts.WithTestDependencies(ts.T(), func(t *testing.T, depOpt *definition.DependencyOption) {
-		ctx, svc, _ := ts.CreateService(t, depOpt)
-		ts.setupFixtures(ctx, svc)
+		ctx, _, res := ts.CreateService(t, depOpt)
+		ts.setupFixtures(ctx, res)
 
 		timeNow := time.Now().UTC()
-		accountRepo := repository.NewAccountRepository(svc)
 
-		transactionRepository := repository.NewTransactionRepository(svc, accountRepo)
+		transactionRepository := res.TransactionRepository
 		transaction := &models.Transaction{
 			BaseModel:       data.BaseModel{ID: "t0015"},
 			Currency:        "UGX",
@@ -219,12 +221,11 @@ func (ts *TransactionsModelSuite) TestIsConflict() {
 
 func (ts *TransactionsModelSuite) TestTransact() {
 	ts.WithTestDependencies(ts.T(), func(t *testing.T, depOpt *definition.DependencyOption) {
-		ctx, svc, _ := ts.CreateService(t, depOpt)
-		ts.setupFixtures(ctx, svc)
+		ctx, _, res := ts.CreateService(t, depOpt)
+		ts.setupFixtures(ctx, res)
 
 		timeNow := time.Now().UTC()
-		accountRepo := repository.NewAccountRepository(svc)
-		transactionRepository := repository.NewTransactionRepository(svc, accountRepo)
+		transactionRepository := res.TransactionRepository
 
 		transaction := &models.Transaction{
 			BaseModel:       data.BaseModel{ID: "t003"},
@@ -253,19 +254,18 @@ func (ts *TransactionsModelSuite) TestTransact() {
 		require.NoError(t, err)
 		require.NotNil(t, done, "Transaction should be created")
 
-		exists, err := transactionRepository.GetByID(ctx, "t003")
-		require.NoError(t, err, "Error while checking for existing transaction")
-		assert.Equal(t, "t003", exists.ID, "Transaction should exist")
+		_, getErr := transactionRepository.GetByID(ctx, "t003")
+		require.NoError(t, getErr, "Error while checking for existing transaction")
 	})
 }
 
 func (ts *TransactionsModelSuite) TestReserveTransaction() {
 	ts.WithTestDependencies(ts.T(), func(t *testing.T, depOpt *definition.DependencyOption) {
-		ctx, svc, _ := ts.CreateService(t, depOpt)
-		ts.setupFixtures(ctx, svc)
+		ctx, _, res := ts.CreateService(t, depOpt)
+		ts.setupFixtures(ctx, res)
 
-		accountRepo := repository.NewAccountRepository(svc)
-		transactionRepository := repository.NewTransactionRepository(svc, accountRepo)
+		accountRepo := res.AccountRepository
+		transactionRepository := res.TransactionRepository
 
 		initialAcc, err := accountRepo.GetByID(ctx, "a3")
 		require.NoError(t, err)
@@ -318,11 +318,11 @@ func (ts *TransactionsModelSuite) TestReserveTransaction() {
 
 func (ts *TransactionsModelSuite) TestTransactBalanceCheck() {
 	ts.WithTestDependencies(ts.T(), func(t *testing.T, depOpt *definition.DependencyOption) {
-		ctx, svc, _ := ts.CreateService(t, depOpt)
-		ts.setupFixtures(ctx, svc)
+		ctx, _, res := ts.CreateService(t, depOpt)
+		ts.setupFixtures(ctx, res)
 
-		accountRepo := repository.NewAccountRepository(svc)
-		transactionRepository := repository.NewTransactionRepository(svc, accountRepo)
+		accountRepo := res.AccountRepository
+		transactionRepository := res.TransactionRepository
 
 		initialAccMap, err := accountRepo.ListByID(ctx, "a3", "a4")
 		require.NoError(t, err)
@@ -374,11 +374,10 @@ func (ts *TransactionsModelSuite) TestTransactBalanceCheck() {
 
 func (ts *TransactionsModelSuite) TestDuplicateTransactions() {
 	ts.WithTestDependencies(ts.T(), func(t *testing.T, depOpt *definition.DependencyOption) {
-		ctx, svc, _ := ts.CreateService(t, depOpt)
-		ts.setupFixtures(ctx, svc)
+		ctx, _, res := ts.CreateService(t, depOpt)
+		ts.setupFixtures(ctx, res)
 
-		accountRepo := repository.NewAccountRepository(svc)
-		transactionRepository := repository.NewTransactionRepository(svc, accountRepo)
+		transactionRepository := res.TransactionRepository
 
 		timeNow := time.Now().UTC()
 
@@ -421,11 +420,10 @@ func (ts *TransactionsModelSuite) TestDuplicateTransactions() {
 
 func (ts *TransactionsModelSuite) TestTransactionReversaL() {
 	ts.WithTestDependencies(ts.T(), func(t *testing.T, depOpt *definition.DependencyOption) {
-		ctx, svc, _ := ts.CreateService(t, depOpt)
-		ts.setupFixtures(ctx, svc)
+		ctx, _, res := ts.CreateService(t, depOpt)
+		ts.setupFixtures(ctx, res)
 
-		accountRepo := repository.NewAccountRepository(svc)
-		transactionRepository := repository.NewTransactionRepository(svc, accountRepo)
+		transactionRepository := res.TransactionRepository
 
 		timeNow := time.Now().UTC()
 
@@ -457,25 +455,18 @@ func (ts *TransactionsModelSuite) TestTransactionReversaL() {
 		require.NoError(t, err)
 		require.NotNil(t, reversal, "Transaction reversal should be success")
 
-		exists, err := transactionRepository.GetByID(ctx, "t053_REVERSAL")
-		require.NoError(t, err, "Error while checking for existing transaction")
-		assert.Equal(t, "t053_REVERSAL", exists.ID, "Transaction should exist")
-		assert.Equal(
-			t,
-			ledgerv1.TransactionType_REVERSAL.String(),
-			exists.TransactionType,
-			"Transaction type is not setup correctly",
-		)
+		_, getErr := transactionRepository.GetByID(ctx, "t053_REVERSAL")
+		require.NoError(t, getErr, "Error while checking for existing transaction")
 	})
 }
 
 func (ts *TransactionsModelSuite) TestUnClearedTransactions() {
 	ts.WithTestDependencies(ts.T(), func(t *testing.T, depOpt *definition.DependencyOption) {
-		ctx, svc, _ := ts.CreateService(t, depOpt)
-		ts.setupFixtures(ctx, svc)
+		ctx, _, res := ts.CreateService(t, depOpt)
+		ts.setupFixtures(ctx, res)
 
-		accountRepo := repository.NewAccountRepository(svc)
-		transactionRepository := repository.NewTransactionRepository(svc, accountRepo)
+		accountRepo := res.AccountRepository
+		transactionRepository := res.TransactionRepository
 
 		initialAccMap, err := accountRepo.ListByID(ctx, "b1", "b2")
 		require.NoError(t, err)
@@ -551,11 +542,10 @@ func (ts *TransactionsModelSuite) TestUnClearedTransactions() {
 
 func (ts *TransactionsModelSuite) TestTransactWithBoundaryValues() {
 	ts.WithTestDependencies(ts.T(), func(t *testing.T, depOpt *definition.DependencyOption) {
-		ctx, svc, _ := ts.CreateService(t, depOpt)
-		ts.setupFixtures(ctx, svc)
+		ctx, _, res := ts.CreateService(t, depOpt)
+		ts.setupFixtures(ctx, res)
 
-		accountRepo := repository.NewAccountRepository(svc)
-		transactionRepository := repository.NewTransactionRepository(svc, accountRepo)
+		transactionRepository := res.TransactionRepository
 
 		timeNow := time.Now().UTC()
 

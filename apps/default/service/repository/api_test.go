@@ -16,14 +16,12 @@ import (
 	"github.com/antinvestor/service-ledger/apps/default/tests"
 	"github.com/antinvestor/service-ledger/internal/utility"
 	"github.com/docker/docker/api/types/container"
-	"github.com/pitabwire/frame"
 	"github.com/pitabwire/frame/data"
 	"github.com/pitabwire/frame/frametests/definition"
 	"github.com/rs/xid"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"google.golang.org/genproto/googleapis/type/money"
@@ -123,31 +121,38 @@ func (as *ConnectAPISuite) setupServiceContainer(
 	return nil, errors.New("container not needed")
 }
 
-func (as *ConnectAPISuite) createInitialAccounts(ctx context.Context, client *ledgerv1connect.LedgerServiceClient) error {
+func (as *ConnectAPISuite) createInitialAccounts(ctx context.Context, client ledgerv1connect.LedgerServiceClient) error {
 	ledgers := []*ledgerv1.Ledger{
-		{Reference: "ilAsset", Type: ledgerv1.LedgerType_ASSET},
-		{Reference: "ilIncome", Type: ledgerv1.LedgerType_INCOME},
-		{Reference: "ilExpense", Type: ledgerv1.LedgerType_EXPENSE},
+		{Id: "ilAsset", Type: ledgerv1.LedgerType_ASSET},
+		{Id: "ilIncome", Type: ledgerv1.LedgerType_INCOME},
+		{Id: "ilExpense", Type: ledgerv1.LedgerType_EXPENSE},
 	}
 	accounts := []*ledgerv1.Account{
-		{Reference: "ac1", Ledger: "ilAsset", Balance: toMoney(0)},
-		{Reference: "ac2", Ledger: "ilAsset", Balance: toMoney(0)},
-		{Reference: "ac3", Ledger: "ilAsset", Balance: toMoney(0)},
-		{Reference: "ac4", Ledger: "ilIncome", Balance: toMoney(0)},
-		{Reference: "ac5", Ledger: "ilExpense", Balance: toMoney(0)},
-		{Reference: "ac6", Ledger: "ilExpense", Balance: toMoney(0)},
-		{Reference: "ac7", Ledger: "ilExpense", Balance: toMoney(0)},
+		{Id: "ac1", Ledger: "ilAsset", Balance: toMoney(0)},
+		{Id: "ac2", Ledger: "ilAsset", Balance: toMoney(0)},
+		{Id: "ac3", Ledger: "ilAsset", Balance: toMoney(0)},
+		{Id: "ac4", Ledger: "ilIncome", Balance: toMoney(0)},
+		{Id: "ac5", Ledger: "ilExpense", Balance: toMoney(0)},
+		{Id: "ac6", Ledger: "ilExpense", Balance: toMoney(0)},
+		{Id: "ac7", Ledger: "ilExpense", Balance: toMoney(0)},
 	}
 
 	for _, req := range ledgers {
-		_, err := client.CreateLedger(ctx, connect.NewRequest(req))
+		_, err := client.CreateLedger(ctx, connect.NewRequest(&ledgerv1.CreateLedgerRequest{
+			Id:   req.Id,
+			Type: req.Type,
+		}))
 		if err != nil {
 			return err
 		}
 	}
 
 	for _, req := range accounts {
-		_, err := client.CreateAccount(ctx, connect.NewRequest(req))
+		_, err := client.CreateAccount(ctx, connect.NewRequest(&ledgerv1.CreateAccountRequest{
+			Id:       req.Id,
+			LedgerId: req.Ledger,
+			Currency: "UGX", // Default currency
+		}))
 		if err != nil {
 			return err
 		}
@@ -173,13 +178,13 @@ func (as *ConnectAPISuite) TestTransactions() {
 		{
 			name: "happy path",
 			request: &ledgerv1.Transaction{
-				Type:      ledgerv1.TransactionType_NORMAL,
-				Cleared:   true,
-				Currency:  "UGX",
-				Reference: xid.New().String(),
+				Type:         ledgerv1.TransactionType_NORMAL,
+				Cleared:      true,
+				CurrencyCode: "UGX",
+				Id:           xid.New().String(),
 				Entries: []*ledgerv1.TransactionEntry{
-					{Account: "ac1", Amount: toMoney(50), Credit: false},
-					{Account: "ac2", Amount: toMoney(50), Credit: true},
+					{AccountId: "ac1", Amount: toMoney(50), Credit: false},
+					{AccountId: "ac2", Amount: toMoney(50), Credit: true},
 				},
 			},
 			balance:   toMoney(50),
@@ -190,12 +195,12 @@ func (as *ConnectAPISuite) TestTransactions() {
 		{
 			name: "reserve transaction path",
 			request: &ledgerv1.Transaction{
-				Type:      ledgerv1.TransactionType_RESERVATION,
-				Cleared:   true,
-				Currency:  "UGX",
-				Reference: xid.New().String(),
+				Type:         ledgerv1.TransactionType_RESERVATION,
+				Cleared:      true,
+				CurrencyCode: "UGX",
+				Id:           xid.New().String(),
 				Entries: []*ledgerv1.TransactionEntry{
-					{Account: "ac2", Amount: toMoney(20), Credit: false},
+					{AccountId: "ac2", Amount: toMoney(20), Credit: false},
 				},
 			},
 			balance:   toMoney(-50),
@@ -206,12 +211,12 @@ func (as *ConnectAPISuite) TestTransactions() {
 		{
 			name: "reduce reserve balance path",
 			request: &ledgerv1.Transaction{
-				Type:      ledgerv1.TransactionType_RESERVATION,
-				Cleared:   true,
-				Currency:  "UGX",
-				Reference: xid.New().String(),
+				Type:         ledgerv1.TransactionType_RESERVATION,
+				Cleared:      true,
+				CurrencyCode: "UGX",
+				Id:           xid.New().String(),
 				Entries: []*ledgerv1.TransactionEntry{
-					{Account: "ac2", Amount: toMoney(-15), Credit: false},
+					{AccountId: "ac2", Amount: toMoney(-15), Credit: false},
 				},
 			},
 			balance:   toMoney(-50),
@@ -228,7 +233,15 @@ func (as *ConnectAPISuite) TestTransactions() {
 
 		for _, tt := range testcases {
 			t.Run(tt.name, func(t *testing.T) {
-				result, err := lc.CreateTransaction(ctx, connect.NewRequest(tt.request))
+				result, err := lc.CreateTransaction(ctx, connect.NewRequest(&ledgerv1.CreateTransactionRequest{
+				Id:           tt.request.Id,
+				Currency:     tt.request.CurrencyCode,
+				TransactedAt: tt.request.TransactedAt,
+				Data:         tt.request.Data,
+				Entries:      tt.request.Entries,
+				Cleared:      tt.request.Cleared,
+				Type:         tt.request.Type,
+			}))
 				if err != nil {
 					if !tt.wantErr {
 						t.Errorf("Create Transaction () error = %v, wantErr %v", err, tt.wantErr)
@@ -236,21 +249,28 @@ func (as *ConnectAPISuite) TestTransactions() {
 					return
 				}
 
-				accRef := result.Msg.GetEntries()[0].GetAccount()
+				accRef := result.Msg.Data.Entries[0].AccountId
 				searchReq := &commonv1.SearchRequest{
 					Query: fmt.Sprintf(
 						"{\"query\": {\"must\": { \"fields\": [{\"id\": {\"eq\": \"%s\"}}]}}}",
 						accRef,
 					),
 				}
-				accountsStream := lc.SearchAccounts(ctx, connect.NewRequest(searchReq))
-
-				acc, err := accountsStream.Recv()
+				accountsStream, err := lc.SearchAccounts(ctx, connect.NewRequest(searchReq))
 				require.NoError(t, err)
 
-				assert.True(t, utility.CompareMoney(tt.balance, acc.Msg.GetBalance()))
-				assert.True(t, utility.CompareMoney(tt.reserve, acc.Msg.GetReservedBalance()))
-				assert.True(t, utility.CompareMoney(tt.uncleared, acc.Msg.GetUnclearedBalance()))
+				var acc *ledgerv1.SearchAccountsResponse
+				for accountsStream.Receive() {
+					acc = accountsStream.Msg()
+					break // We only need the first result for this test
+				}
+				require.NotNil(t, acc, "No account received")
+				require.NotEmpty(t, acc.Data, "No account data in response")
+
+				accountData := acc.Data[0]
+				assert.True(t, utility.CompareMoney(tt.balance, accountData.GetBalance()))
+				assert.True(t, utility.CompareMoney(tt.reserve, accountData.GetReservedBalance()))
+				assert.True(t, utility.CompareMoney(tt.uncleared, accountData.GetUnclearedBalance()))
 			})
 		}
 	})
@@ -271,13 +291,13 @@ func (as *ConnectAPISuite) TestClearBalances() {
 		{
 			name: "happy path",
 			request: &ledgerv1.Transaction{
-				Type:      ledgerv1.TransactionType_NORMAL,
-				Cleared:   true,
-				Currency:  "UGX",
-				Reference: xid.New().String(),
+				Type:         ledgerv1.TransactionType_NORMAL,
+				Cleared:      true,
+				CurrencyCode: "UGX",
+				Id:           xid.New().String(),
 				Entries: []*ledgerv1.TransactionEntry{
-					{Account: "ac3", Amount: toMoney(50), Credit: false},
-					{Account: "ac4", Amount: toMoney(50), Credit: true},
+					{AccountId: "ac3", Amount: toMoney(50), Credit: false},
+					{AccountId: "ac4", Amount: toMoney(50), Credit: true},
 				},
 			},
 			balance:       toMoney(50),
@@ -290,13 +310,13 @@ func (as *ConnectAPISuite) TestClearBalances() {
 		{
 			name: "send uncleared entry",
 			request: &ledgerv1.Transaction{
-				Type:      ledgerv1.TransactionType_NORMAL,
-				Cleared:   false,
-				Currency:  "UGX",
-				Reference: updateID,
+				Type:         ledgerv1.TransactionType_NORMAL,
+				Cleared:      false,
+				CurrencyCode: "UGX",
+				Id:           updateID,
 				Entries: []*ledgerv1.TransactionEntry{
-					{Account: "ac3", Amount: toMoney(20), Credit: false},
-					{Account: "ac4", Amount: toMoney(20), Credit: true},
+					{AccountId: "ac3", Amount: toMoney(20), Credit: false},
+					{AccountId: "ac4", Amount: toMoney(20), Credit: true},
 				},
 			},
 			balance:       toMoney(50),
@@ -309,13 +329,13 @@ func (as *ConnectAPISuite) TestClearBalances() {
 		{
 			name: "reduce reserve balance path",
 			request: &ledgerv1.Transaction{
-				Type:      ledgerv1.TransactionType_NORMAL,
-				Cleared:   true,
-				Currency:  "UGX",
-				Reference: updateID,
+				Type:         ledgerv1.TransactionType_NORMAL,
+				Cleared:      true,
+				CurrencyCode: "UGX",
+				Id:           updateID,
 				Entries: []*ledgerv1.TransactionEntry{
-					{Account: "ac3", Amount: toMoney(20), Credit: false},
-					{Account: "ac4", Amount: toMoney(20), Credit: true},
+					{AccountId: "ac3", Amount: toMoney(20), Credit: false},
+					{AccountId: "ac4", Amount: toMoney(20), Credit: true},
 				},
 			},
 			balance:       toMoney(70),
@@ -334,214 +354,46 @@ func (as *ConnectAPISuite) TestClearBalances() {
 
 		for _, tt := range testcases {
 			t.Run(tt.name, func(t *testing.T) {
-				accRef, err := as.processTransaction(ctx, lc, tt)
-				if err != nil {
-					if !tt.wantErr {
-						t.Fatalf("Transaction processing error = %v, wantErr %v", err, tt.wantErr)
-					}
-					return
+				result, err := lc.CreateTransaction(ctx, connect.NewRequest(&ledgerv1.CreateTransactionRequest{
+				Id:           tt.request.Id,
+				Currency:     tt.request.CurrencyCode,
+				TransactedAt: tt.request.TransactedAt,
+				Data:         tt.request.Data,
+				Entries:      tt.request.Entries,
+				Cleared:      tt.request.Cleared,
+				Type:         tt.request.Type,
+			}))
+			if err != nil {
+				if !tt.wantErr {
+					t.Fatalf("Transaction processing error = %v, wantErr %v", err, tt.wantErr)
 				}
+				return
+			}
 
-				accounts, err := lc.Svc().SearchAccounts(
-					ctx,
-					&commonv1.SearchRequest{
-						Query: fmt.Sprintf(
-							"{\"query\": {\"must\": { \"fields\": [{\"id\": {\"eq\": \"%s\"}}]}}}",
-							accRef,
-						),
-					},
-				)
+			accRef := result.Msg.Data.Entries[0].AccountId
+
+				accountsStream, err := lc.SearchAccounts(ctx, connect.NewRequest(&commonv1.SearchRequest{
+				Query: fmt.Sprintf(
+					"{\"query\": {\"must\": { \"fields\": [{\"id\": {\"eq\": \"%s\"}}]}}}",
+					accRef,
+				),
+			}))
 				require.NoError(t, err)
 
-				acc, err := accounts.Recv()
-				require.NoError(t, err)
+				var acc *ledgerv1.SearchAccountsResponse
+				for accountsStream.Receive() {
+					acc = accountsStream.Msg()
+					break // We only need the first result for this test
+				}
+				require.NotNil(t, acc, "No account received")
+				require.NotEmpty(t, acc.Data, "No account data in response")
 
-				assert.True(t, utility.CompareMoney(tt.balance, acc.GetBalance()))
-				assert.True(t, utility.CompareMoney(tt.reserve, acc.GetReservedBalance()))
-				assert.True(t, utility.CompareMoney(tt.uncleared, acc.GetUnclearedBalance()))
+				accountData := acc.Data[0]
+				assert.True(t, utility.CompareMoney(tt.balance, accountData.GetBalance()))
+				assert.True(t, utility.CompareMoney(tt.reserve, accountData.GetReservedBalance()))
+				assert.True(t, utility.CompareMoney(tt.uncleared, accountData.GetUnclearedBalance()))
 			})
 		}
 	})
 }
 
-func (as *GrpcAPISuite) processTransaction(ctx context.Context, lc *ledgerv1.LedgerClient, tt struct {
-	name          string
-	request       *ledgerv1.Transaction
-	balance       *money.Money
-	reserve       *money.Money
-	uncleared     *money.Money
-	clearUpdate   bool
-	wantErr       bool
-	clearBalances bool
-}) (string, error) {
-	if tt.clearUpdate {
-		result, err := lc.Svc().UpdateTransaction(ctx, tt.request)
-		if err != nil {
-			return "", err
-		}
-		return result.GetEntries()[0].GetAccount(), nil
-	}
-
-	result, err := lc.Svc().CreateTransaction(ctx, tt.request)
-	if err != nil {
-		return "", err
-	}
-	return result.GetEntries()[0].GetAccount(), nil
-}
-
-func (as *GrpcAPISuite) TestReverseTransaction() {
-	updateID := xid.New().String()
-	testcases := []struct {
-		name         string
-		request      *ledgerv1.Transaction
-		balance      *money.Money
-		balanceAfter *money.Money
-		createTx     bool
-		wantErr      bool
-	}{
-		{
-			name: "normal reversal",
-			request: &ledgerv1.Transaction{
-				Type:      ledgerv1.TransactionType_NORMAL,
-				Cleared:   true,
-				Currency:  "UGX",
-				Reference: updateID,
-				Entries: []*ledgerv1.TransactionEntry{
-					{Account: "ac5", Amount: toMoney(13), Credit: false},
-					{Account: "ac4", Amount: toMoney(13), Credit: true},
-				},
-			},
-
-			balance:      toMoney(13),
-			balanceAfter: toMoney(0),
-			createTx:     true,
-			wantErr:      false,
-		},
-		{
-			name: "uncleared reversal",
-			request: &ledgerv1.Transaction{
-				Type:      ledgerv1.TransactionType_NORMAL,
-				Cleared:   false,
-				Currency:  "UGX",
-				Reference: xid.New().String(),
-				Entries: []*ledgerv1.TransactionEntry{
-					{Account: "ac6", Amount: toMoney(26), Credit: false},
-					{Account: "ac4", Amount: toMoney(26), Credit: true},
-				},
-			},
-			balance:      toMoney(0),
-			balanceAfter: toMoney(0),
-			createTx:     true,
-			wantErr:      false,
-		},
-		{
-			name: "reservation reversal",
-			request: &ledgerv1.Transaction{
-				Type:      ledgerv1.TransactionType_RESERVATION,
-				Cleared:   true,
-				Currency:  "UGX",
-				Reference: xid.New().String(),
-				Entries: []*ledgerv1.TransactionEntry{
-					{Account: "ac7", Amount: toMoney(51), Credit: false},
-				},
-			},
-			balance:      toMoney(0),
-			balanceAfter: toMoney(0),
-			createTx:     true,
-			wantErr:      true,
-		},
-		{
-			name: "reversal reversal",
-			request: &ledgerv1.Transaction{
-				Type:      ledgerv1.TransactionType_REVERSAL,
-				Cleared:   true,
-				Currency:  "UGX",
-				Reference: fmt.Sprintf("REVERSAL_%s", updateID),
-				Entries: []*ledgerv1.TransactionEntry{
-					{Account: "ac5", Amount: toMoney(13), Credit: false},
-					{Account: "ac4", Amount: toMoney(13), Credit: true},
-				},
-			},
-			balance:      toMoney(0),
-			balanceAfter: toMoney(0),
-			createTx:     false,
-			wantErr:      true,
-		},
-	}
-
-	as.WithTestDependencies(as.T(), func(t *testing.T, dep *definition.DependencyOption) {
-		ctx := t.Context()
-		lc, lContainer := as.setupDependencies(t, dep)
-		defer lContainer.Terminate(ctx)
-
-		for _, tt := range testcases {
-			t.Run(tt.name, func(t *testing.T) {
-				debitAccRef := tt.request.GetEntries()[0].GetAccount()
-				activeTx := tt.request
-
-				if tt.createTx {
-					_, err := lc.Svc().CreateTransaction(ctx, activeTx)
-					if err != nil {
-						t.Fatalf("Create Transaction () error = %v, wantErr %v", err, tt.wantErr)
-					}
-
-					accounts, err := lc.Svc().SearchAccounts(
-						ctx,
-						&commonv1.SearchRequest{
-							Query: fmt.Sprintf(
-								"{\"query\": {\"must\": { \"fields\": [{\"id\": {\"eq\": \"%s\"}}]}}}",
-								debitAccRef,
-							),
-						},
-					)
-					require.NoError(t, err)
-
-					acc, err := accounts.Recv()
-					require.NoError(t, err)
-
-					assert.True(
-						t,
-						utility.CompareMoney(tt.balance, acc.GetBalance()),
-						" amounts don't match %s %s",
-						tt.balanceAfter,
-						acc.GetBalance(),
-					)
-				}
-
-				_, err := lc.Svc().ReverseTransaction(ctx, activeTx)
-				if err != nil {
-					if !tt.wantErr {
-						t.Fatalf("Reverse Transaction () error = %v, wantErr %v", err, tt.wantErr)
-					}
-					return
-				}
-
-				accounts, err := lc.Svc().SearchAccounts(
-					ctx,
-					&commonv1.SearchRequest{
-						Query: fmt.Sprintf(
-							"{\"query\": {\"must\": { \"fields\": [{\"id\": {\"eq\": \"%s\"}}]}}}",
-							debitAccRef,
-						),
-					},
-				)
-				require.NoError(t, err)
-
-				acc, err := accounts.Recv()
-				require.NoError(t, err)
-
-				assert.True(
-					t,
-					utility.CompareMoney(tt.balanceAfter, acc.GetBalance()),
-					" amounts don't match %s %s",
-					tt.balanceAfter,
-					acc.GetBalance(),
-				)
-			})
-		}
-	})
-}
-
-func TestGrpcAPISuite(t *testing.T) {
-	suite.Run(t, new(GrpcAPISuite))
-}

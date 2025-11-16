@@ -5,10 +5,8 @@ import (
 	"testing"
 
 	"github.com/antinvestor/service-ledger/apps/default/service/models"
-	repository "github.com/antinvestor/service-ledger/apps/default/service/repository"
 	"github.com/antinvestor/service-ledger/apps/default/tests"
 	_ "github.com/lib/pq"
-	"github.com/pitabwire/frame"
 	"github.com/pitabwire/frame/frametests/definition"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,19 +18,18 @@ type AccountsSuite struct {
 	ledger *models.Ledger
 }
 
-func (as *AccountsSuite) setupFixtures(ctx context.Context, svc *frame.Service) {
-	// Create test accounts.
-	ledgersDB := repository.NewLedgerRepository(svc)
-	accountsDB := repository.NewAccountRepository(svc)
+func (as *AccountsSuite) setupFixtures(ctx context.Context, resources *tests.ServiceResources) {
+	// Create test accounts using cached repositories
+	ledgersDB := resources.LedgerRepository
+	accountsDB := resources.AccountRepository
 
 	as.ledger = &models.Ledger{Type: models.LedgerTypeAsset}
-	var err error
-	as.ledger, err = ledgersDB.Create(ctx, as.ledger)
+	err := ledgersDB.Create(ctx, as.ledger)
 	as.Require().NoError(err, "Unable to create ledger for account")
 
 	account := &models.Account{LedgerID: as.ledger.ID, Currency: "UGX", LedgerType: models.LedgerTypeAsset}
 	account.ID = "100"
-	_, err = accountsDB.Create(ctx, account)
+	err = accountsDB.Create(ctx, account)
 	if err != nil {
 		as.Require().NoError(err, "Unable to create account")
 	}
@@ -40,11 +37,11 @@ func (as *AccountsSuite) setupFixtures(ctx context.Context, svc *frame.Service) 
 
 func (as *AccountsSuite) TestAccountsInfoAPI() {
 	as.WithTestDependencies(as.T(), func(t *testing.T, dep *definition.DependencyOption) {
-		svc, ctx, _ := as.CreateService(t, dep)
-		as.setupFixtures(ctx, svc)
+		ctx, _, resources := as.CreateService(t, dep)
+		as.setupFixtures(ctx, resources)
 
-		accountsDB := repository.NewAccountRepository(svc)
-		account, err := accountsDB.GetByID(ctx, "100")
+		// Use cached account repository from dependencies
+		account, err := resources.AccountRepository.GetByID(ctx, "100")
 		if err != nil {
 			require.NoError(t, err, "Error getting account info api account")
 		} else {

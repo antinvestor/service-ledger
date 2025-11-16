@@ -7,6 +7,7 @@ import (
 	aconfig "github.com/antinvestor/service-ledger/apps/default/config"
 	"github.com/antinvestor/service-ledger/apps/default/service/business"
 	"github.com/antinvestor/service-ledger/apps/default/service/repository"
+	_ "github.com/lib/pq"
 	"github.com/pitabwire/frame"
 	"github.com/pitabwire/frame/config"
 	"github.com/pitabwire/frame/datastore"
@@ -16,8 +17,6 @@ import (
 	"github.com/pitabwire/util"
 	"github.com/stretchr/testify/require"
 )
-
-const PostgresqlDBImage = "paradedb/paradedb:latest"
 
 const (
 	DefaultRandomStringLength = 8
@@ -34,6 +33,33 @@ type ServiceResources struct {
 
 type BaseTestSuite struct {
 	frametests.FrameBaseTestSuite
+	ctx       context.Context
+	resources *ServiceResources
+}
+
+// ServiceResources returns the shared service dependencies for the test suite
+func (bs *BaseTestSuite) ServiceResources() *ServiceResources {
+	// Create resources once and cache them to avoid unnecessary reinstantiation
+	if bs.resources == nil {
+		ctx, _, resources := bs.CreateService(bs.T(), nil)
+		bs.ctx = ctx
+		bs.resources = resources
+	}
+	return bs.resources
+}
+
+// WithTestDependencies Creates subtests with each known DependancyOption.
+func (bs *BaseTestSuite) WithTestDependencies(
+	t *testing.T,
+	testFn func(t *testing.T, dep *definition.DependencyOption),
+) {
+	// Use the original working pattern
+	resources := bs.Resources()
+	deps := make([]definition.DependancyConn, len(resources))
+	for i, r := range resources {
+		deps[i] = r
+	}
+	testFn(t, definition.NewDependancyOption("default", util.RandomString(DefaultRandomStringLength), deps))
 }
 
 func initResources(_ context.Context) []definition.TestResource {
@@ -112,16 +138,4 @@ func (bs *BaseTestSuite) CreateService(t *testing.T, depOpts *definition.Depende
 
 func (bs *BaseTestSuite) TearDownSuite() {
 	bs.FrameBaseTestSuite.TearDownSuite()
-}
-
-// WithTestDependencies Creates subtests with each known DependancyOption.
-func (bs *BaseTestSuite) WithTestDependencies(
-	t *testing.T,
-	testFn func(t *testing.T, dep *definition.DependencyOption),
-) {
-	options := []*definition.DependencyOption{
-		definition.NewDependancyOption("default", util.RandomString(DefaultRandomStringLength), bs.Resources()),
-	}
-
-	frametests.WithTestDependencies(t, options, testFn)
 }

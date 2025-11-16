@@ -11,8 +11,8 @@ import (
 
 func (ss *SearchSuite) TestSearchAccountsWithShouldRanges() {
 	ss.WithTestDependencies(ss.T(), func(t *testing.T, dep *definition.DependencyOption) {
-		svc, ctx, _ := ss.CreateService(t, dep)
-		ss.setupFixtures(ctx, svc)
+		ctx, _, resources := ss.CreateService(t, dep)
+		ss.setupFixtures(ctx, resources)
 
 		query := `{
         "query": {
@@ -24,7 +24,7 @@ func (ss *SearchSuite) TestSearchAccountsWithShouldRanges() {
             }
         }
     }`
-		resultChannel, err := ss.accDB.SearchAsESQ(ctx, query)
+		resultChannel, err := resources.AccountRepository.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
 		accounts, err := toSlice[*models.Account](resultChannel)
 
@@ -41,7 +41,7 @@ func (ss *SearchSuite) TestSearchAccountsWithShouldRanges() {
             }
         }
     }`
-		resultChannel, err = ss.accDB.SearchAsESQ(ctx, query)
+		resultChannel, err = resources.AccountRepository.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
 		accounts, err = toSlice[*models.Account](resultChannel)
 
@@ -52,8 +52,8 @@ func (ss *SearchSuite) TestSearchAccountsWithShouldRanges() {
 
 func (ss *SearchSuite) TestSearchTransactionsWithShouldRanges() {
 	ss.WithTestDependencies(ss.T(), func(t *testing.T, dep *definition.DependencyOption) {
-		svc, ctx, _ := ss.CreateService(t, dep)
-		ss.setupFixtures(ctx, svc)
+		ctx, _, resources := ss.CreateService(t, dep)
+		ss.setupFixtures(ctx, resources)
 
 		query := `{
         "query": {
@@ -66,7 +66,7 @@ func (ss *SearchSuite) TestSearchTransactionsWithShouldRanges() {
         }
     }`
 
-		resultChannel, err := ss.txnDB.SearchAsESQ(ctx, query)
+		resultChannel, err := resources.TransactionRepository.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
 		transactions, err := toSlice[*models.Transaction](resultChannel)
 		require.NoError(t, err, "Error in building search query")
@@ -83,7 +83,7 @@ func (ss *SearchSuite) TestSearchTransactionsWithShouldRanges() {
         }
     }`
 
-		resultChannel, err = ss.txnDB.SearchAsESQ(ctx, query)
+		resultChannel, err = resources.TransactionRepository.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
 		transactions, err = toSlice[*models.Transaction](resultChannel)
 		require.NoError(t, err, "Error in building search query")

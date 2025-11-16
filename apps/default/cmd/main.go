@@ -50,9 +50,9 @@ func main() {
 	accountRepo := repository.NewAccountRepository(ctx, dbPool, workMan, ledgerRepo)
 	transactionRepo := repository.NewTransactionRepository(ctx, dbPool, workMan, accountRepo)
 
-	ledgerBusiness := business.NewLedgerBusiness(ledgerRepo)
-	accountBusiness := business.NewAccountBusiness(accountRepo)
-	transactionBusiness := business.NewTransactionBusiness(transactionRepo)
+	ledgerBusiness := business.NewLedgerBusiness(workMan, ledgerRepo)
+	accountBusiness := business.NewAccountBusiness(workMan, accountRepo)
+	transactionBusiness := business.NewTransactionBusiness(workMan, transactionRepo)
 
 	// Create handler with injected business layer
 	ledgerServer := handlers.NewLedgerServer(ledgerBusiness, accountBusiness, transactionBusiness)

@@ -10,8 +10,8 @@ import (
 
 func (ss *SearchSuite) TestSearchAccountsWithMustFields() {
 	ss.WithTestDependencies(ss.T(), func(t *testing.T, dep *definition.DependencyOption) {
-		svc, ctx, _ := ss.CreateService(t, dep)
-		ss.setupFixtures(ctx, svc)
+		ctx, _, resources := ss.CreateService(t, dep)
+		ss.setupFixtures(ctx, resources)
 
 		query := `{
         "query": {
@@ -23,7 +23,7 @@ func (ss *SearchSuite) TestSearchAccountsWithMustFields() {
             }
         }
     }`
-		jobResult, err := ss.accDB.SearchAsESQ(ctx, query)
+		jobResult, err := resources.AccountRepository.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
 		accounts, err := toSlice[*models.Account](jobResult)
 
@@ -43,7 +43,7 @@ func (ss *SearchSuite) TestSearchAccountsWithMustFields() {
         }
     }`
 
-		jobResult, err = ss.accDB.SearchAsESQ(ctx, query)
+		jobResult, err = resources.AccountRepository.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
 		accounts, err = toSlice[*models.Account](jobResult)
 
@@ -54,8 +54,8 @@ func (ss *SearchSuite) TestSearchAccountsWithMustFields() {
 
 func (ss *SearchSuite) TestSearchTransactionsWithMustFields() {
 	ss.WithTestDependencies(ss.T(), func(t *testing.T, dep *definition.DependencyOption) {
-		svc, ctx, _ := ss.CreateService(t, dep)
-		ss.setupFixtures(ctx, svc)
+		ctx, _, resources := ss.CreateService(t, dep)
+		ss.setupFixtures(ctx, resources)
 
 		query := `{
         "query": {
@@ -68,7 +68,7 @@ func (ss *SearchSuite) TestSearchTransactionsWithMustFields() {
         }
     }`
 
-		resultChannel, err := ss.txnDB.SearchAsESQ(ctx, query)
+		resultChannel, err := resources.TransactionRepository.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
 		transactions, err := toSlice[*models.Transaction](resultChannel)
 		require.NoError(t, err, "Error in building search query")
@@ -87,7 +87,7 @@ func (ss *SearchSuite) TestSearchTransactionsWithMustFields() {
         }
     }`
 
-		resultChannel, err = ss.txnDB.SearchAsESQ(ctx, query)
+		resultChannel, err = resources.TransactionRepository.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
 		transactions, err = toSlice[*models.Transaction](resultChannel)
 		require.NoError(t, err, "Error in building search query")
@@ -97,8 +97,8 @@ func (ss *SearchSuite) TestSearchTransactionsWithMustFields() {
 
 func (ss *SearchSuite) TestSearchAccountsWithFieldOperators() {
 	ss.WithTestDependencies(ss.T(), func(t *testing.T, dep *definition.DependencyOption) {
-		svc, ctx, _ := ss.CreateService(t, dep)
-		ss.setupFixtures(ctx, svc)
+		ctx, _, resources := ss.CreateService(t, dep)
+		ss.setupFixtures(ctx, resources)
 
 		query := `{
         "query": {
@@ -110,7 +110,7 @@ func (ss *SearchSuite) TestSearchAccountsWithFieldOperators() {
         }
     }`
 
-		resultChannel, err := ss.accDB.SearchAsESQ(ctx, query)
+		resultChannel, err := resources.AccountRepository.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
 		accounts, err := toSlice[*models.Account](resultChannel)
 
@@ -130,7 +130,7 @@ func (ss *SearchSuite) TestSearchAccountsWithFieldOperators() {
         }
     }`
 
-		resultChannel, err = ss.accDB.SearchAsESQ(ctx, query)
+		resultChannel, err = resources.AccountRepository.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
 		accounts, err = toSlice[*models.Account](resultChannel)
 
@@ -148,7 +148,7 @@ func (ss *SearchSuite) TestSearchAccountsWithFieldOperators() {
         }
     }`
 
-		resultChannel, err = ss.accDB.SearchAsESQ(ctx, query)
+		resultChannel, err = resources.AccountRepository.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
 		accounts, err = toSlice[*models.Account](resultChannel)
 
@@ -166,7 +166,7 @@ func (ss *SearchSuite) TestSearchAccountsWithFieldOperators() {
         }
     }`
 
-		resultChannel, err = ss.accDB.SearchAsESQ(ctx, query)
+		resultChannel, err = resources.AccountRepository.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
 		accounts, err = toSlice[*models.Account](resultChannel)
 
