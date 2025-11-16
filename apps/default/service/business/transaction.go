@@ -22,7 +22,7 @@ type TransactionBusiness interface {
 	UpdateTransaction(ctx context.Context, req *ledgerv1.UpdateTransactionRequest) (*ledgerv1.Transaction, error)
 	ReverseTransaction(ctx context.Context, req *ledgerv1.ReverseTransactionRequest) (*ledgerv1.Transaction, error)
 	DeleteTransaction(ctx context.Context, id string) error
-	SearchEntries(ctx context.Context, query string) ([]*models.TransactionEntry, error)
+	SearchEntries(ctx context.Context, query string) (workerpool.JobResultPipe[[]*ledgerv1.TransactionEntry], error)
 }
 
 // transactionBusiness implements the TransactionBusiness interface.
@@ -93,7 +93,7 @@ func (b *transactionBusiness) SearchTransactions(
 			// Search through repository
 			result, err := b.transactionRepo.SearchAsESQ(ctx, query)
 			if err != nil {
-				return err
+				return pipe.WriteError(ctx, err)
 			}
 
 			for {
@@ -103,7 +103,7 @@ func (b *transactionBusiness) SearchTransactions(
 				}
 
 				if res.IsError() {
-					return res.Error()
+					return pipe.WriteError(ctx, res.Error())
 				}
 
 				var apiResults []*ledgerv1.Transaction
@@ -211,24 +211,49 @@ func (b *transactionBusiness) DeleteTransaction(ctx context.Context, id string) 
 }
 
 // SearchEntries searches for transaction entries based on query.
-func (b *transactionBusiness) SearchEntries(ctx context.Context, query string) ([]*models.TransactionEntry, error) {
+func (b *transactionBusiness) SearchEntries(ctx context.Context, query string) (workerpool.JobResultPipe[[]*ledgerv1.TransactionEntry], error) {
 	// Business logic for search validation
 	if query == "" {
 		query = "{}" // Default empty query
 	}
 
-	// Search through repository
-	result, err := b.transactionRepo.SearchEntries(ctx, query)
+	job := workerpool.NewJob[[]*ledgerv1.TransactionEntry](
+		func(ctx context.Context, pipe workerpool.JobResultPipe[[]*ledgerv1.TransactionEntry]) error {
+			// Search through repository
+
+			// Search through repository
+			result, err := b.transactionRepo.SearchEntries(ctx, query)
+			if err != nil {
+				return pipe.WriteError(ctx, err)
+			}
+
+			for {
+				res, ok := result.ReadResult(ctx)
+				if !ok {
+					return nil
+				}
+
+				if res.IsError() {
+					return pipe.WriteError(ctx, res.Error())
+				}
+
+				var apiResults []*ledgerv1.TransactionEntry
+				for _, txEntry := range res.Item() {
+					apiResults = append(apiResults, txEntry.ToAPI())
+				}
+
+				jobErr := pipe.WriteResult(ctx, apiResults)
+				if jobErr != nil {
+					return jobErr
+				}
+			}
+		},
+	)
+
+	err := workerpool.SubmitJob(ctx, b.workMan, job)
 	if err != nil {
 		return nil, err
 	}
 
-	// Handle the result based on actual repository interface
-	// For now, let's return empty slice and adjust based on testing
-	entries := make([]*models.TransactionEntry, 0)
-
-	// This is a placeholder - actual implementation depends on repository interface
-	_ = result // Suppress unused variable warning for now
-
-	return entries, nil
+	return job, nil
 }

@@ -92,7 +92,7 @@ func (b *accountBusiness) SearchAccounts(
 			// Search through repository
 			result, err := b.accountRepo.SearchAsESQ(ctx, query)
 			if err != nil {
-				return err
+				return pipe.WriteError(ctx, err)
 			}
 
 			for {
@@ -102,7 +102,7 @@ func (b *accountBusiness) SearchAccounts(
 				}
 
 				if res.IsError() {
-					return res.Error()
+					return pipe.WriteError(ctx, res.Error())
 				}
 
 				var apiResults []*ledgerv1.Account

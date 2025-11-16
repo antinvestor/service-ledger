@@ -23,12 +23,10 @@ const DefaultTimestamLayout = "2006-01-02T15:04:05.999999999"
 
 type TransactionRepository interface {
 	datastore.BaseRepository[*models.Transaction]
-	Validate(ctx context.Context, transaction *models.Transaction,
-	) (map[string]*models.Account, apperrors.ApplicationError)
-	IsConflict(ctx context.Context, transaction2 *models.Transaction) (bool, apperrors.ApplicationError)
-	Transact(ctx context.Context, transaction *models.Transaction,
-	) (*models.Transaction, apperrors.ApplicationError)
-	Reverse(ctx context.Context, id string) (*models.Transaction, apperrors.ApplicationError)
+	Validate(ctx context.Context, transaction *models.Transaction) (map[string]*models.Account, error)
+	IsConflict(ctx context.Context, transaction2 *models.Transaction) (bool, error)
+	Transact(ctx context.Context, transaction *models.Transaction) (*models.Transaction, error)
+	Reverse(ctx context.Context, id string) (*models.Transaction, error)
 	SearchAsESQ(ctx context.Context, query string,
 	) (workerpool.JobResultPipe[[]*models.Transaction], error)
 	SearchEntries(ctx context.Context, query string,
@@ -240,7 +238,7 @@ func (t *transactionRepository) SearchEntries(
 func (t *transactionRepository) Validate(
 	ctx context.Context,
 	txn *models.Transaction,
-) (map[string]*models.Account, apperrors.ApplicationError) {
+) (map[string]*models.Account, error) {
 	if ledgerv1.TransactionType_NORMAL.String() == txn.TransactionType ||
 		ledgerv1.TransactionType_REVERSAL.String() == txn.TransactionType {
 		// Skip if the transaction is invalid
@@ -310,9 +308,7 @@ func (t *transactionRepository) Validate(
 
 // IsConflict says whether a transaction conflicts with an existing transaction.
 func (t *transactionRepository) IsConflict(
-	ctx context.Context,
-	transaction2 *models.Transaction,
-) (bool, apperrors.ApplicationError) {
+	ctx context.Context, transaction2 *models.Transaction) (bool, error) {
 	transaction1, err := t.GetByID(ctx, transaction2.ID)
 	if err != nil {
 		return false, apperrors.ErrSystemFailure.Override(err)
@@ -324,9 +320,8 @@ func (t *transactionRepository) IsConflict(
 
 // Transact creates the input transaction in the DB.
 func (t *transactionRepository) Transact(
-	ctx context.Context,
-	transaction *models.Transaction,
-) (*models.Transaction, apperrors.ApplicationError) {
+	ctx context.Context, transaction *models.Transaction,
+) (*models.Transaction, error) {
 	// Check if a transaction with Reference already exists
 	existingTransaction, aerr := t.GetByID(ctx, transaction.GetID())
 	if aerr != nil {
@@ -334,7 +329,7 @@ func (t *transactionRepository) Transact(
 	}
 
 	if existingTransaction != nil {
-		var conflictErr apperrors.ApplicationError
+		var conflictErr error
 		isConflict, conflictErr := t.IsConflict(ctx, transaction)
 		if conflictErr != nil {
 			return nil, conflictErr
@@ -438,9 +433,7 @@ func (t *transactionRepository) Update(
 
 // Reverse creates a reversal  of the input transaction by creating a new transaction.
 func (t *transactionRepository) Reverse(
-	ctx context.Context,
-	id string,
-) (*models.Transaction, apperrors.ApplicationError) {
+	ctx context.Context, id string, ) (*models.Transaction, error) {
 	// Check if a transaction with same Reference already exists
 	reversalTxn, err1 := t.GetByID(ctx, id)
 	if err1 != nil {

@@ -22,6 +22,7 @@ func (ledgerSrv *LedgerServer) SearchAccounts(
 	}
 
 	for {
+
 		res, ok := result.ReadResult(ctx)
 		if !ok {
 			return nil
@@ -32,13 +33,11 @@ func (ledgerSrv *LedgerServer) SearchAccounts(
 		}
 
 		// Send response with account data
-		response := &ledgerv1.SearchAccountsResponse{
+		streamErr := stream.Send(&ledgerv1.SearchAccountsResponse{
 			Data: res.Item(),
-		}
-
-		err = stream.Send(response)
-		if err != nil {
-			return err
+		})
+		if streamErr != nil {
+			return streamErr
 		}
 	}
 }

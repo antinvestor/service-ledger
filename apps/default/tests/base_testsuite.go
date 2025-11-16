@@ -92,8 +92,11 @@ func (bs *BaseTestSuite) CreateService(
 		frame.WithConfig(&cfg), frame.WithDatastore(), frametests.WithNoopDriver()})
 
 	ctx, svc := frame.NewServiceWithContext(ctx, frameOpts...)
+	// Add cleanup to stop the service and prevent hanging goroutines
+	t.Cleanup(func() { svc.Stop(ctx) })
 
-	dbPool := svc.DatastoreManager().GetPool(ctx, datastore.DefaultPoolName)
+	dbManager := svc.DatastoreManager()
+	dbPool := dbManager.GetPool(ctx, datastore.DefaultPoolName)
 	workMan := svc.WorkManager()
 
 	ledgerRepo := repository.NewLedgerRepository(ctx, dbPool, workMan)
@@ -112,7 +115,7 @@ func (bs *BaseTestSuite) CreateService(
 		TransactionBusiness:   transactionBusiness,
 	}
 
-	err = repository.Migrate(ctx, svc.DatastoreManager(), "../../migrations/0001")
+	err = repository.Migrate(ctx, dbManager, "../../migrations/0001")
 	require.NoError(t, err)
 
 	err = svc.Run(ctx, "")

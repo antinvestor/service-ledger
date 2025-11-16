@@ -85,7 +85,7 @@ func (b *ledgerBusiness) SearchLedgers(
 			// Search through repository
 			result, err := b.ledgerRepo.SearchAsESQ(ctx, query)
 			if err != nil {
-				return err
+				return pipe.WriteError(ctx, err)
 			}
 
 			for {
@@ -95,7 +95,7 @@ func (b *ledgerBusiness) SearchLedgers(
 				}
 
 				if res.IsError() {
-					return res.Error()
+					return pipe.WriteError(ctx, res.Error())
 				}
 
 				var apiResults []*ledgerv1.Ledger

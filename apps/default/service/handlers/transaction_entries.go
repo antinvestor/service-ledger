@@ -6,21 +6,7 @@ import (
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	ledgerv1 "buf.build/gen/go/antinvestor/ledger/protocolbuffers/go/ledger/v1"
 	"connectrpc.com/connect"
-	"github.com/antinvestor/service-ledger/apps/default/service/models"
-	utility2 "github.com/antinvestor/service-ledger/internal/utility"
 )
-
-func transactionEntryToAPI(mEntry *models.TransactionEntry) *ledgerv1.TransactionEntry {
-	entryAmount := utility2.ToMoney("", mEntry.Amount.Decimal)
-
-	return &ledgerv1.TransactionEntry{
-		Id:            mEntry.ID,
-		AccountId:     mEntry.AccountID,
-		TransactionId: mEntry.TransactionID,
-		Amount:        &entryAmount,
-		Credit:        mEntry.Credit,
-	}
-}
 
 // SearchTransactionEntries finds transaction entries matching specified criteria.
 // Supports filtering by account, transaction, date range, and amount ranges.
@@ -35,19 +21,23 @@ func (ledgerSrv *LedgerServer) SearchTransactionEntries(
 		return err
 	}
 
-	// Convert model entries to API entries and stream them
-	apiEntries := make([]*ledgerv1.TransactionEntry, len(result))
-	for i, entry := range result {
-		apiEntries[i] = transactionEntryToAPI(entry)
+	for {
+		res, ok := result.ReadResult(ctx)
+		if !ok {
+			return nil
+		}
+
+		if res.IsError() {
+			return res.Error()
+		}
+
+		// Send response with transaction data
+		streamErr := stream.Send(&ledgerv1.SearchTransactionEntriesResponse{
+			Data: res.Item(),
+		})
+		if streamErr != nil {
+			return streamErr
+		}
 	}
 
-	response := &ledgerv1.SearchTransactionEntriesResponse{
-		Data: apiEntries,
-	}
-
-	if err := stream.Send(response); err != nil {
-		return err
-	}
-
-	return nil
 }

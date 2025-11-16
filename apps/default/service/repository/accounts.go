@@ -48,7 +48,7 @@ LEFT JOIN current_balance_summary bs ON a.id = bs.account_id AND a.currency = bs
 type AccountRepository interface {
 	datastore.BaseRepository[*models.Account]
 	SearchAsESQ(ctx context.Context, query string) (workerpool.JobResultPipe[[]*models.Account], error)
-	ListByID(ctx context.Context, ids ...string) (map[string]*models.Account, apperrors.ApplicationError)
+	ListByID(ctx context.Context, ids ...string) (map[string]*models.Account, error)
 }
 
 // accountRepository provides all functions related to ledger account.
@@ -93,7 +93,7 @@ func (a *accountRepository) GetByID(
 func (a *accountRepository) ListByID(
 	ctx context.Context,
 	ids ...string,
-) (map[string]*models.Account, apperrors.ApplicationError) {
+) (map[string]*models.Account, error) {
 	if len(ids) == 0 {
 		return nil, apperrors.ErrAccountsNotFound.Extend("No Accounts were specified")
 	}
