@@ -15,10 +15,8 @@ import (
 // AccountBusiness defines the business interface for account operations.
 type AccountBusiness interface {
 	CreateAccount(ctx context.Context, req *ledgerv1.CreateAccountRequest) (*ledgerv1.Account, error)
-	SearchAccounts(
-		ctx context.Context,
-		req *commonv1.SearchRequest,
-	) (workerpool.JobResultPipe[[]*ledgerv1.Account], error)
+	SearchAccounts(ctx context.Context, req *commonv1.SearchRequest,
+		consumer func(ctx context.Context, batch []*ledgerv1.Account) error) error
 	GetAccount(ctx context.Context, id string) (*ledgerv1.Account, error)
 	UpdateAccount(ctx context.Context, req *ledgerv1.UpdateAccountRequest) (*ledgerv1.Account, error)
 	DeleteAccount(ctx context.Context, id string) error
@@ -79,51 +77,40 @@ func (b *accountBusiness) CreateAccount(
 // SearchAccounts searches for accounts based on query.
 func (b *accountBusiness) SearchAccounts(
 	ctx context.Context,
-	req *commonv1.SearchRequest,
-) (workerpool.JobResultPipe[[]*ledgerv1.Account], error) {
+	req *commonv1.SearchRequest, consumer func(ctx context.Context, batch []*ledgerv1.Account) error,
+) error {
 	// Business logic for search validation
 	query := req.GetQuery()
 	if query == "" {
 		query = "{}" // Default empty query
 	}
 
-	job := workerpool.NewJob[[]*ledgerv1.Account](
-		func(ctx context.Context, pipe workerpool.JobResultPipe[[]*ledgerv1.Account]) error {
-			// Search through repository
-			result, err := b.accountRepo.SearchAsESQ(ctx, query)
-			if err != nil {
-				return pipe.WriteError(ctx, err)
-			}
-
-			for {
-				res, ok := result.ReadResult(ctx)
-				if !ok {
-					return nil
-				}
-
-				if res.IsError() {
-					return pipe.WriteError(ctx, res.Error())
-				}
-
-				var apiResults []*ledgerv1.Account
-				for _, account := range res.Item() {
-					apiResults = append(apiResults, account.ToAPI())
-				}
-
-				jobErr := pipe.WriteResult(ctx, apiResults)
-				if jobErr != nil {
-					return jobErr
-				}
-			}
-		},
-	)
-
-	err := workerpool.SubmitJob(ctx, b.workMan, job)
+	// Search through repository
+	result, err := b.accountRepo.SearchAsESQ(ctx, query)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return job, nil
+	for {
+		res, ok := result.ReadResult(ctx)
+		if !ok {
+			return nil
+		}
+
+		if res.IsError() {
+			return res.Error()
+		}
+
+		var apiResults []*ledgerv1.Account
+		for _, account := range res.Item() {
+			apiResults = append(apiResults, account.ToAPI())
+		}
+
+		jobErr := consumer(ctx, apiResults)
+		if jobErr != nil {
+			return jobErr
+		}
+	}
 }
 
 // GetAccount retrieves an account by ID.

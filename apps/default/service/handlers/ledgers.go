@@ -37,30 +37,12 @@ func (ledgerSrv *LedgerServer) SearchLedgers(
 	stream *connect.ServerStream[ledgerv1.SearchLedgersResponse],
 ) error {
 	// Search ledgers using business layer
-	result, err := ledgerSrv.Ledger.SearchLedgers(ctx, req.Msg)
-	if err != nil {
-		return err
-	}
-
-	for {
-		res, ok := result.ReadResult(ctx)
-		if !ok {
-			return nil
-		}
-
-		if res.IsError() {
-			return res.Error()
-		}
-
+	return ledgerSrv.Ledger.SearchLedgers(ctx, req.Msg, func(ctx context.Context, batch []*ledgerv1.Ledger) error {
 		// Send response with ledger data
-		response := &ledgerv1.SearchLedgersResponse{
-			Data: res.Item(),
-		}
-
-		if err := stream.Send(response); err != nil {
-			return err
-		}
-	}
+		return stream.Send(&ledgerv1.SearchLedgersResponse{
+			Data: batch,
+		})
+	})
 }
 
 // CreateLedger creates a new ledger in the chart of accounts.

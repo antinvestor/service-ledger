@@ -16,30 +16,17 @@ func (ledgerSrv *LedgerServer) SearchAccounts(
 	stream *connect.ServerStream[ledgerv1.SearchAccountsResponse],
 ) error {
 	// Search accounts using business layer
-	result, err := ledgerSrv.Account.SearchAccounts(ctx, req.Msg)
+	err := ledgerSrv.Account.SearchAccounts(ctx, req.Msg, func(ctx context.Context, batch []*ledgerv1.Account) error {
+		// Send response with account data
+		return stream.Send(&ledgerv1.SearchAccountsResponse{
+			Data: batch,
+		})
+	})
 	if err != nil {
 		return err
 	}
 
-	for {
-
-		res, ok := result.ReadResult(ctx)
-		if !ok {
-			return nil
-		}
-
-		if res.IsError() {
-			return res.Error()
-		}
-
-		// Send response with account data
-		streamErr := stream.Send(&ledgerv1.SearchAccountsResponse{
-			Data: res.Item(),
-		})
-		if streamErr != nil {
-			return streamErr
-		}
-	}
+	return nil
 }
 
 // CreateAccount creates a new account within a ledger.

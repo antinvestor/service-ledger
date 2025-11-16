@@ -92,8 +92,6 @@ func (bs *BaseTestSuite) CreateService(
 		frame.WithConfig(&cfg), frame.WithDatastore(), frametests.WithNoopDriver()})
 
 	ctx, svc := frame.NewServiceWithContext(ctx, frameOpts...)
-	// Add cleanup to stop the service and prevent hanging goroutines
-	t.Cleanup(func() { svc.Stop(ctx) })
 
 	dbManager := svc.DatastoreManager()
 	dbPool := dbManager.GetPool(ctx, datastore.DefaultPoolName)

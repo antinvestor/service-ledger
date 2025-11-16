@@ -14,10 +14,8 @@ import (
 // LedgerBusiness defines the business interface for ledger operations.
 type LedgerBusiness interface {
 	CreateLedger(ctx context.Context, req *ledgerv1.CreateLedgerRequest) (*ledgerv1.Ledger, error)
-	SearchLedgers(
-		ctx context.Context,
-		req *commonv1.SearchRequest,
-	) (workerpool.JobResultPipe[[]*ledgerv1.Ledger], error)
+	SearchLedgers(ctx context.Context, req *commonv1.SearchRequest,
+		consumer func(ctx context.Context, batch []*ledgerv1.Ledger) error) error
 	GetLedger(ctx context.Context, id string) (*ledgerv1.Ledger, error)
 	UpdateLedger(ctx context.Context, req *ledgerv1.UpdateLedgerRequest) (*ledgerv1.Ledger, error)
 	DeleteLedger(ctx context.Context, id string) error
@@ -70,53 +68,40 @@ func (b *ledgerBusiness) CreateLedger(
 }
 
 // SearchLedgers searches for ledgers based on query.
-func (b *ledgerBusiness) SearchLedgers(
-	ctx context.Context,
-	req *commonv1.SearchRequest,
-) (workerpool.JobResultPipe[[]*ledgerv1.Ledger], error) {
+func (b *ledgerBusiness) SearchLedgers(ctx context.Context, req *commonv1.SearchRequest,
+	consumer func(ctx context.Context, batch []*ledgerv1.Ledger) error) error {
 	// Business logic for search validation
 	query := req.GetQuery()
 	if query == "" {
 		query = "{}" // Default empty query
 	}
 
-	job := workerpool.NewJob[[]*ledgerv1.Ledger](
-		func(ctx context.Context, pipe workerpool.JobResultPipe[[]*ledgerv1.Ledger]) error {
-			// Search through repository
-			result, err := b.ledgerRepo.SearchAsESQ(ctx, query)
-			if err != nil {
-				return pipe.WriteError(ctx, err)
-			}
-
-			for {
-				res, ok := result.ReadResult(ctx)
-				if !ok {
-					return nil
-				}
-
-				if res.IsError() {
-					return pipe.WriteError(ctx, res.Error())
-				}
-
-				var apiResults []*ledgerv1.Ledger
-				for _, ledger := range res.Item() {
-					apiResults = append(apiResults, ledger.ToAPI())
-				}
-
-				jobErr := pipe.WriteResult(ctx, apiResults)
-				if jobErr != nil {
-					return jobErr
-				}
-			}
-		},
-	)
-
-	err := workerpool.SubmitJob(ctx, b.workMan, job)
+	// Search through repository
+	result, err := b.ledgerRepo.SearchAsESQ(ctx, query)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return job, nil
+	for {
+		res, ok := result.ReadResult(ctx)
+		if !ok {
+			return nil
+		}
+
+		if res.IsError() {
+			return res.Error()
+		}
+
+		var apiResults []*ledgerv1.Ledger
+		for _, ledger := range res.Item() {
+			apiResults = append(apiResults, ledger.ToAPI())
+		}
+
+		jobErr := consumer(ctx, apiResults)
+		if jobErr != nil {
+			return jobErr
+		}
+	}
 }
 
 // GetLedger retrieves a ledger by ID.

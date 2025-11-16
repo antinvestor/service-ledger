@@ -14,15 +14,13 @@ import (
 // TransactionBusiness defines the business interface for transaction operations.
 type TransactionBusiness interface {
 	CreateTransaction(ctx context.Context, req *ledgerv1.CreateTransactionRequest) (*ledgerv1.Transaction, error)
-	SearchTransactions(
-		ctx context.Context,
-		req *commonv1.SearchRequest,
-	) (workerpool.JobResultPipe[[]*ledgerv1.Transaction], error)
+	SearchTransactions(ctx context.Context, req *commonv1.SearchRequest,
+		consumer func(ctx context.Context, batch []*ledgerv1.Transaction) error) error
 	GetTransaction(ctx context.Context, id string) (*ledgerv1.Transaction, error)
 	UpdateTransaction(ctx context.Context, req *ledgerv1.UpdateTransactionRequest) (*ledgerv1.Transaction, error)
 	ReverseTransaction(ctx context.Context, req *ledgerv1.ReverseTransactionRequest) (*ledgerv1.Transaction, error)
 	DeleteTransaction(ctx context.Context, id string) error
-	SearchEntries(ctx context.Context, query string) (workerpool.JobResultPipe[[]*ledgerv1.TransactionEntry], error)
+	SearchEntries(ctx context.Context, req *commonv1.SearchRequest, consumer func(ctx context.Context, batch []*ledgerv1.TransactionEntry) error) error
 }
 
 // transactionBusiness implements the TransactionBusiness interface.
@@ -78,53 +76,41 @@ func (b *transactionBusiness) CreateTransaction(
 }
 
 // SearchTransactions searches for transactions based on query.
-func (b *transactionBusiness) SearchTransactions(
-	ctx context.Context,
-	req *commonv1.SearchRequest,
-) (workerpool.JobResultPipe[[]*ledgerv1.Transaction], error) {
+func (b *transactionBusiness) SearchTransactions(ctx context.Context, req *commonv1.SearchRequest,
+	consumer func(ctx context.Context, batch []*ledgerv1.Transaction) error) error {
 	// Business logic for search validation
 	query := req.GetQuery()
 	if query == "" {
 		query = "{}" // Default empty query
 	}
 
-	job := workerpool.NewJob[[]*ledgerv1.Transaction](
-		func(ctx context.Context, pipe workerpool.JobResultPipe[[]*ledgerv1.Transaction]) error {
-			// Search through repository
-			result, err := b.transactionRepo.SearchAsESQ(ctx, query)
-			if err != nil {
-				return pipe.WriteError(ctx, err)
-			}
-
-			for {
-				res, ok := result.ReadResult(ctx)
-				if !ok {
-					return nil
-				}
-
-				if res.IsError() {
-					return pipe.WriteError(ctx, res.Error())
-				}
-
-				var apiResults []*ledgerv1.Transaction
-				for _, transaction := range res.Item() {
-					apiResults = append(apiResults, transaction.ToAPI())
-				}
-
-				jobErr := pipe.WriteResult(ctx, apiResults)
-				if jobErr != nil {
-					return jobErr
-				}
-			}
-		},
-	)
-
-	err := workerpool.SubmitJob(ctx, b.workMan, job)
+	// Search through repository
+	result, err := b.transactionRepo.SearchAsESQ(ctx, query)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return job, nil
+	for {
+		res, ok := result.ReadResult(ctx)
+		if !ok {
+			return nil
+		}
+
+		if res.IsError() {
+			return res.Error()
+		}
+
+		var apiResults []*ledgerv1.Transaction
+		for _, transaction := range res.Item() {
+			apiResults = append(apiResults, transaction.ToAPI())
+		}
+
+		jobErr := consumer(ctx, apiResults)
+		if jobErr != nil {
+			return jobErr
+		}
+	}
+
 }
 
 // GetTransaction retrieves a transaction by ID.
@@ -211,49 +197,37 @@ func (b *transactionBusiness) DeleteTransaction(ctx context.Context, id string) 
 }
 
 // SearchEntries searches for transaction entries based on query.
-func (b *transactionBusiness) SearchEntries(ctx context.Context, query string) (workerpool.JobResultPipe[[]*ledgerv1.TransactionEntry], error) {
+func (b *transactionBusiness) SearchEntries(ctx context.Context, req *commonv1.SearchRequest, consumer func(ctx context.Context, batch []*ledgerv1.TransactionEntry) error) error {
 	// Business logic for search validation
+	query := req.GetQuery()
 	if query == "" {
 		query = "{}" // Default empty query
 	}
 
-	job := workerpool.NewJob[[]*ledgerv1.TransactionEntry](
-		func(ctx context.Context, pipe workerpool.JobResultPipe[[]*ledgerv1.TransactionEntry]) error {
-			// Search through repository
-
-			// Search through repository
-			result, err := b.transactionRepo.SearchEntries(ctx, query)
-			if err != nil {
-				return pipe.WriteError(ctx, err)
-			}
-
-			for {
-				res, ok := result.ReadResult(ctx)
-				if !ok {
-					return nil
-				}
-
-				if res.IsError() {
-					return pipe.WriteError(ctx, res.Error())
-				}
-
-				var apiResults []*ledgerv1.TransactionEntry
-				for _, txEntry := range res.Item() {
-					apiResults = append(apiResults, txEntry.ToAPI())
-				}
-
-				jobErr := pipe.WriteResult(ctx, apiResults)
-				if jobErr != nil {
-					return jobErr
-				}
-			}
-		},
-	)
-
-	err := workerpool.SubmitJob(ctx, b.workMan, job)
+	// Search through repository
+	result, err := b.transactionRepo.SearchEntries(ctx, query)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return job, nil
+	for {
+		res, ok := result.ReadResult(ctx)
+		if !ok {
+			return nil
+		}
+
+		if res.IsError() {
+			return res.Error()
+		}
+
+		var apiResults []*ledgerv1.TransactionEntry
+		for _, txEntry := range res.Item() {
+			apiResults = append(apiResults, txEntry.ToAPI())
+		}
+
+		jobErr := consumer(ctx, apiResults)
+		if jobErr != nil {
+			return jobErr
+		}
+	}
 }
