@@ -25,7 +25,7 @@ func (ss *SearchSuite) TestSearchAccountsWithMustFields() {
     }`
 		jobResult, err := resources.AccountRepository.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
-		accounts, err := toSlice[*models.Account](jobResult)
+		accounts, err := resultsToSlice[*models.Account](jobResult)
 
 		require.NoError(t, err, "Error querying must fields")
 		require.Len(t, accounts, 1, "Accounts count doesn't match")
@@ -45,7 +45,7 @@ func (ss *SearchSuite) TestSearchAccountsWithMustFields() {
 
 		jobResult, err = resources.AccountRepository.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
-		accounts, err = toSlice[*models.Account](jobResult)
+		accounts, err = resultsToSlice[*models.Account](jobResult)
 
 		require.NoError(t, err, "Error querying must fields")
 		require.Empty(t, accounts, "No account should exist for given query")
@@ -70,7 +70,7 @@ func (ss *SearchSuite) TestSearchTransactionsWithMustFields() {
 
 		resultChannel, err := resources.TransactionRepository.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
-		transactions, err := toSlice[*models.Transaction](resultChannel)
+		transactions, err := resultsToSlice[*models.Transaction](resultChannel)
 		require.NoError(t, err, "Error in building search query")
 		require.Len(t, transactions, 1, "Transactions count doesn't match")
 		if len(transactions) > 0 {
@@ -89,7 +89,7 @@ func (ss *SearchSuite) TestSearchTransactionsWithMustFields() {
 
 		resultChannel, err = resources.TransactionRepository.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
-		transactions, err = toSlice[*models.Transaction](resultChannel)
+		transactions, err = resultsToSlice[*models.Transaction](resultChannel)
 		require.NoError(t, err, "Error in building search query")
 		require.Empty(t, transactions, "No transaction should exist for given query")
 	})
@@ -110,9 +110,9 @@ func (ss *SearchSuite) TestSearchAccountsWithFieldOperators() {
         }
     }`
 
-		resultChannel, err := resources.AccountRepository.SearchAsESQ(ctx, query)
+		resultPipe, err := resources.AccountRepository.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
-		accounts, err := toSlice[*models.Account](resultChannel)
+		accounts, err := resultsToSlice[*models.Account](resultPipe)
 
 		require.NoError(t, err, "Error in building search query")
 		require.Len(t, accounts, 1, "Accounts count doesn't match")
@@ -130,9 +130,9 @@ func (ss *SearchSuite) TestSearchAccountsWithFieldOperators() {
         }
     }`
 
-		resultChannel, err = resources.AccountRepository.SearchAsESQ(ctx, query)
+		resultPipe, err = resources.AccountRepository.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
-		accounts, err = toSlice[*models.Account](resultChannel)
+		accounts, err = resultsToSlice[*models.Account](resultPipe)
 
 		require.NoError(t, err, "Error in building search query")
 		require.Len(t, accounts, 1, "Accounts count doesn't match")
@@ -148,9 +148,9 @@ func (ss *SearchSuite) TestSearchAccountsWithFieldOperators() {
         }
     }`
 
-		resultChannel, err = resources.AccountRepository.SearchAsESQ(ctx, query)
+		resultPipe, err = resources.AccountRepository.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
-		accounts, err = toSlice[*models.Account](resultChannel)
+		accounts, err = resultsToSlice[*models.Account](resultPipe)
 
 		require.NoError(t, err, "Error in building search query")
 		require.Len(t, accounts, 1, "Accounts count doesn't match")
@@ -166,9 +166,9 @@ func (ss *SearchSuite) TestSearchAccountsWithFieldOperators() {
         }
     }`
 
-		resultChannel, err = resources.AccountRepository.SearchAsESQ(ctx, query)
+		resultPipe, err = resources.AccountRepository.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
-		accounts, err = toSlice[*models.Account](resultChannel)
+		accounts, err = resultsToSlice[*models.Account](resultPipe)
 
 		require.NoError(t, err, "Error in building search query")
 		require.Len(t, accounts, 1, "Accounts count doesn't match")

@@ -18,6 +18,10 @@ type AccountsSuite struct {
 	ledger *models.Ledger
 }
 
+func TestAccountsSuite(t *testing.T) {
+	suite.Run(t, new(AccountsSuite))
+}
+
 func (as *AccountsSuite) setupFixtures(ctx context.Context, resources *tests.ServiceResources) {
 	// Create test accounts using cached repositories
 	ledgersDB := resources.LedgerRepository
@@ -50,8 +54,4 @@ func (as *AccountsSuite) TestAccountsInfoAPI() {
 			assert.True(t, account.Balance.Valid && account.Balance.Decimal.IsZero(), "Invalid account balance")
 		}
 	})
-}
-
-func TestAccountsSuite(t *testing.T) {
-	suite.Run(t, new(AccountsSuite))
 }

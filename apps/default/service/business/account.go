@@ -10,6 +10,7 @@ import (
 	"github.com/pitabwire/frame/data"
 	"github.com/pitabwire/frame/workerpool"
 	"github.com/shopspring/decimal"
+	"golang.org/x/text/currency"
 )
 
 // AccountBusiness defines the business interface for account operations.
@@ -26,13 +27,15 @@ type AccountBusiness interface {
 type accountBusiness struct {
 	workMan     workerpool.Manager
 	accountRepo repository.AccountRepository
+	ledgerRepo  repository.LedgerRepository
 }
 
 // NewAccountBusiness creates a new account business instance.
-func NewAccountBusiness(workMan workerpool.Manager, accountRepo repository.AccountRepository) AccountBusiness {
+func NewAccountBusiness(workMan workerpool.Manager, ledgerRepo repository.LedgerRepository, accountRepo repository.AccountRepository) AccountBusiness {
 	return &accountBusiness{
 		workMan:     workMan,
 		accountRepo: accountRepo,
+		ledgerRepo:  ledgerRepo,
 	}
 }
 
@@ -51,8 +54,6 @@ func (b *accountBusiness) CreateAccount(
 	}
 
 	// Convert API request to model
-	// Create a zero balance money account for the currency
-
 	accountModel := &models.Account{
 		LedgerID: req.GetLedgerId(),
 		Currency: req.GetCurrency(),
@@ -64,8 +65,25 @@ func (b *accountBusiness) CreateAccount(
 		accountModel.ID = req.GetId()
 	}
 
+	// Validate and populate ledger information if ledger ID is provided
+	if accountModel.LedgerID != "" {
+		ledger, err := b.ledgerRepo.GetByID(ctx, accountModel.LedgerID)
+		if err != nil {
+			return nil, err
+		}
+		accountModel.LedgerID = ledger.ID
+		accountModel.LedgerType = ledger.Type
+	}
+
+	// Validate and normalize currency
+	currencyUnit, err := currency.ParseISO(accountModel.Currency)
+	if err != nil {
+		return nil, ErrAccountCurrencyInvalid
+	}
+
+	accountModel.Currency = currencyUnit.String()
 	// Create the account through repository
-	err := b.accountRepo.Create(ctx, accountModel)
+	err = b.accountRepo.Create(ctx, accountModel)
 	if err != nil {
 		return nil, err
 	}
@@ -122,6 +140,10 @@ func (b *accountBusiness) GetAccount(ctx context.Context, id string) (*ledgerv1.
 	account, err := b.accountRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
+	}
+
+	if account == nil {
+		return nil, ErrAccountNotFound
 	}
 
 	// Convert to API type

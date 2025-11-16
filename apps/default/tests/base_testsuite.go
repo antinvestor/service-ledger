@@ -68,25 +68,21 @@ func (bs *BaseTestSuite) CreateService(
 	require.NoError(t, err)
 
 	cfg.LogLevel = "debug"
-	cfg.DatabaseMigrate = true
-	cfg.DatabaseTraceQueries = true
 	cfg.RunServiceSecurely = false
 	cfg.ServerPort = ""
+	cfg.DatabaseMigrate = true
+	cfg.DatabaseTraceQueries = true
 
-	if depOpts != nil {
-		res := depOpts.ByIsDatabase(ctx)
-		if res != nil {
-			testDS, cleanup, err0 := res.GetRandomisedDS(ctx, depOpts.Prefix())
-			require.NoError(t, err0)
+	res := depOpts.ByIsDatabase(ctx)
+	testDS, cleanup, err0 := res.GetRandomisedDS(t.Context(), depOpts.Prefix())
+	require.NoError(t, err0)
 
-			t.Cleanup(func() {
-				cleanup(ctx)
-			})
+	t.Cleanup(func() {
+		cleanup(t.Context())
+	})
 
-			cfg.DatabasePrimaryURL = []string{testDS.String()}
-			cfg.DatabaseReplicaURL = []string{testDS.String()}
-		}
-	}
+	cfg.DatabasePrimaryURL = []string{testDS.String()}
+	cfg.DatabaseReplicaURL = []string{testDS.String()}
 
 	frameOpts = append([]frame.Option{frame.WithName("ledger tests"),
 		frame.WithConfig(&cfg), frame.WithDatastore(), frametests.WithNoopDriver()})
@@ -98,11 +94,11 @@ func (bs *BaseTestSuite) CreateService(
 	workMan := svc.WorkManager()
 
 	ledgerRepo := repository.NewLedgerRepository(ctx, dbPool, workMan)
-	accountRepo := repository.NewAccountRepository(ctx, dbPool, workMan, ledgerRepo)
+	accountRepo := repository.NewAccountRepository(ctx, dbPool, workMan)
 	transactionRepo := repository.NewTransactionRepository(ctx, dbPool, workMan, accountRepo)
 	ledgerBusiness := business.NewLedgerBusiness(workMan, ledgerRepo)
-	accountBusiness := business.NewAccountBusiness(workMan, accountRepo)
-	transactionBusiness := business.NewTransactionBusiness(workMan, transactionRepo)
+	accountBusiness := business.NewAccountBusiness(workMan, ledgerRepo, accountRepo)
+	transactionBusiness := business.NewTransactionBusiness(workMan, accountRepo, transactionRepo)
 
 	resources := &ServiceResources{
 		LedgerRepository:      ledgerRepo,

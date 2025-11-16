@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+const SystemBatchSize = 30
+
 func jsonify(input interface{}) string {
 	j, _ := json.Marshal(input)
 	return string(j)

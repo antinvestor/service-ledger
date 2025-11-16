@@ -12,7 +12,6 @@ import (
 	"github.com/pitabwire/frame/datastore/pool"
 	"github.com/pitabwire/frame/workerpool"
 	"github.com/pitabwire/util"
-	"golang.org/x/text/currency"
 )
 
 const constAccountQuery = `WITH current_balance_summary AS (
@@ -54,7 +53,6 @@ type AccountRepository interface {
 // accountRepository provides all functions related to ledger account.
 type accountRepository struct {
 	datastore.BaseRepository[*models.Account]
-	ledgerRepository LedgerRepository
 }
 
 // NewAccountRepository provides instance of `accountRepository`.
@@ -62,13 +60,11 @@ func NewAccountRepository(
 	ctx context.Context,
 	dbPool pool.Pool,
 	workMan workerpool.Manager,
-	ledgerRepository LedgerRepository,
 ) AccountRepository {
 	return &accountRepository{
 		BaseRepository: datastore.NewBaseRepository[*models.Account](
 			ctx, dbPool, workMan, func() *models.Account { return &models.Account{} },
 		),
-		ledgerRepository: ledgerRepository,
 	}
 }
 
@@ -211,28 +207,4 @@ func (a *accountRepository) SearchAsESQ(
 	}
 
 	return job, nil
-}
-
-// Create persists a new account in the ledger if its none existent.
-func (a *accountRepository) Create(
-	ctx context.Context,
-	account *models.Account,
-) error {
-	if account.LedgerID != "" {
-		lg, err := a.ledgerRepository.GetByID(ctx, account.LedgerID)
-		if err != nil {
-			return apperrors.ErrSystemFailure.Override(err)
-		}
-		account.LedgerID = lg.ID
-		account.LedgerType = lg.Type
-	}
-
-	currencyUnit, err := currency.ParseISO(account.Currency)
-	if err != nil {
-		return apperrors.ErrAccountsCurrencyUnknown
-	}
-
-	account.Currency = currencyUnit.String()
-
-	return a.Create(ctx, account)
 }

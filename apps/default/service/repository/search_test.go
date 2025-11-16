@@ -23,7 +23,7 @@ type SearchSuite struct {
 	ledger *models.Ledger
 }
 
-func toSlice[T any](result workerpool.JobResultPipe[[]T]) ([]T, error) {
+func resultsToSlice[T any](result workerpool.JobResultPipe[[]T]) ([]T, error) {
 	var resultSlice []T
 
 	for res := range result.ResultChan() {
@@ -97,7 +97,7 @@ func (ss *SearchSuite) setupFixtures(ctx context.Context, resources *tests.Servi
 			"months": []string{"jan", "feb", "mar"},
 		},
 	}
-	tx, err := resources.TransactionRepository.Transact(ctx, txn1)
+	tx, err := resources.TransactionBusiness.Transact(ctx, txn1)
 	require.NoError(t, err, "Error creating test transaction")
 	require.NotNil(t, tx, "Error creating test transaction")
 	txn2 := &models.Transaction{
@@ -124,7 +124,7 @@ func (ss *SearchSuite) setupFixtures(ctx context.Context, resources *tests.Servi
 			"months": []string{"apr", "may", "jun"},
 		},
 	}
-	tx, _ = resources.TransactionRepository.Transact(ctx, txn2)
+	tx, _ = resources.TransactionBusiness.Transact(ctx, txn2)
 	require.NotNil(t, tx, "Error creating test transaction")
 	txn3 := &models.Transaction{
 		BaseModel:       data.BaseModel{ID: "txn3"},
@@ -150,7 +150,7 @@ func (ss *SearchSuite) setupFixtures(ctx context.Context, resources *tests.Servi
 			"months": []string{"jul", "aug", "sep"},
 		},
 	}
-	tx, err = resources.TransactionRepository.Transact(ctx, txn3)
+	tx, err = resources.TransactionBusiness.Transact(ctx, txn3)
 
 	require.NoError(t, err)
 
@@ -185,7 +185,7 @@ func (ss *SearchSuite) TestSearchAccountsWithBothMustAndShould() {
 
 		resultChannel, err := resources.AccountRepository.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
-		accounts, err := toSlice[*models.Account](resultChannel)
+		accounts, err := resultsToSlice[*models.Account](resultChannel)
 		require.NoError(t, err, "Error in building search query")
 		assert.Len(t, accounts, 1, "Account count doesn't match")
 		assert.Equal(t, "acc1", accounts[0].ID, "Account Reference doesn't match")
@@ -221,7 +221,7 @@ func (ss *SearchSuite) TestSearchTransactionsWithBothMustAndShould() {
     }`
 		resultChannel, err := resources.TransactionRepository.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
-		transactions, err := toSlice[*models.Transaction](resultChannel)
+		transactions, err := resultsToSlice[*models.Transaction](resultChannel)
 
 		require.NoError(t, err, "Error in building search query")
 		assert.Len(t, transactions, 1, "Transaction count doesn't match")

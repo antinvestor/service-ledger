@@ -26,7 +26,7 @@ func (ss *SearchSuite) TestSearchAccountsWithShouldRanges() {
     }`
 		resultChannel, err := resources.AccountRepository.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
-		accounts, err := toSlice[*models.Account](resultChannel)
+		accounts, err := resultsToSlice[*models.Account](resultChannel)
 
 		require.NoError(t, err, "Error in building search query")
 		assert.Len(t, accounts, 2, "Accounts count doesn't match")
@@ -43,7 +43,7 @@ func (ss *SearchSuite) TestSearchAccountsWithShouldRanges() {
     }`
 		resultChannel, err = resources.AccountRepository.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
-		accounts, err = toSlice[*models.Account](resultChannel)
+		accounts, err = resultsToSlice[*models.Account](resultChannel)
 
 		require.NoError(t, err, "Error in building search query")
 		assert.Empty(t, accounts, "No account should exist for given query")
@@ -68,7 +68,7 @@ func (ss *SearchSuite) TestSearchTransactionsWithShouldRanges() {
 
 		resultChannel, err := resources.TransactionRepository.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
-		transactions, err := toSlice[*models.Transaction](resultChannel)
+		transactions, err := resultsToSlice[*models.Transaction](resultChannel)
 		require.NoError(t, err, "Error in building search query")
 		assert.Len(t, transactions, 3, "Transactions count doesn't match")
 
@@ -85,7 +85,7 @@ func (ss *SearchSuite) TestSearchTransactionsWithShouldRanges() {
 
 		resultChannel, err = resources.TransactionRepository.SearchAsESQ(ctx, query)
 		require.NoError(t, err)
-		transactions, err = toSlice[*models.Transaction](resultChannel)
+		transactions, err = resultsToSlice[*models.Transaction](resultChannel)
 		require.NoError(t, err, "Error in building search query")
 		assert.Empty(t, transactions, "No transaction should exist for given query")
 	})
