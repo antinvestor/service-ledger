@@ -10,7 +10,7 @@ require (
 	connectrpc.com/otelconnect v0.8.0
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/lib/pq v1.10.9
-	github.com/pitabwire/frame v1.66.0
+	github.com/pitabwire/frame v1.66.1
 	github.com/pitabwire/util v0.3.5
 	github.com/rs/xid v1.6.0
 	github.com/shopspring/decimal v1.4.0
@@ -18,6 +18,7 @@ require (
 	github.com/testcontainers/testcontainers-go v0.40.0
 	golang.org/x/text v0.31.0
 	google.golang.org/genproto v0.0.0-20251111163417-95abcf5c77ba
+	google.golang.org/protobuf v1.36.10
 )
 
 require (
@@ -141,7 +142,6 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20251111163417-95abcf5c77ba // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251111163417-95abcf5c77ba // indirect
 	google.golang.org/grpc v1.76.0 // indirect
-	google.golang.org/protobuf v1.36.10 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/postgres v1.6.0 // indirect
 	gorm.io/gorm v1.31.1 // indirect
