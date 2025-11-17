@@ -1,6 +1,6 @@
 module github.com/antinvestor/service-ledger
 
-go 1.25.0
+go 1.25.2
 
 require (
 	buf.build/gen/go/antinvestor/common/protocolbuffers/go v1.36.10-20251115174401-cf993dd61681.1
@@ -10,7 +10,7 @@ require (
 	connectrpc.com/otelconnect v0.8.0
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/lib/pq v1.10.9
-	github.com/pitabwire/frame v1.65.5
+	github.com/pitabwire/frame v1.66.0
 	github.com/pitabwire/util v0.3.5
 	github.com/rs/xid v1.6.0
 	github.com/shopspring/decimal v1.4.0
