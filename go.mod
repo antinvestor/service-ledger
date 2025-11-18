@@ -10,7 +10,7 @@ require (
 	connectrpc.com/otelconnect v0.8.0
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/lib/pq v1.10.9
-	github.com/pitabwire/frame v1.66.6
+	github.com/pitabwire/frame v1.67.0
 	github.com/pitabwire/util v0.3.5
 	github.com/rs/xid v1.6.0
 	github.com/shopspring/decimal v1.4.0
