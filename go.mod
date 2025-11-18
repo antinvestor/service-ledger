@@ -10,7 +10,7 @@ require (
 	connectrpc.com/otelconnect v0.8.0
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/lib/pq v1.10.9
-	github.com/pitabwire/frame v1.66.2
+	github.com/pitabwire/frame v1.66.6
 	github.com/pitabwire/util v0.3.5
 	github.com/rs/xid v1.6.0
 	github.com/shopspring/decimal v1.4.0
@@ -88,7 +88,7 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/prometheus/client_golang v1.23.2 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
-	github.com/prometheus/common v0.67.2 // indirect
+	github.com/prometheus/common v0.67.3 // indirect
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
 	github.com/prometheus/procfs v0.19.2 // indirect
 	github.com/shirou/gopsutil/v4 v4.25.10 // indirect
