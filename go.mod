@@ -3,14 +3,14 @@ module github.com/antinvestor/service-ledger
 go 1.25.2
 
 require (
-	buf.build/gen/go/antinvestor/common/protocolbuffers/go v1.36.10-20251115174401-cf993dd61681.1
-	buf.build/gen/go/antinvestor/ledger/connectrpc/go v1.19.1-20251115181106-2cea959d11ff.2
-	buf.build/gen/go/antinvestor/ledger/protocolbuffers/go v1.36.10-20251115181106-2cea959d11ff.1
+	buf.build/gen/go/antinvestor/common/protocolbuffers/go v1.36.10-20251119161617-faec0015998a.1
+	buf.build/gen/go/antinvestor/ledger/connectrpc/go v1.19.1-20251119161734-8de0262fa25b.2
+	buf.build/gen/go/antinvestor/ledger/protocolbuffers/go v1.36.10-20251119161734-8de0262fa25b.1
 	connectrpc.com/connect v1.19.1
 	connectrpc.com/otelconnect v0.8.0
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/lib/pq v1.10.9
-	github.com/pitabwire/frame v1.67.0
+	github.com/pitabwire/frame v1.67.2
 	github.com/pitabwire/util v0.3.5
 	github.com/rs/xid v1.6.0
 	github.com/shopspring/decimal v1.4.0
@@ -24,7 +24,7 @@ require (
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.10-20250912141014-52f32327d4b0.1 // indirect
 	buf.build/gen/go/gnostic/gnostic/protocolbuffers/go v1.36.10-20230414000709-087bc8072ce4.1 // indirect
-	buf.build/go/protovalidate v1.0.0 // indirect
+	buf.build/go/protovalidate v1.0.1 // indirect
 	cel.dev/expr v0.25.1 // indirect
 	dario.cat/mergo v1.0.2 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
