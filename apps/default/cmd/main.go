@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"net/http"
-
 	//nolint:gosec // G108: Profiling endpoint deliberately exposed for monitoring and debugging purposes
 	_ "net/http/pprof"
 
@@ -113,10 +112,7 @@ func setupConnectServer(
 		util.Log(ctx).WithError(err).Fatal("could not configure open telemetry")
 	}
 
-	validateInterceptor, err := securityconnect.NewValidationInterceptor()
-	if err != nil {
-		util.Log(ctx).WithError(err).Fatal("could not configure validation interceptor")
-	}
+	validateInterceptor := securityconnect.NewValidationInterceptor()
 
 	authenticator := securityMan.GetAuthenticator(ctx)
 	authInterceptor := securityconnect.NewAuthInterceptor(authenticator)
