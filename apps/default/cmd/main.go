@@ -75,9 +75,7 @@ func main() {
 	serviceOptions := []frame.Option{frame.WithHTTPHandler(connectHandler)}
 	service.Init(ctx, serviceOptions...)
 
-	log.WithField("server http port", cfg.HTTPServerPort).
-		Info(" Initiating server operations")
-
+	// Startup service
 	err = service.Run(ctx, "")
 	if err != nil {
 		log.Printf("main -- Could not run Server : %v", err)
