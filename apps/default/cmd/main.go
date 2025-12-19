@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"net/http"
+
 	//nolint:gosec // G108: Profiling endpoint deliberately exposed for monitoring and debugging purposes
 	_ "net/http/pprof"
 
