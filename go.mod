@@ -3,9 +3,9 @@ module github.com/antinvestor/service-ledger
 go 1.25.2
 
 require (
-	buf.build/gen/go/antinvestor/common/protocolbuffers/go v1.36.11-20251216061047-d524d0f6d60c.1
+	buf.build/gen/go/antinvestor/common/protocolbuffers/go v1.36.11-20260102104630-5c57561a771f.1
 	buf.build/gen/go/antinvestor/ledger/connectrpc/go v1.19.1-20251216063731-d2fd08583231.2
-	buf.build/gen/go/antinvestor/ledger/protocolbuffers/go v1.36.11-20251216063731-d2fd08583231.1
+	buf.build/gen/go/antinvestor/ledger/protocolbuffers/go v1.36.11-20260102123250-5570a5267fab.1
 	connectrpc.com/connect v1.19.1
 	connectrpc.com/otelconnect v0.8.0
 	github.com/docker/docker v28.5.2+incompatible
