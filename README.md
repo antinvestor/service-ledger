@@ -292,3 +292,25 @@ protoc -I=./ledger --go_out=plugins=grpc:./ledger ./ledger/ledger.proto
 # Database improvements
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO dbuser;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO dbuser;
+
+## Development Setup
+
+### Git Hooks
+
+This repository includes a pre-commit hook that automatically runs `make format` before each commit to ensure consistent code formatting.
+
+**Enable the hook:**
+```bash
+git config core.hooksPath .githooks
+```
+
+**What it does:**
+- Detects staged `.go` files
+- Runs `make format` to apply gofmt/goimports
+- If formatting changes any files, the commit is blocked
+- You must review and stage the formatted files before committing again
+
+**To disable temporarily:**
+```bash
+git commit --no-verify
+```
