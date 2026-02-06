@@ -10,7 +10,7 @@ require (
 	connectrpc.com/otelconnect v0.9.0
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/lib/pq v1.11.1
-	github.com/pitabwire/frame v1.71.0
+	github.com/pitabwire/frame v1.72.0
 	github.com/pitabwire/util v0.4.0
 	github.com/rs/xid v1.6.0
 	github.com/shopspring/decimal v1.4.0
@@ -81,6 +81,7 @@ require (
 	github.com/nicksnyder/go-i18n/v2 v2.6.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
+	github.com/ory/keto/proto v0.13.0-alpha.0 // indirect
 	github.com/panjf2000/ants/v2 v2.11.4 // indirect
 	github.com/pitabwire/natspubsub v0.7.12 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
